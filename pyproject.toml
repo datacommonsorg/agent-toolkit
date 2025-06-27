@@ -17,6 +17,7 @@ dependencies = []
 
 
 [tool.ruff.lint]
+# Visit https://docs.astral.sh/ruff/rules/ for detailed rule descriptions.
 extend-select = [
   "ERA",  # removes commented-out code from Python files.
   "FAST", # linting FastAPI specifics
