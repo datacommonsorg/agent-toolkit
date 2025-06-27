@@ -13,10 +13,11 @@
 # limitations under the License.
 
 # --- Imports ---
-from typing import List, Literal, Type, Union, Any, get_args
+import json
+from typing import List, Literal, Type, Union, get_args
+
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
-import json
 
 # ==============================================================================
 # 1. THE SINGLE, SIMPLE BASE CHART MODEL
@@ -24,23 +25,26 @@ import json
 
 
 class BaseChart(BaseModel):
-  """Contains fields required by ALL chart types."""
-  header: str = Field(description="Title of the chart to be displayed.")
+    """Contains fields required by ALL chart types."""
+
+    header: str = Field(description="Title of the chart to be displayed.")
 
 
 class SingleVariableChart(BaseChart):
-  """Provides a single required 'variable' field."""
-  variable_dcid: str = Field(
-      description=
-      "DCID of a single statistical variable to display in the chart.")
+    """Provides a single required 'variable' field."""
+
+    variable_dcid: str = Field(
+        description="DCID of a single statistical variable to display in the chart."
+    )
 
 
 class MultiVariableChart(BaseChart):
-  """Provides a list of one or more 'variables'."""
-  variable_dcids: List[str] = Field(
-      description=
-      "List of DCIDs of statistical variables to display in the chart.",
-      min_length=1)
+    """Provides a list of one or more 'variables'."""
+
+    variable_dcids: List[str] = Field(
+        description="List of DCIDs of statistical variables to display in the chart.",
+        min_length=1,
+    )
 
 
 # ==============================================================================
@@ -50,36 +54,40 @@ class MultiVariableChart(BaseChart):
 
 
 class SinglePlaceLocation(BaseModel):
-  """Defines a location using a specific list of places."""
-  location_type: Literal["single_place"] = 'single_place'
-  place_dcid: str = Field(
-      description="DCID of a single place to display statistical data for.")
+    """Defines a location using a specific list of places."""
+
+    location_type: Literal["single_place"] = "single_place"
+    place_dcid: str = Field(
+        description="DCID of a single place to display statistical data for."
+    )
 
 
 class MultiPlaceLocation(BaseModel):
-  """Defines a location using a specific list of places."""
-  location_type: Literal["multi_place"] = 'multi_place'
-  place_dcids: List[str] = Field(
-      description="List of place DCIDs to display statistical data for.",
-      min_length=1)
+    """Defines a location using a specific list of places."""
+
+    location_type: Literal["multi_place"] = "multi_place"
+    place_dcids: List[str] = Field(
+        description="List of place DCIDs to display statistical data for.", min_length=1
+    )
 
 
 class HierarchyLocation(BaseModel):
-  """Defines a location using a parent/child hierarchy."""
-  location_type: Literal["hierarchy"] = 'hierarchy'
-  parent_place_dcid: str = Field(
-      description=
-      "DCID of a single place whose descendants should have statistical data displayed."
-  )
-  child_place_type: str = Field(
-      description=
-      "DCID of a valid child place type such as AdministrativeArea1 or County.")
+    """Defines a location using a parent/child hierarchy."""
+
+    location_type: Literal["hierarchy"] = "hierarchy"
+    parent_place_dcid: str = Field(
+        description="DCID of a single place whose descendants should have statistical data displayed.",
+    )
+    child_place_type: str = Field(
+        description="DCID of a valid child place type such as AdministrativeArea1 or County."
+    )
 
 
 # A discriminated union for charts that can accept either Places or Hierarchy
 # location type (like BarChart).
-LocationChoice = Annotated[Union[MultiPlaceLocation, HierarchyLocation],
-                           Field(discriminator="location_type")]
+LocationChoice = Annotated[
+    Union[MultiPlaceLocation, HierarchyLocation], Field(discriminator="location_type")
+]
 
 # ==============================================================================
 # 3. CONCRETE MODELS
@@ -93,50 +101,52 @@ LocationChoice = Annotated[Union[MultiPlaceLocation, HierarchyLocation],
 
 
 class BarChart(MultiVariableChart):
-  type: Literal["bar"] = 'bar'
-  location: LocationChoice  # Either list or hierarchy
+    type: Literal["bar"] = "bar"
+    location: LocationChoice  # Either list or hierarchy
 
 
 class LineChart(MultiVariableChart):
-  type: Literal["line"] = 'line'
-  location: LocationChoice  # Either list or hierarchy
+    type: Literal["line"] = "line"
+    location: LocationChoice  # Either list or hierarchy
 
 
 class RankingChart(MultiVariableChart):
-  type: Literal["ranking"] = 'ranking'
-  location: HierarchyLocation
+    type: Literal["ranking"] = "ranking"
+    location: HierarchyLocation
 
 
 class ScatterChart(MultiVariableChart):
-  """A Scatter Chart requires exactly two variables!"""
-  type: Literal["scatter"] = 'scatter'
-  location: HierarchyLocation
+    """A Scatter Chart requires exactly two variables!"""
 
-  # OVERRIDE: A scatter plot requires exactly two variable DCIDs, one for each axis (x,y).
-  variable_dcids: List[str] = Field(
-      description="The two variable DCIDs to plot on x and y axes.",
-      min_length=2,
-      max_length=2)
+    type: Literal["scatter"] = "scatter"
+    location: HierarchyLocation
+
+    # OVERRIDE: A scatter plot requires exactly two variable DCIDs, one for each axis (x,y).
+    variable_dcids: List[str] = Field(
+        description="The two variable DCIDs to plot on x and y axes.",
+        min_length=2,
+        max_length=2,
+    )
 
 
 class PieChart(MultiVariableChart):
-  type: Literal["pie"] = 'pie'
-  location: SinglePlaceLocation
+    type: Literal["pie"] = "pie"
+    location: SinglePlaceLocation
 
 
 class MapChart(SingleVariableChart):
-  type: Literal["map"] = 'map'
-  location: HierarchyLocation
+    type: Literal["map"] = "map"
+    location: HierarchyLocation
 
 
 class GaugeChart(SingleVariableChart):
-  type: Literal["gauge"] = 'gauge'
-  location: SinglePlaceLocation
+    type: Literal["gauge"] = "gauge"
+    location: SinglePlaceLocation
 
 
 class HighlightChart(SingleVariableChart):
-  type: Literal["highlight"] = 'highlight'
-  location: SinglePlaceLocation
+    type: Literal["highlight"] = "highlight"
+    location: SinglePlaceLocation
 
 
 # ==============================================================================
@@ -144,8 +154,16 @@ class HighlightChart(SingleVariableChart):
 # ==============================================================================
 
 # When adding a new chart type, add class name to this list.
-DataCommonsChartUnion = Union[BarChart, GaugeChart, HighlightChart, LineChart,
-                              MapChart, PieChart, RankingChart, ScatterChart]
+DataCommonsChartUnion = Union[
+    BarChart,
+    GaugeChart,
+    HighlightChart,
+    LineChart,
+    MapChart,
+    PieChart,
+    RankingChart,
+    ScatterChart,
+]
 
 DataCommonsChartConfig = Annotated[
     DataCommonsChartUnion,
@@ -153,14 +171,15 @@ DataCommonsChartConfig = Annotated[
 ]
 
 CHART_CONFIG_MAP = {
-    get_args(ChartType.model_fields['type'].annotation)[0]: ChartType
+    get_args(ChartType.model_fields["type"].annotation)[0]: ChartType
     for ChartType in (get_args(DataCommonsChartUnion))
 }
 
 
-def get_schema_string(models: Union[Type[BaseModel], List[Type[BaseModel]]],
-                      indent: int = 2) -> str:
-  """
+def get_schema_string(
+    models: Union[Type[BaseModel], List[Type[BaseModel]]], indent: int = 2
+) -> str:
+    """
     Converts a Pydantic model into a formatted JSON Schema string.
 
     This function serves as the single source of truth for your schema.
@@ -175,14 +194,14 @@ def get_schema_string(models: Union[Type[BaseModel], List[Type[BaseModel]]],
         A string containing the JSON Schema.
     """
 
-  if not isinstance(models, list):
-    models = [models]
+    if not isinstance(models, list):
+        models = [models]
 
-  # .model_json_schema() is the built-in Pydantic method that generates
-  # the schema as a Python dictionary.
-  # json.dumps() is the standard Python library function to convert a
-  # dictionary into a JSON string. The 'indent' parameter makes it
-  # human-readable and easier for the LLM to parse.
-  return '\n'.join([
-      json.dumps(model.model_json_schema(), indent=indent) for model in models
-  ])
+    # .model_json_schema() is the built-in Pydantic method that generates
+    # the schema as a Python dictionary.
+    # json.dumps() is the standard Python library function to convert a
+    # dictionary into a JSON string. The 'indent' parameter makes it
+    # human-readable and easier for the LLM to parse.
+    return "\n".join(
+        [json.dumps(model.model_json_schema(), indent=indent) for model in models]
+    )

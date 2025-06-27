@@ -18,13 +18,21 @@ Server module for the DC MCP server.
 import asyncio
 import types
 from typing import Optional, Union, get_args, get_origin
-from fastmcp import FastMCP
-from clients import create_clients
-from response_transformers import transform_obs_response
+
 import config
-from datacommons_chart_types import DataCommonsChartConfig, CHART_CONFIG_MAP, SinglePlaceLocation, MultiPlaceLocation, SingleVariableChart, HierarchyLocation
-from pydantic import ValidationError
+from clients import create_clients
 from constants import BASE_DC_ID
+from datacommons_chart_types import (
+    CHART_CONFIG_MAP,
+    DataCommonsChartConfig,
+    HierarchyLocation,
+    MultiPlaceLocation,
+    SinglePlaceLocation,
+    SingleVariableChart,
+)
+from fastmcp import FastMCP
+from pydantic import ValidationError
+from response_transformers import transform_obs_response
 
 # Create clients based on config
 multi_dc_client = create_clients(config.BASE_DC_CONFIG)
@@ -33,12 +41,14 @@ mcp = FastMCP("DC MCP Server")
 
 
 @mcp.tool()
-async def get_observations(variable_desc: Optional[str] = None,
-                           variable_dcid: Optional[str] = None,
-                           place_name: Optional[str] = None,
-                           place_dcid: Optional[str] = None,
-                           facet_id_override: Optional[str] = None) -> dict:
-  """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance) about a place from Data Commons.
+async def get_observations(
+    variable_desc: Optional[str] = None,
+    variable_dcid: Optional[str] = None,
+    place_name: Optional[str] = None,
+    place_dcid: Optional[str] = None,
+    facet_id_override: Optional[str] = None,
+) -> dict:
+    """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance) about a place from Data Commons.
     This tool can retrieve various types of data, including time series, single values,
     or categorical information, depending on the concept requested and the available data.
 
@@ -50,29 +60,29 @@ async def get_observations(variable_desc: Optional[str] = None,
 
     Guidance on Variable Selection:
 
-    When the user is asking for data about a place_name or place_dcid for which 
-    you have previously successfully called get_available_variables_for_place, 
+    When the user is asking for data about a place_name or place_dcid for which
+    you have previously successfully called get_available_variables_for_place,
     you will have access to a list of available variable DCIDs and their id_name_mappings.
 
-    Prioritization: Before attempting to use the variable_desc parameter, 
+    Prioritization: Before attempting to use the variable_desc parameter,
     if you have previously called get_available_variables_for_place for this place,
-    FIRST examine the user's request and compare it to the id_name_mappings 
+    FIRST examine the user's request and compare it to the id_name_mappings
     you already possess for this place.
 
-    If you find a variable name in your id_name_mappings that appears to be a close 
-    or exact match to the concept or indicator the user is asking for, 
-    use the corresponding variable_dcid in your call to get_observations. 
+    If you find a variable name in your id_name_mappings that appears to be a close
+    or exact match to the concept or indicator the user is asking for,
+    use the corresponding variable_dcid in your call to get_observations.
     This is the preferred method when relevant DCIDs are known.
-    Example: If the user asks for "mean rainfall in Mumbai" and your id_name_mappings 
-    for Mumbai includes "Mean_Rainfall": "Mean Rainfall", 
-    use variable_dcid="Mean_Rainfall" and place_dcid="wikidataId/Q1156" 
+    Example: If the user asks for "mean rainfall in Mumbai" and your id_name_mappings
+    for Mumbai includes "Mean_Rainfall": "Mean Rainfall",
+    use variable_dcid="Mean_Rainfall" and place_dcid="wikidataId/Q1156"
     (assuming you have the place DCID).
 
-    Fallback: If you cannot find a sufficiently relevant variable name 
-    in your existing id_name_mappings for the requested place, 
-    should you use the variable_desc parameter to provide a natural language description 
+    Fallback: If you cannot find a sufficiently relevant variable name
+    in your existing id_name_mappings for the requested place,
+    should you use the variable_desc parameter to provide a natural language description
     of the variable you are looking for.
-    
+
     Args:
       variable_desc (str, optional): The concept or indicator to fetch data for.
         Provide a natural language description of what data you are looking for.
@@ -131,81 +141,79 @@ async def get_observations(variable_desc: Optional[str] = None,
 
       Also, cite the source of the data in your response and suffix it with "(Powered by {dc_provider})".
     """
-  # 1. Input validation
-  if not (variable_desc or variable_dcid) or (variable_desc and variable_dcid):
+    # 1. Input validation
+    if not (variable_desc or variable_dcid) or (variable_desc and variable_dcid):
+        return {
+            "status": "ERROR",
+            "message": "Specify either 'variable_desc' or 'variable_dcid', but not both.",
+        }
+
+    if not (place_name or place_dcid) or (place_name and place_dcid):
+        return {
+            "status": "ERROR",
+            "message": "Specify either 'place_name' or 'place_dcid', but not both.",
+        }
+
+    # 2. Concurrently resolve identifiers if needed
+    tasks = {}
+    if variable_desc:
+        tasks["sv_search"] = multi_dc_client.search_svs([variable_desc])
+    if place_name:
+        tasks["place_search"] = multi_dc_client.base_dc.search_places([place_name])
+
+    svs = None
+    places = None
+    if tasks:
+        # Use asyncio.gather on the values (coroutines) of the tasks dict
+        task_coroutines = list(tasks.values())
+        task_results = await asyncio.gather(*task_coroutines)
+        # Map results back to their keys
+        results = dict(zip(tasks.keys(), task_results, strict=False))
+        svs = results.get("sv_search")
+        places = results.get("place_search")
+
+    # 3. Process results and set DCIDs
+    sv_dcid_to_use = variable_dcid
+    dc_id_to_use = BASE_DC_ID if variable_dcid else None
+    place_dcid_to_use = place_dcid
+
+    if svs:
+        sv_data = svs.get(variable_desc, {})
+        print(f"sv_data: {variable_desc} -> {sv_data}")
+        dc_id_to_use = sv_data.get("dc_id")
+        sv_dcid_to_use = sv_data.get("SV", "")
+
+    if places:
+        place_dcid_to_use = places.get(place_name, "")
+        print(f"place: {place_name} -> {place_dcid_to_use}")
+
+    # 4. Final validation and fetch
+    if not sv_dcid_to_use or not place_dcid_to_use or not dc_id_to_use:
+        return {"status": "NO_DATA_FOUND"}
+
+    response = await multi_dc_client.fetch_obs(
+        dc_id_to_use, sv_dcid_to_use, place_dcid_to_use
+    )
+    dc_client = multi_dc_client.dc_map.get(dc_id_to_use)
+    response["dc_provider"] = dc_client.dc_name
+
     return {
-        "status":
-            "ERROR",
-        "message":
-            "Specify either 'variable_desc' or 'variable_dcid', but not both."
+        "status": "SUCCESS",
+        "data": transform_obs_response(
+            response, dc_client.fetch_entity_names, facet_id_override=facet_id_override
+        ),
     }
-
-  if not (place_name or place_dcid) or (place_name and place_dcid):
-    return {
-        "status": "ERROR",
-        "message": "Specify either 'place_name' or 'place_dcid', but not both."
-    }
-
-  # 2. Concurrently resolve identifiers if needed
-  tasks = {}
-  if variable_desc:
-    tasks['sv_search'] = multi_dc_client.search_svs([variable_desc])
-  if place_name:
-    tasks['place_search'] = multi_dc_client.base_dc.search_places([place_name])
-
-  svs = None
-  places = None
-  if tasks:
-    # Use asyncio.gather on the values (coroutines) of the tasks dict
-    task_coroutines = list(tasks.values())
-    task_results = await asyncio.gather(*task_coroutines)
-    # Map results back to their keys
-    results = dict(zip(tasks.keys(), task_results))
-    svs = results.get('sv_search')
-    places = results.get('place_search')
-
-  # 3. Process results and set DCIDs
-  sv_dcid_to_use = variable_dcid
-  dc_id_to_use = BASE_DC_ID if variable_dcid else None
-  place_dcid_to_use = place_dcid
-
-  if svs:
-    sv_data = svs.get(variable_desc, {})
-    print(f"sv_data: {variable_desc} -> {sv_data}")
-    dc_id_to_use = sv_data.get('dc_id')
-    sv_dcid_to_use = sv_data.get('SV', '')
-
-  if places:
-    place_dcid_to_use = places.get(place_name, '')
-    print(f"place: {place_name} -> {place_dcid_to_use}")
-
-  # 4. Final validation and fetch
-  if not sv_dcid_to_use or not place_dcid_to_use or not dc_id_to_use:
-    return {"status": "NO_DATA_FOUND"}
-
-  response = await multi_dc_client.fetch_obs(dc_id_to_use, sv_dcid_to_use,
-                                             place_dcid_to_use)
-  dc_client = multi_dc_client.dc_map.get(dc_id_to_use)
-  response['dc_provider'] = dc_client.dc_name
-
-  return {
-      "status":
-          "SUCCESS",
-      "data":
-          transform_obs_response(response,
-                                 dc_client.fetch_entity_names,
-                                 facet_id_override=facet_id_override)
-  }
 
 
 @mcp.tool()
 async def validate_child_place_types(
-    parent_place_name: str, child_place_types: list[str]) -> dict[str, bool]:
-  """
+    parent_place_name: str, child_place_types: list[str]
+) -> dict[str, bool]:
+    """
     Checks which of the child place types are valid for the parent place.
 
     Use this tool to validate the child place types before calling get_observations_for_child_places.
-    
+
     Example:
     - For counties in Kenya, you can check for both "County" and "AdministrativeArea1" to determine which is valid.
       i.e. "validate_child_place_types("Kenya", ["County", "AdministrativeArea1"])"
@@ -242,21 +250,22 @@ async def validate_child_place_types(
     Returns:
         A dictionary mapping child place types to a boolean indicating whether they are valid for the parent place.
     """
-  places = await multi_dc_client.base_dc.search_places([parent_place_name])
-  place_dcid = places.get(parent_place_name, '')
-  if not place_dcid:
-    return {child_place_type: False for child_place_type in child_place_types}
+    places = await multi_dc_client.base_dc.search_places([parent_place_name])
+    place_dcid = places.get(parent_place_name, "")
+    if not place_dcid:
+        return dict.fromkeys(child_place_types, False)
 
-  tasks = [
-      multi_dc_client.base_dc.child_place_type_exists(
-          place_dcid,
-          child_place_type,
-      ) for child_place_type in child_place_types
-  ]
+    tasks = [
+        multi_dc_client.base_dc.child_place_type_exists(
+            place_dcid,
+            child_place_type,
+        )
+        for child_place_type in child_place_types
+    ]
 
-  results = await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks)
 
-  return dict(zip(child_place_types, results))
+    return dict(zip(child_place_types, results, strict=False))
 
 
 @mcp.tool()
@@ -265,8 +274,9 @@ async def get_observations_for_child_places(
     parent_place_name: str,
     child_place_type: str,
     date: str = "LATEST",
-    facet_id_override: Optional[str] = None) -> dict:
-  """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance) 
+    facet_id_override: Optional[str] = None,
+) -> dict:
+    """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance)
     for all children of a given parent place of a given type from Data Commons.
 
     Use this tool when you want data for all smaller regions of a certain type in a larger region.
@@ -283,11 +293,11 @@ async def get_observations_for_child_places(
         The tool has advanced internal logic to understand diverse requests and
         find the best matching data available in Data Commons, regardless of whether it's
         traditionally considered a 'statistical variable' or a 'time series'.
-      parent_place_name (str): The larger geographic region or administrative division containing the places to fetch data for. 
+      parent_place_name (str): The larger geographic region or administrative division containing the places to fetch data for.
         This can be a city, county, state, country, a continent (like "Europe" or "Asia"), or the entire world.
         Examples: "United States", "India", "NYC", "Europe", "World", etc.
       child_place_type (str): The type of the child places within the parent place to fetch data for. The valid types depend on the parent.
-        Use the validate_child_place_types tool to check valid child place types for a given parent place. 
+        Use the validate_child_place_types tool to check valid child place types for a given parent place.
         Use the returned dictionary to determine the correct child place type when calling this tool.
       date (str): The date to fetch the data for. If not specified, the latest available data will be returned.
         The date should be in the format YYYY-MM-DD. e.g. "2022", "2022-01", "2022-01-01".
@@ -296,7 +306,7 @@ async def get_observations_for_child_places(
       Example usage: To get GDP for countries in Europe, use parent_place_name="Europe" and child_place_type="Country".
     Returns:
       dict: A dictionary containing the status of the request and the data if available.
-      
+
       The dictionary has the following format:
       {
         "status": "SUCCESS" | "NO_DATA_FOUND",
@@ -342,43 +352,45 @@ async def get_observations_for_child_places(
 
       Also, cite the source of the data in your response and suffix it with "(Powered by {dc_provider})".
     """
-  svs, places = await asyncio.gather(
-      multi_dc_client.search_svs([variable_desc]),
-      multi_dc_client.base_dc.search_places([parent_place_name]),
-  )
+    svs, places = await asyncio.gather(
+        multi_dc_client.search_svs([variable_desc]),
+        multi_dc_client.base_dc.search_places([parent_place_name]),
+    )
 
-  sv_data = svs.get(variable_desc, {})
-  print(f"sv_data: {variable_desc} -> {sv_data}")
-  dc_id = sv_data.get('dc_id')
-  sv_dcid = sv_data.get('SV', '')
+    sv_data = svs.get(variable_desc, {})
+    print(f"sv_data: {variable_desc} -> {sv_data}")
+    dc_id = sv_data.get("dc_id")
+    sv_dcid = sv_data.get("SV", "")
 
-  place_dcid = places.get(parent_place_name, '')
-  print(f"place: {parent_place_name} -> {place_dcid}")
+    place_dcid = places.get(parent_place_name, "")
+    print(f"place: {parent_place_name} -> {place_dcid}")
 
-  if not sv_dcid or not place_dcid:
-    return {"status": "NO_DATA_FOUND"}
+    if not sv_dcid or not place_dcid:
+        return {"status": "NO_DATA_FOUND"}
 
-  # Use the DC ID from the search results
-  response = await multi_dc_client.fetch_obs_for_child_places(
-      dc_id, [sv_dcid], place_dcid, child_place_type, date)
-  dc_client = multi_dc_client.dc_map.get(dc_id)
-  response['dc_provider'] = dc_client.dc_name
+    # Use the DC ID from the search results
+    response = await multi_dc_client.fetch_obs_for_child_places(
+        dc_id, [sv_dcid], place_dcid, child_place_type, date
+    )
+    dc_client = multi_dc_client.dc_map.get(dc_id)
+    response["dc_provider"] = dc_client.dc_name
 
-  return {
-      "status":
-          "SUCCESS",
-      "data":
-          transform_obs_response(response,
-                                 dc_client.fetch_entity_names,
-                                 other_dcids_to_lookup=[place_dcid],
-                                 facet_id_override=facet_id_override)
-  }
+    return {
+        "status": "SUCCESS",
+        "data": transform_obs_response(
+            response,
+            dc_client.fetch_entity_names,
+            other_dcids_to_lookup=[place_dcid],
+            facet_id_override=facet_id_override,
+        ),
+    }
 
 
 @mcp.tool()
-async def get_available_variables(place_name: str = "world",
-                                  category: str = "statistics") -> dict:
-  """
+async def get_available_variables(
+    place_name: str = "world", category: str = "statistics"
+) -> dict:
+    """
     Gets available variables for a place and category.
     If a place is not specified, it returns variables for the world.
     If not specified, it returns variables for a generic category called "statistics".
@@ -407,50 +419,49 @@ async def get_available_variables(place_name: str = "world",
         You can use the category_variable_ids to get the variables in the requested category (or for "statistics" by default).
 
         If the user asks to see the data for this category and there are a high number of variables, pick those most pertinent to the user's query and context.
-        When showing this info to the user, inform them of the total number of variables available *for this specific place and category* (e.g., 'statistics for the world') 
+        When showing this info to the user, inform them of the total number of variables available *for this specific place and category* (e.g., 'statistics for the world')
         and the variables for that combination.
-        
+
         **Crucially**, categorize the variables into categories as appropriate (e.g. "Demographics", "Economy", "Health", "Education", "Environment", etc.) to make the information easier to digest.
 
         Typically this tool is called when the user asks to see the data for a specific category for a given place.
-        
+
         It can also be called for a general "what data do you have".
         In this case we'll return generic statistics data for the world.
-        For this general case, emphasize that these are variables available for just this combination. 
+        For this general case, emphasize that these are variables available for just this combination.
         The overall collection of variables and datasets is much larger.
-        You can then prompt the user to ask a specific question about the data and 
+        You can then prompt the user to ask a specific question about the data and
         possibly suggest a few questions to ask.
 
         Most importantly, in all cases, categorize the variables as mentioned above when displaying them to the user.
-  """
-  places = await multi_dc_client.base_dc.search_places([place_name])
-  place_dcid = places.get(place_name)
+    """
+    places = await multi_dc_client.base_dc.search_places([place_name])
+    place_dcid = places.get(place_name)
 
-  if not place_dcid:
+    if not place_dcid:
+        return {
+            "status": "NOT_FOUND",
+            "message": f"Could not find a place named '{place_name}'.",
+        }
+
+    dc = multi_dc_client.base_dc
+    variable_data = await dc.fetch_topic_variables(place_dcid, topic_query=category)
+
+    dcids_to_lookup = [place_dcid]
+
+    topic_variable_ids = variable_data.get("topic_variable_ids", [])
+    dcids_to_lookup.extend(topic_variable_ids)
+
+    id_name_mappings = dc.fetch_entity_names(dcids_to_lookup)
+
     return {
-        "status": "NOT_FOUND",
-        "message": f"Could not find a place named '{place_name}'."
+        "status": "SUCCESS",
+        "data": {
+            "place_dcid": place_dcid,
+            "topic_variable_ids": topic_variable_ids,
+            "id_name_mappings": id_name_mappings,
+        },
     }
-
-  dc = multi_dc_client.base_dc
-  variable_data = await dc.fetch_topic_variables(place_dcid,
-                                                 topic_query=category)
-
-  dcids_to_lookup = [place_dcid]
-
-  topic_variable_ids = variable_data.get("topic_variable_ids", [])
-  dcids_to_lookup.extend(topic_variable_ids)
-
-  id_name_mappings = dc.fetch_entity_names(dcids_to_lookup)
-
-  return {
-      "status": "SUCCESS",
-      "data": {
-          "place_dcid": place_dcid,
-          "topic_variable_ids": topic_variable_ids,
-          "id_name_mappings": id_name_mappings
-      }
-  }
 
 
 @mcp.tool()
@@ -460,15 +471,16 @@ async def get_datacommons_chart_config(
     variable_dcids: list[str],
     place_dcids: Optional[list[str]] = None,
     parent_place_dcid: Optional[str] = None,
-    child_place_type: Optional[str] = None) -> DataCommonsChartConfig:
-  """Constructs and validates a DataCommons chart configuration.
+    child_place_type: Optional[str] = None,
+) -> DataCommonsChartConfig:
+    """Constructs and validates a DataCommons chart configuration.
 
     This unified factory function serves as a robust constructor for creating
     any type of DataCommons chart configuration from primitive inputs. It uses a
     dispatch map to select the appropriate Pydantic model based on the provided
     `chart_type` and validates the inputs against that model's rules.
 
-    **Crucially** use the DCIDs of variables, places and/or child place types 
+    **Crucially** use the DCIDs of variables, places and/or child place types
     returned by other tools as the args to the chart config.
 
     Valid chart types include:
@@ -532,74 +544,78 @@ async def get_datacommons_chart_config(
             - If any inputs fail Pydantic's model validation for the target
               chart configuration.
     """
-  # Validate chart_type param
-  ChartConfigClass = CHART_CONFIG_MAP.get(chart_type)
-  if not ChartConfigClass:
-    raise ValueError(
-        f"Invalid chart_type: '{chart_type}'. Valid types are: {list(CHART_CONFIG_MAP.keys())}"
-    )
+    # Validate chart_type param
+    chart_config_class = CHART_CONFIG_MAP.get(chart_type)
+    if not chart_config_class:
+        raise ValueError(
+            f"Invalid chart_type: '{chart_type}'. Valid types are: {list(CHART_CONFIG_MAP.keys())}"
+        )
 
-  # Validate provided place params
-  if not place_dcids and not (parent_place_dcid and child_place_type):
-    raise ValueError(
-        "Supply either a list of place_dcids or a single parent_dcid-child_place_type pair."
-    )
-  if place_dcids and (parent_place_dcid or child_place_type):
-    raise ValueError(
-        "Provide either 'place_dcids' or a 'parent_dcid'/'child_place_type' pair, but not both."
-    )
+    # Validate provided place params
+    if not place_dcids and not (parent_place_dcid and child_place_type):
+        raise ValueError(
+            "Supply either a list of place_dcids or a single parent_dcid-child_place_type pair."
+        )
+    if place_dcids and (parent_place_dcid or child_place_type):
+        raise ValueError(
+            "Provide either 'place_dcids' or a 'parent_dcid'/'child_place_type' pair, but not both."
+        )
 
-  # Validate variable params
-  if not variable_dcids:
-    raise ValueError("At least one variable_dcid is required.")
+    # Validate variable params
+    if not variable_dcids:
+        raise ValueError("At least one variable_dcid is required.")
 
-  # 2. Intelligently construct the location object based on the input
-  #    This part makes some assumptions based on the provided signature.
-  #    For single-place charts, we use the first DCID. For multi-place, we use all.
-  try:
-    location_model = ChartConfigClass.model_fields['location'].annotation
-    location_obj = None
+    # 2. Intelligently construct the location object based on the input
+    #    This part makes some assumptions based on the provided signature.
+    #    For single-place charts, we use the first DCID. For multi-place, we use all.
+    try:
+        location_model = chart_config_class.model_fields["location"].annotation
+        location_obj = None
 
-    # Check if the annotation is a Union (e.g., Union[A, B] or A | B)
-    if get_origin(location_model) in (Union, types.UnionType):
-      # Get the types inside the Union, e.g., (SinglePlaceLocation, MultiPlaceLocation)
-      possible_location_types = get_args(location_model)
-    else:
-      possible_location_types = [location_model]
+        # Check if the annotation is a Union (e.g., Union[A, B] or A | B)
+        if get_origin(location_model) in (Union, types.UnionType):
+            # Get the types inside the Union
+            # e.g., (SinglePlaceLocation, MultiPlaceLocation)
+            possible_location_types = get_args(location_model)
+        else:
+            possible_location_types = [location_model]
 
-    # Now, check if our desired types are possible options
-    if MultiPlaceLocation in possible_location_types and place_dcids:
-      # Prioritize MultiPlaceLocation if multiple places are given
-      location_obj = MultiPlaceLocation(place_dcids=place_dcids)
-    elif SinglePlaceLocation in possible_location_types and place_dcids:
-      # Fall back to SinglePlaceLocation if it's an option
-      location_obj = SinglePlaceLocation(place_dcid=place_dcids[0])
-    elif HierarchyLocation in possible_location_types and (parent_place_dcid and
-                                                           child_place_type):
-      location_obj = HierarchyLocation(parent_place_dcid=parent_place_dcid,
-                                       child_place_type=child_place_type)
-    else:
-      # The Union doesn't contain a type we can build
-      raise ValueError(
-          f"Chart type '{chart_type}' requires a location type "
-          f"('{location_model.__name__}') that this function cannot build from "
-          "the provided args.")
+        # Now, check if our desired types are possible options
+        if MultiPlaceLocation in possible_location_types and place_dcids:
+            # Prioritize MultiPlaceLocation if multiple places are given
+            location_obj = MultiPlaceLocation(place_dcids=place_dcids)
+        elif SinglePlaceLocation in possible_location_types and place_dcids:
+            # Fall back to SinglePlaceLocation if it's an option
+            location_obj = SinglePlaceLocation(place_dcid=place_dcids[0])
+        elif HierarchyLocation in possible_location_types and (
+            parent_place_dcid and child_place_type
+        ):
+            location_obj = HierarchyLocation(
+                parent_place_dcid=parent_place_dcid, child_place_type=child_place_type
+            )
+        else:
+            # The Union doesn't contain a type we can build
+            raise ValueError(
+                f"Chart type '{chart_type}' requires a location type "
+                f"('{location_model.__name__}') that this function cannot build from "
+                "the provided args."
+            )
 
-    if issubclass(ChartConfigClass, SingleVariableChart):
-      return ChartConfigClass(header=chart_title,
-                              location=location_obj,
-                              variable_dcid=variable_dcids[0])
+        if issubclass(chart_config_class, SingleVariableChart):
+            return chart_config_class(
+                header=chart_title,
+                location=location_obj,
+                variable_dcid=variable_dcids[0],
+            )
 
-    else:
-      return ChartConfigClass(header=chart_title,
-                              location=location_obj,
-                              variable_dcids=variable_dcids)
+        return chart_config_class(
+            header=chart_title, location=location_obj, variable_dcids=variable_dcids
+        )
 
-  except ValidationError as e:
-    # Catch Pydantic errors and make them more user-friendly
-    raise ValueError(
-        f"Validation failed for chart_type '{chart_type}': {e}") from e
+    except ValidationError as e:
+        # Catch Pydantic errors and make them more user-friendly
+        raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
 
 
 if __name__ == "__main__":
-  asyncio.run(mcp.run_sse_async(host="0.0.0.0", port=8080))
+    asyncio.run(mcp.run_sse_async(host="localhost", port=8080))

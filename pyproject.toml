@@ -15,44 +15,46 @@ classifiers = [
 ]
 dependencies = []
 
+
 [tool.ruff.lint]
 extend-select = [
-  "ERA", # removes commented-out code from Python files.
+  "ERA",  # removes commented-out code from Python files.
   "FAST", # linting FastAPI specifics
-  "YTT", # Flake8 checks for misuse of `sys.version` or `sys.version_info`
-  "ANN", # Flake8 Type Annotation Checks
-  "S", # Automated security testing with bandit and flake8.
-  "BLE", # A flake8 extension that checks for blind except: statements
-  "FBT", # A flake8 plugin to detect boolean traps.
-  "B", # flake8-bugbear finds likely bugs and design problems.
-  "A", # flake8-builtins detects shadowed python builtins
-  "COM", # flake8 lint for trailing commas.
-  "C4", # flake8 plugin to help write better list/set/dict comprehensions
-  "CPY", # Adds copyright checks to flake8
-  "ISC", # flake8 plugin to encourage correct string literal concatenation
-  "LOG", # flake8 plugin checks for issues with standard library logging module
-  "G", # flake8 plugin to encourage better formatting of built-in logging strings
-  "PIE", # flake8 misc lints
-  "PT", # flake8 plugin checks common pitfalls with pytest-based tests
-  "RET", # encourages good return practices
-  "SIM", # flake8-simplify checks common simplification patterns
-  "TID", # flake8-tidy-imports encourages tidier imports
-  "TD", # flake8-todos lints TODOs throughout the project for consistency
-  "TC", # flake8 plugin for managing type-checking imports & forward references
-  "ARG", # flake8-unused-arguments warns on unused function arguments
-  "PTH", # flake8-use-pathlib encourages pathlib over os.path
-  "I", # isort sorts Python imports
-  "N", # check PEP-8 naming conventions
+  "YTT",  # Flake8 checks for misuse of `sys.version` or `sys.version_info`
+  "ANN",  # Flake8 Type Annotation Checks
+  "S",    # Automated security testing with bandit and flake8.
+  "BLE",  # A flake8 extension that checks for blind except: statements
+  "FBT",  # A flake8 plugin to detect boolean traps.
+  "B",    # flake8-bugbear finds likely bugs and design problems.
+  "A",    # flake8-builtins detects shadowed python builtins
+  "COM",  # flake8 lint for trailing commas.
+  "C4",   # flake8 plugin to help write better list/set/dict comprehensions
+  "ISC",  # flake8 plugin to encourage correct string literal concatenation
+  "LOG",  # flake8 plugin checks for issues with standard library logging module
+  "G",    # flake8 plugin to encourage better formatting of built-in logging strings
+  "PIE",  # flake8 misc lints
+  "PT",   # flake8 plugin checks common pitfalls with pytest-based tests
+  "RET",  # encourages good return practices
+  "SIM",  # flake8-simplify checks common simplification patterns
+  "TID",  # flake8-tidy-imports encourages tidier imports
+  "TD",   # flake8-todos lints TODOs throughout the project for consistency
+  "TC",   # flake8 plugin for managing type-checking imports & forward references
+  "ARG",  # flake8-unused-arguments warns on unused function arguments
+  "PTH",  # flake8-use-pathlib encourages pathlib over os.path
+  "I",    # isort sorts Python imports
+  "N",    # check PEP-8 naming conventions
   "PERF", # Pylint extension with performance anti-patterns
-  "E", # pycodestyle errors
-  "W", # pycodestyle warnings
-  "F", # pyflakes analyzes and detects various errors
-  "PL", # pylint
-  "Q", # defaults to double quotes
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes analyzes and detects various errors
+  "PL",   # pylint
+  "Q",    # defaults to double quotes
+  # "CPY", # check for copyright headers # uncomment once graduated from preview
 ]
 extend-ignore = [
   "TD003",  # missing-todo-link: Missing issue link for this TODO
-  "PLC", # pylint conventions
-  "PLR", # pylint refactor
+  "PLC",    # pylint conventions
+  "PLR",    # pylint refactor
+  "COM812", # missing-trailing-comma may conflict with formatter
+  "E501",   # line-too-long
 ]
-
