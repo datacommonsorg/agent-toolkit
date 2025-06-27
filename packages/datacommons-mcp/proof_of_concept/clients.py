@@ -1,3 +1,16 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Clients module for interacting with Data Commons instances.
 Provides classes for managing connections to both base and custom Data Commons instances.
@@ -21,7 +34,8 @@ class DCClient:
                api_key: str = None,
                sv_search_base_url: str = 'https://dev.datacommons.org',
                idx: str = 'base_uae_mem',
-               topic_store: TopicStore = TopicStore(topics_by_dcid={}, all_variables=set())):
+               topic_store: TopicStore = TopicStore(topics_by_dcid={},
+                                                    all_variables=set())):
     """
     Initialize the DCClient with either an API key or a base URL.
     
@@ -70,7 +84,9 @@ class DCClient:
     response = self.dc.node.fetch_entity_names(entity_dcids=dcids)
     return {dcid: name.value for dcid, name in response.items()}
 
-  async def fetch_topic_variables(self, place_dcid: str, topic_query: str = "statistics") -> dict:
+  async def fetch_topic_variables(self,
+                                  place_dcid: str,
+                                  topic_query: str = "statistics") -> dict:
     """
     Fetch the variables for a place and topic.
 
@@ -91,8 +107,8 @@ class DCClient:
       # TODO: Since we're only supporting topic variables now, should we only keep those that are in the topic store?
       all_variables = [
           var for var in unfiltered_variables
-          if self.topic_store.has_variable(var) or 
-             not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
+          if self.topic_store.has_variable(var) or
+          not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
       ]
       # Store the full filtered list in the cache
       self.variable_cache.put(place_dcid, all_variables)
@@ -100,9 +116,7 @@ class DCClient:
     topic_svs = await self._get_topic_svs(topic_query)
     all_vars_set = set(all_variables)
     # Get an intersection of the topic SVs and the place SVs while maintaining order.
-    topic_svs = [
-        sv for sv in topic_svs if sv in all_vars_set
-    ]
+    topic_svs = [sv for sv in topic_svs if sv in all_vars_set]
     return {"topic_variable_ids": topic_svs}
 
   async def search_places(self, names: list[str]) -> dict:
@@ -131,7 +145,7 @@ class DCClient:
     # We should find a better way to do this.
     if topic_query.lower().strip() == "statistics":
       return self.topic_store.get_topic_variables("dc/topic/Root")
-    
+
     # Search for SVs and topics, the results are ordered by relevance.
     search_results = await self.search_svs([topic_query], skip_topics=False)
     sv_topic_results = search_results.get(topic_query, [])
@@ -159,8 +173,10 @@ class DCClient:
 
     # If no topic was found, return all the SVs found in the search.
     return svs_before_topic
-  
-  async def search_svs(self, queries: list[str], skip_topics: bool = True) -> dict:
+
+  async def search_svs(self,
+                       queries: list[str],
+                       skip_topics: bool = True) -> dict:
     results_map = {}
     skip_topics_param = "&skip_topics=true" if skip_topics else ""
     endpoint_url = f"{self.sv_search_base_url}/api/nl/search-vector"

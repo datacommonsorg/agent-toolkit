@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import os
 from dataclasses import dataclass, field
@@ -36,15 +50,14 @@ class TopicStore:
 
   def has_variable(self, sv_dcid: str) -> bool:
     return sv_dcid in self.all_variables
-  
+
   def get_topic_variables(self, topic_dcid: str) -> list[str]:
     topic_data = self.topics_by_dcid.get(topic_dcid)
     return topic_data.variables if topic_data else []
 
 
 def _flatten_variables_recursive(node: Node, nodes_by_dcid: Dict[str, Node],
-                                 all_vars: Dict[str, None],
-                                 visited: Set[str]):
+                                 all_vars: Dict[str, None], visited: Set[str]):
   """
   Recursively traverses the topic/svpg structure to collect unique variable DCIDs.
   It uses a dictionary as an ordered set to maintain insertion order.
@@ -57,8 +70,7 @@ def _flatten_variables_recursive(node: Node, nodes_by_dcid: Dict[str, Node],
     child_node = nodes_by_dcid.get(child_dcid)
 
     if child_node:
-      _flatten_variables_recursive(child_node, nodes_by_dcid, all_vars,
-                                     visited)
+      _flatten_variables_recursive(child_node, nodes_by_dcid, all_vars, visited)
     else:
       # The child is NOT a defined node. Assume it's a variable,
       # but ignore broken topic/svpg links.
@@ -68,8 +80,7 @@ def _flatten_variables_recursive(node: Node, nodes_by_dcid: Dict[str, Node],
         all_vars[child_dcid] = None
 
 
-def read_topic_cache(
-    file_path: str = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
+def read_topic_cache(file_path: str = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
   """
   Reads the topic_cache.json file, parses the hierarchical structure,
   and returns a TopicStore containing the topic map and a set of all variables.
