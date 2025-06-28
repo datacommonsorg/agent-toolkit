@@ -17,7 +17,7 @@ Server module for the DC MCP server.
 
 import asyncio
 import types
-from typing import Optional, Union, get_args, get_origin
+from typing import Union, get_args, get_origin
 
 import config
 from clients import create_clients
@@ -42,11 +42,11 @@ mcp = FastMCP("DC MCP Server")
 
 @mcp.tool()
 async def get_observations(
-    variable_desc: Optional[str] = None,
-    variable_dcid: Optional[str] = None,
-    place_name: Optional[str] = None,
-    place_dcid: Optional[str] = None,
-    facet_id_override: Optional[str] = None,
+    variable_desc: str | None = None,
+    variable_dcid: str | None = None,
+    place_name: str | None = None,
+    place_dcid: str | None = None,
+    facet_id_override: str | None = None,
 ) -> dict:
     """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance) about a place from Data Commons.
     This tool can retrieve various types of data, including time series, single values,
@@ -274,7 +274,7 @@ async def get_observations_for_child_places(
     parent_place_name: str,
     child_place_type: str,
     date: str = "LATEST",
-    facet_id_override: Optional[str] = None,
+    facet_id_override: str | None = None,
 ) -> dict:
     """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance)
     for all children of a given parent place of a given type from Data Commons.
@@ -469,9 +469,9 @@ async def get_datacommons_chart_config(
     chart_type: str,
     chart_title: str,
     variable_dcids: list[str],
-    place_dcids: Optional[list[str]] = None,
-    parent_place_dcid: Optional[str] = None,
-    child_place_type: Optional[str] = None,
+    place_dcids: list[str] | None = None,
+    parent_place_dcid: str | None = None,
+    child_place_type: str | None = None,
 ) -> DataCommonsChartConfig:
     """Constructs and validates a DataCommons chart configuration.
 

@@ -50,6 +50,7 @@ extend-select = [
   "F",    # pyflakes analyzes and detects various errors
   "PL",   # pylint
   "Q",    # defaults to double quotes
+  "UP", # Encourage syntax supported by newer python versions
   # "CPY", # check for copyright headers # uncomment once graduated from preview
 ]
 extend-ignore = [

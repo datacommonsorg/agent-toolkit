@@ -15,7 +15,6 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Set
 
 # Constants
 _SOURCE_DIR = Path(__file__).resolve().parent
@@ -32,7 +31,7 @@ class Node:
     dcid: str
     name: str
     type_of: str
-    children: List[str] = field(default_factory=list)
+    children: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -41,15 +40,15 @@ class TopicVariables:
 
     topic_dcid: str
     topic_name: str
-    variables: List[str] = field(default_factory=list)
+    variables: list[str] = field(default_factory=list)
 
 
 @dataclass
 class TopicStore:
     """A wrapper for the topic cache data."""
 
-    topics_by_dcid: Dict[str, TopicVariables]
-    all_variables: Set[str]
+    topics_by_dcid: dict[str, TopicVariables]
+    all_variables: set[str]
 
     def has_variable(self, sv_dcid: str) -> bool:
         return sv_dcid in self.all_variables
@@ -61,9 +60,9 @@ class TopicStore:
 
 def _flatten_variables_recursive(
     node: Node,
-    nodes_by_dcid: Dict[str, Node],
-    all_vars: Dict[str, None],
-    visited: Set[str],
+    nodes_by_dcid: dict[str, Node],
+    all_vars: dict[str, None],
+    visited: set[str],
 ) -> None:
     """
     Recursively traverses the topic/svpg structure to collect unique variable DCIDs.
@@ -95,7 +94,7 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
     with file_path.open("r") as f:
         # Manually process the raw JSON to handle the list-based fields
         raw_data = json.load(f)
-        all_nodes: List[Node] = []
+        all_nodes: list[Node] = []
         for node_data in raw_data.get("nodes", []):
             members = node_data.get("memberList", [])
             relevant_vars = node_data.get("relevantVariableList", [])
@@ -109,18 +108,18 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
             )
 
     # Create a lookup for all nodes by their DCID
-    nodes_by_dcid: Dict[str, Node] = {
+    nodes_by_dcid: dict[str, Node] = {
         node.dcid: node for node in all_nodes if node.dcid
     }
 
-    final_topic_variables: Dict[str, TopicVariables] = {}
+    final_topic_variables: dict[str, TopicVariables] = {}
     all_topics = [
         node for node in all_nodes if node.type_of == _TYPE_TOPIC and node.dcid
     ]
 
     for topic in all_topics:
-        ordered_unique_vars: Dict[str, None] = {}
-        visited_nodes: Set[str] = set()
+        ordered_unique_vars: dict[str, None] = {}
+        visited_nodes: set[str] = set()
 
         _flatten_variables_recursive(
             topic, nodes_by_dcid, ordered_unique_vars, visited_nodes
@@ -132,7 +131,7 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
             variables=list(ordered_unique_vars.keys()),
         )
 
-    all_variables_set: Set[str] = set()
+    all_variables_set: set[str] = set()
     for topic_vars in final_topic_variables.values():
         all_variables_set.update(topic_vars.variables)
 
