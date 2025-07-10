@@ -11,61 +11,54 @@ This is an experimental MCP server for fetching public information from [Data Co
 
 ## Getting Started
 
-1.  Clone the repository.
-2.  Run the server.
+Run the server with `uvx`:
 
-    You can run the server in a few different ways:
+**stdio**
 
-    **stdio**
+```bash
+DC_API_KEY=<your-key> uvx datacommons-mcp serve stdio
+```
 
-    ```bash
-    DC_API_KEY=<your-key> uv run datacommons-mcp serve stdio
-    ```
+**http**
 
-    **http**
+This will run the server with SSE on port 8080. You can access it at `http://localhost:8080/sse`.
 
-    This will run the server with SSE on port 8080. You can access it at `http://localhost:8080/sse`.
+```bash
+DC_API_KEY=<your-key> uvx datacommons-mcp serve http
+```
 
-    ```bash
-    DC_API_KEY=<your-key> uv run datacommons-mcp serve http
-    ```
+**Debugging**
 
-    **Debugging**
+You can start the MCP inspector on port 6277. Look at the output for the pre-filled proxy auth token URL.
 
-    You can start the MCP inspector on port 6277. Look at the output for the pre-filled proxy auth token URL.
+```bash
+DC_API_KEY=<your-key> npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
+```
 
-    ```bash
-    DC_API_KEY=<your-key> npx @modelcontextprotocol/inspector uv run datacommons-mcp serve stdio
-    ```
+> IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
+> * It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`
 
+Then to connect to this MCP server, enter the following values in the inspector UI:
 
-    > IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
-    * It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`
+- Transport Type: `STDIO`
+- Command: `uvx`
+- Arguments: `datacommons-mcp serve stdio`
 
-    Then to connect to this MCP server, enter the following values in the inspector UI:
-
-    - Transport Type: `STDIO`
-    - Command: `uv`
-    - Arguments: `run datacommons-mcp serve stdio`
-
-    Click `Connect`
+Click `Connect`
 
 ## Testing with Gemini CLI
 
 You can use this MCP server with the [Gemini CLI](https://github.com/google-gemini/gemini-cli).
 
-Edit your `~/.gemini/settings.json` file and add the following, replacing `/path/to/your/agent-toolkit` with the local checkout directory and `<your api key>` with your actual API key:
+Edit your `~/.gemini/settings.json` file and add the following, replacing `<your api key>` with your actual API key:
 
 ```json
 {
   ...
   "mcpServers": {
     "datacommons-mcp": {
-      "command": "uv",
+      "command": "uvx",
       "args": [
-        "--directory",
-        "/path/to/your/agent-toolkit/",
-        "run",
         "datacommons-mcp",
         "serve",
         "stdio"

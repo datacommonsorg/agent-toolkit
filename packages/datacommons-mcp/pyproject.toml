@@ -1,6 +1,6 @@
 [project]
 name = "datacommons-mcp"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Data Commons MCP server."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -11,6 +11,7 @@ dependencies = [
     "requests",
     "datacommons-client",
 ]
+urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 
 [project.scripts]
 datacommons-mcp = "datacommons_mcp.cli:cli"
@@ -18,3 +19,12 @@ datacommons-mcp = "datacommons_mcp.cli:cli"
 [build-system]
 requires = ["uv", "setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+datacommons_mcp = ["*.json"]
+
+[tool.setuptools.dynamic]
+version = {attr = "datacommons_mcp.version.__version__"}
