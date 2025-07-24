@@ -23,7 +23,9 @@ uv run fastmcp run datacommons_mcp/server.py:mcp -t (sse|stdio)
 
 
 ### Test with MCP Inspector
-To run with MCP Inspector, **from this dir** run:
+
+> IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
+> * It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`
 
 Option 1: run inspector + datacommons-mcp cli
 ```bash
@@ -31,10 +33,7 @@ export DC_API_KEY=<your-key>
 npx @modelcontextprotocol/inspector uv run datacommons-mcp serve stdio
 ```
 
-> IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
-> * It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`
-
-Then to connect to this MCP server, enter the following values in the inspector UI:
+The following values should be automatically populated:
 
 - Transport Type: `STDIO`
 - Command: `uv`
@@ -44,12 +43,13 @@ Then to connect to this MCP server, enter the following values in the inspector 
 Option 2: fastmcp cli
 ```bash
 export DC_API_KEY={YOUR_API_KEY}
+cd packages/datacommons-mcp # navigate to package dir
 uv run fastmcp dev datacommons_mcp/server.py
 ```
 
 Make sure to use the MCP Inspector URL with the prefilled session token!
 
-The connection arguments should be prefilled with 
+The connection arguments should be prefilled with:
 * Transport Type = `STDIO`
 * Command = `uv`
 * Arguments = `run --with mcp mcp run datacommons_mcp/server.py`
