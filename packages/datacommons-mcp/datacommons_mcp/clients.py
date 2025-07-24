@@ -24,7 +24,7 @@ import requests
 from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
-from datacommons_mcp.constants import BASE_DC_ID
+from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID
 from datacommons_mcp.topics import TopicStore, read_topic_cache
 
 
@@ -242,22 +242,17 @@ class DCClient:
 
 
 class MultiDCClient:
-    def __init__(self, base_dc: DCClient, custom_dcs: list[DCClient]) -> None:
+    def __init__(self, base_dc: DCClient, custom_dc: DCClient | None = None) -> None:
         self.base_dc = base_dc
-        self.custom_dcs = custom_dcs
+        self.custom_dc = custom_dc
         # Map DC IDs to DCClient instances
-        self.dc_map = {
-            BASE_DC_ID: base_dc,
-            **{dc.sv_search_base_url: dc for dc in custom_dcs},
-        }
-        self.min_custom_score = 0.7
-        # For the DC federation case (i.e. more than one custom DC), raise the threshold to 0.8
-        if self.custom_dcs and len(self.custom_dcs) >= 2:
-            self.min_custom_score = 0.8
+        self.dc_map = {BASE_DC_ID: base_dc}
+        if custom_dc:
+            self.dc_map[CUSTOM_DC_ID] = custom_dc
 
     async def search_svs(self, queries: list[str]) -> dict:
         """
-        Search for SVs across all DC instances.
+        Search for SVs across base DC and optional custom DC.
 
         Returns:
             A dictionary where:
@@ -269,42 +264,35 @@ class MultiDCClient:
         """
         results = {}
 
-        # Search across all DCs in parallel
-        all_results = await asyncio.gather(
-            *[dc.search_svs(queries) for dc in [self.base_dc] + self.custom_dcs]
-        )
+        # Search base DC
+        base_results = await self.base_dc.search_svs(queries)
+        
+        # Search custom DC if it exists
+        custom_results = None
+        if self.custom_dc:
+            custom_results = await self.custom_dc.search_svs(queries)
 
         for query in queries:
-            # Find the best SV from custom DCs first
-            best_custom_result = None
-            best_custom_score = self.min_custom_score
-
-            for idx, dc_results in enumerate(
-                all_results[1:], 1
-            ):  # Skip base DC results
-                if query in dc_results:
-                    for result in dc_results[query]:
-                        if result["CosineScore"] > best_custom_score:
-                            best_custom_score = result["CosineScore"]
-                            best_custom_result = {
-                                "SV": result["SV"],
-                                "CosineScore": result["CosineScore"],
-                                "dc_id": self.custom_dcs[idx - 1].sv_search_base_url,
-                            }
-
-            # If no good custom result, use base DC result
-            if not best_custom_result:
-                base_results = all_results[0]
-                if query in base_results and base_results[query]:
+            best_result = None
+            
+            # Check custom DC first if it exists
+            if custom_results and query in custom_results and custom_results[query]:
+                custom_score = custom_results[query][0]["CosineScore"]
+                # Use custom DC if it has a good score (> 0.7)
+                if custom_score > 0.7:
                     best_result = {
-                        "SV": base_results[query][0]["SV"],
-                        "CosineScore": base_results[query][0]["CosineScore"],
-                        "dc_id": BASE_DC_ID,
+                        "SV": custom_results[query][0]["SV"],
+                        "CosineScore": custom_score,
+                        "dc_id": CUSTOM_DC_ID,
                     }
-                else:
-                    best_result = None
-            else:
-                best_result = best_custom_result
+            
+            # Fall back to base DC
+            if not best_result and query in base_results and base_results[query]:
+                best_result = {
+                    "SV": base_results[query][0]["SV"],
+                    "CosineScore": base_results[query][0]["CosineScore"],
+                    "dc_id": BASE_DC_ID,
+                }
 
             results[query] = best_result
 
@@ -350,18 +338,16 @@ def create_clients(config: dict) -> MultiDCClient:
                     "idx": "index",
                     "topic_cache_path": "path/to/topic_cache.json"
                 },
-                "custom_dcs": [  # List of custom DC configurations
-                    {
-                        "base_url": "custom_url",
-                        "sv_search_base_url": "custom_url",
-                        "idx": "index",
-                        "name": "Custom Name"
-                    }
-                ]
+                "custom_dc": {  # Optional custom DC configuration
+                    "base_url": "custom_url",
+                    "sv_search_base_url": "custom_url",
+                    "idx": "index",
+                    "name": "Custom Name"
+                }
             }
     """
     base_config = config.get("base", {})
-    custom_configs = config.get("custom_dcs", [])
+    custom_config = config.get("custom_dc")
 
     # Create base DC client
     base_dc = DCClient(
@@ -372,15 +358,14 @@ def create_clients(config: dict) -> MultiDCClient:
         topic_store=read_topic_cache(),
     )
 
-    # Create custom DC clients
-    custom_dcs = []
-    for custom_config in custom_configs:
+    # Create custom DC client if specified
+    custom_dc = None
+    if custom_config:
         custom_dc = DCClient(
             dc_name=custom_config.get("name", "Custom DC"),
             base_url=custom_config.get("base_url"),
             sv_search_base_url=custom_config.get("sv_search_base_url"),
             idx=custom_config.get("idx"),
         )
-        custom_dcs.append(custom_dc)
 
-    return MultiDCClient(base_dc, custom_dcs)
+    return MultiDCClient(base_dc, custom_dc)

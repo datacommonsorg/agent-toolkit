@@ -58,21 +58,17 @@ The connection arguments should be prefilled with:
 
 The server uses configuration from [config.py](config.py) which supports:
 
-- Base Data Commons instance
-- Custom Data Commons instances
-- Federation of multiple DC instances
+- Base Data Commons instance only
+- Base Data Commons instance + one custom Data Commons instance
 
 Instantiate the clients in [server.py](server.py) based on the configuration.
 
 ```python
-# Base DC client
+# Base DC client only
 multi_dc_client = create_clients(config.BASE_DC_CONFIG)
 
-# Custom DC client
+# Base DC + one custom DC client
 multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
-
-# Federation of multiple DC clients
-multi_dc_client = create_clients(config.FEDERATED_DC_CONFIG)
 ```
 
 

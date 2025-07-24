@@ -24,7 +24,7 @@ from pydantic import ValidationError
 
 import datacommons_mcp.config as config
 from datacommons_mcp.clients import create_clients
-from datacommons_mcp.constants import BASE_DC_ID
+from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID
 from datacommons_mcp.datacommons_chart_types import (
     CHART_CONFIG_MAP,
     DataCommonsChartConfig,

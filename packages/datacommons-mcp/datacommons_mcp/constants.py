@@ -13,4 +13,5 @@
 # limitations under the License.
 
 # constants.py
-BASE_DC_ID = "__base__"
+BASE_DC_ID = "base"
+CUSTOM_DC_ID = "custom"

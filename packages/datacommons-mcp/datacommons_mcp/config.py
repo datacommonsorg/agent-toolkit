@@ -34,7 +34,7 @@ BASE_DC_CONFIG = {
         "sv_search_base_url": "https://dev.datacommons.org",
         "idx": "base_uae_mem",
     },
-    "custom_dcs": [],
+    "custom_dc": None,
 }
 
 CUSTOM_DC_CONFIG = {
@@ -43,34 +43,12 @@ CUSTOM_DC_CONFIG = {
         "sv_search_base_url": "https://dev.datacommons.org",
         "idx": "base_uae_mem",
     },
-    "custom_dcs": [
-        {
-            "name": "ONE Data Commons",
-            "base_url": "https://datacommons.one.org/core/api/v2/",
-            "sv_search_base_url": "https://datacommons.one.org",
-            "idx": "user_all_minilm_mem",
-        }
-    ],
+    "custom_dc": {
+        "name": "ONE Data Commons",
+        "base_url": "https://datacommons.one.org/core/api/v2/",
+        "sv_search_base_url": "https://datacommons.one.org",
+        "idx": "user_all_minilm_mem",
+    },
 }
 
-FEDERATED_DC_CONFIG = {
-    "base": {
-        "api_key": DC_API_KEY,
-        "sv_search_base_url": "https://dev.datacommons.org",
-        "idx": "base_uae_mem",
-    },
-    "custom_dcs": [
-        {
-            "name": "ONE Data Commons",
-            "base_url": "https://datacommons.one.org/core/api/v2/",
-            "sv_search_base_url": "https://datacommons.one.org",
-            "idx": "user_all_minilm_mem",
-        },
-        {
-            "name": "TechSoup Data Commons",
-            "base_url": "https://datacommons.techsoup.org/core/api/v2/",
-            "sv_search_base_url": "https://datacommons.techsoup.org",
-            "idx": "user_all_minilm_mem",
-        },
-    ],
-}
+
