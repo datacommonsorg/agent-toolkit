@@ -49,7 +49,7 @@ async def get_observations(
     place_dcid: str | None = None,
     child_place_type: str | None = None,
     facet_id_override: str | None = None,
-    period: str | None = "latest",
+    period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> dict:
@@ -71,10 +71,14 @@ async def get_observations(
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
         * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
 
+    * **Data Volume Constraint**: When using **Child Places Mode** (i.e., when `child_place_type` is set), to get observations, you should err on the side of conversation when it comes to the dates you are requesting to avoid returning too much data.
+        * Avoid requesting `all` data via the `period` param for many places.
+        * **Instead, you must either request the `'latest'` data or provide a specific date range** using `start_date` and `end_date`.
+
     * **Date Filtering**: The tool can filter observations by date. The logic is as follows:
-        1.  **`period`**: If provided, this takes priority. Use "latest" for the most recent data point or "all" for the complete time series.
-        2.  **`start_date` / `end_date`**: If `period` is **not** used, these define a custom date range. Dates can be 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. For a single date, set `start_date` and `end_date` to the same value.
-        3.  **Default**: If no date parameters are given, the tool defaults to fetching the 'latest' observation.
+        1.  **`period`**: If you provide the `period` parameter ('all' or 'latest'), it takes top priority and will be used.
+        2.  **Date Range**: If `period` is not provided, you can specify a custom range using `start_date` and `end_date`.
+        3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation by default.
 
     Args:
       variable_desc (str, optional): A natural language description of the indicator. Ex: "carbon emissions", "unemployment rate".
@@ -110,16 +114,20 @@ async def get_observations(
             "message": "Specify either 'place_name' or 'place_dcid', but not both.",
         }
 
+    if not (period or start_date or end_date):
+        # Default behavior if no date params are provided.
+        period = "latest"
+
     if period and (start_date or end_date):
         return {
             "status": "ERROR",
             "message": "Specify either 'period' or ('start_date' and 'end_date'), but not both.",
         }
 
-    if not period and not (start_date and end_date):
+    if not period and (bool(start_date) ^ bool(end_date)):
         return {
             "status": "ERROR",
-            "message": "Both 'start_date' and 'end_date' are required when period is None.",
+            "message": "Both 'start_date' and 'end_date' are required to select a date range.",
         }
 
     filter_dates_post_fetch = False
@@ -182,7 +190,7 @@ async def get_observations(
         "data": transform_obs_response(
             response,
             dc_client.fetch_entity_names,
-            other_dcids_to_lookup=[place_dcid] if child_place_type else None,
+            other_dcids_to_lookup=[place_dcid_to_use] if child_place_type else None,
             facet_id_override=facet_id_override,
             date_filter=[start_date, end_date] if filter_dates_post_fetch else None,
         ),

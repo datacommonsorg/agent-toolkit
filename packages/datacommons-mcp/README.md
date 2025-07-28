@@ -18,7 +18,9 @@ To start the MCP server, run:
 ```bash
 export DC_API_KEY={YOUR_API_KEY}
 cd packages/datacommons-mcp # navigate to package dir
-uv run fastmcp run datacommons_mcp/server.py:mcp -t (sse|stdio)
+uv run fastmcp run datacommons_mcp/server.py:mcp -t stdio
+#  - or -
+uv run fastmcp run datacommons_mcp/server.py:mcp -p 8080 -t sse
 ```
 
 
