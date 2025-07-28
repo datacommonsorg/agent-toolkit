@@ -71,14 +71,16 @@ async def get_observations(
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
         * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
 
-    * **Data Volume Constraint**: When using **Child Places Mode** (i.e., when `child_place_type` is set), to get observations, you should err on the side of conversation when it comes to the dates you are requesting to avoid returning too much data.
-        * Avoid requesting `all` data via the `period` param for many places.
-        * **Instead, you must either request the `'latest'` data or provide a specific date range** using `start_date` and `end_date`.
+    * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
+        * Avoid requesting `'all'` data via the `period` parameter.
+        * **Instead, you must either request the `'latest'` data or provide a specific, bounded date range.**
 
-    * **Date Filtering**: The tool can filter observations by date. The logic is as follows:
-        1.  **`period`**: If you provide the `period` parameter ('all' or 'latest'), it takes top priority and will be used.
-        2.  **Date Range**: If `period` is not provided, you can specify a custom range using **both** `start_date` and `end_date`.
-        3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation by default.
+    * **Date Filtering**: The tool filters observations by date using the following priority:
+        1.  **`period`**: If you provide the `period` parameter ('all' or 'latest'), it takes top priority.
+        2.  **Date Range**: If `period` is not provided, you must specify a custom range using **both** `start_date` and `end_date`.
+            * Dates must be in `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` format.
+            * To get data for a single date, set `start_date` and `end_date` to the same value. For example, to get data for 2025, use `start_date="2025"` and `end_date="2025"`.
+        3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation.
 
     Args:
       variable_desc (str, optional): A natural language description of the indicator. Ex: "carbon emissions", "unemployment rate".
@@ -88,16 +90,16 @@ async def get_observations(
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
       facet_id_override (str, optional): An optional facet ID to force the use of a specific data source.
       period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
-      start_date (str, optional): The start date for a custom range (e.g., "2022-01-01"). **Ignored if `period` is set.** Used with `end_date`.
-      end_date (str, optional): The end date for a custom range. **Ignored if `period` is set.** Used with `start_date`.
+      start_date (str, optional): The start date for a custom range. **Used only with `end_date` and ignored if `period` is set.**
+      end_date (str, optional): The end date for a custom range. **Used only with `start_date` and ignored if `period` is set.**
 
     Returns:
       dict: A dictionary containing the request status and data.
 
-      **Tips for Using the Response:**
+      **How to Process the Response:**
       1.  **Check Status**: First, check the `status` field. If it's "ERROR" or "NO_DATA_FOUND", inform the user accordingly using the `message`.
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
-      3.  **Make it Readable**: The `data['lookups']['id_name_mappings']` dictionary can be used to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
+      3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
     # 1. Input validation
     if not (variable_desc or variable_dcid) or (variable_desc and variable_dcid):
@@ -112,17 +114,6 @@ async def get_observations(
             "message": "Specify either 'place_name' or 'place_dcid', but not both.",
         }
 
-    if not (period or start_date or end_date):
-        # Default behavior if no date params are provided.
-        # TODO(clincoln8): Replace literals with enums in pydantic models.
-        period = "latest"
-
-    if period and (start_date or end_date):
-        return {
-            "status": "ERROR",
-            "message": "Specify either 'period' or ('start_date' and 'end_date'), but not both.",
-        }
-
     if not period and (bool(start_date) ^ bool(end_date)):
         return {
             "status": "ERROR",
@@ -130,14 +121,20 @@ async def get_observations(
         }
 
     filter_dates_post_fetch = False
-    if start_date != end_date:
-        # manually filter date post response
-        fetch_date = "all"
+    if period:
+        # If period is provided, use it.
+        date = period
+    elif start_date != end_date:
+        # If date range is provided, fetch all data then filter response
+        date = "all"
         filter_dates_post_fetch = True
-    elif start_date:
-        fetch_date = start_date
+    elif start_date and end_date:
+        # If single date is requested, fetch the specific date
+        date = start_date
     else:
-        fetch_date = period
+        # If neither period nor range are provided, default to latest date
+        # TODO(clincoln8): Replace literals with enums in pydantic models.
+        date = "latest"
 
     # 2. Concurrently resolve identifiers if needed
     tasks = {}
@@ -178,7 +175,7 @@ async def get_observations(
 
     # 5. Fetch Data
     response = await multi_dc_client.fetch_obs(
-        dc_id_to_use, [sv_dcid_to_use], place_dcid_to_use, child_place_type, fetch_date
+        dc_id_to_use, [sv_dcid_to_use], place_dcid_to_use, child_place_type, date
     )
 
     dc_client = multi_dc_client.dc_map.get(dc_id_to_use)
