@@ -1,82 +1,72 @@
-# DC MCP Server
+# Data Commons MCP Server
 
-A MCP server for fetching statistical data from Data Commons instances.
+This is an experimental MCP server for fetching public information from [Data Commons](https://datacommons.org/).
 
-## Usage
+**This is experimental and subject to change.**
 
+## Requirements
 
-### Start MCP Server
+1.  A Data Commons API key. You can get one from [apikeys.datacommons.org](https://apikeys.datacommons.org/).
+2.  `uv`. You can find installation instructions at [https://astral.sh/uv](https://astral.sh/uv).
 
-Option 1: Use the datacommons-mcp cli
+## Getting Started
+
+Run the server with `uvx`:
+
+**stdio**
+
 ```bash
-export DC_API_KEY={YOUR_API_KEY}
-uv run datacommons-mcp serve (http|stdio)
+DC_API_KEY=<your-key> uvx datacommons-mcp serve stdio
 ```
 
-Option 2: Use the fastmcp cli
-To start the MCP server, run:
+**http**
+
+This will run the server with SSE on port 8080. You can access it at `http://localhost:8080/sse`.
+
 ```bash
-export DC_API_KEY={YOUR_API_KEY}
-cd packages/datacommons-mcp # navigate to package dir
-uv run fastmcp run datacommons_mcp/server.py:mcp -t (sse|stdio)
+DC_API_KEY=<your-key> uvx datacommons-mcp serve http
 ```
 
+**Debugging**
 
-### Test with MCP Inspector
+You can start the MCP inspector on port 6277. Look at the output for the pre-filled proxy auth token URL.
+
+```bash
+DC_API_KEY=<your-key> npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
+```
 
 > IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
 > * It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`
 
-Option 1: run inspector + datacommons-mcp cli
-```bash
-export DC_API_KEY=<your-key> 
-npx @modelcontextprotocol/inspector uv run datacommons-mcp serve stdio
-```
-
-The following values should be automatically populated:
+Then to connect to this MCP server, enter the following values in the inspector UI:
 
 - Transport Type: `STDIO`
-- Command: `uv`
-- Arguments: `run datacommons-mcp serve stdio`
+- Command: `uvx`
+- Arguments: `datacommons-mcp serve stdio`
 
+Click `Connect`
 
-Option 2: fastmcp cli
-```bash
-export DC_API_KEY={YOUR_API_KEY}
-cd packages/datacommons-mcp # navigate to package dir
-uv run fastmcp dev datacommons_mcp/server.py
-```
+## Testing with Gemini CLI
 
-Make sure to use the MCP Inspector URL with the prefilled session token!
+You can use this MCP server with the [Gemini CLI](https://github.com/google-gemini/gemini-cli).
 
-The connection arguments should be prefilled with:
-* Transport Type = `STDIO`
-* Command = `uv`
-* Arguments = `run --with mcp mcp run datacommons_mcp/server.py`
+Edit your `~/.gemini/settings.json` file and add the following, replacing `<your api key>` with your actual API key:
 
-### Configuration
-
-The server uses configuration from [config.py](config.py) which supports:
-
-- Base Data Commons instance only
-- Base Data Commons instance + one custom Data Commons instance
-
-Instantiate the clients in [server.py](server.py) based on the configuration.
-
-```python
-# Base DC client only
-multi_dc_client = create_clients(config.BASE_DC_CONFIG)
-
-# Base DC + one custom DC client
-multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
-```
-
-
-## Dev Notes
-
-### File Checks + Formatting
-```bash
-uv run ruff check # to check files
-
-uv run ruff format # to format files
+```json
+{
+  ...
+  "mcpServers": {
+    "datacommons-mcp": {
+      "command": "uvx",
+      "args": [
+        "datacommons-mcp",
+        "serve",
+        "stdio"
+      ],
+      "env": {
+        "DC_API_KEY": "<your api key>"
+      }
+    }
+  }
+}
 ```
