@@ -24,7 +24,7 @@ from pydantic import ValidationError
 
 import datacommons_mcp.config as config
 from datacommons_mcp.clients import create_clients
-from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID
+from datacommons_mcp.constants import BASE_DC_ID
 from datacommons_mcp.datacommons_chart_types import (
     CHART_CONFIG_MAP,
     DataCommonsChartConfig,
@@ -94,12 +94,10 @@ async def get_observations(
     Returns:
       dict: A dictionary containing the request status and data.
 
-      **Actionable Steps for Responding to the User:**
+      **Tips for Using the Response:**
       1.  **Check Status**: First, check the `status` field. If it's "ERROR" or "NO_DATA_FOUND", inform the user accordingly using the `message`.
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
-      3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names in your response.
-      4.  **Cite Your Source**: In your final answer,cite the source of the data in your response and suffix it with "(Powered by {dc_provider})".
-
+      3.  **Make it Readable**: The `data['lookups']['id_name_mappings']` dictionary can be used to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
     # 1. Input validation
     if not (variable_desc or variable_dcid) or (variable_desc and variable_dcid):
@@ -116,6 +114,7 @@ async def get_observations(
 
     if not (period or start_date or end_date):
         # Default behavior if no date params are provided.
+        # TODO(clincoln8): Replace literals with enums in pydantic models.
         period = "latest"
 
     if period and (start_date or end_date):
