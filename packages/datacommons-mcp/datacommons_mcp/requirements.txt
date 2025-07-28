@@ -1,9 +1,0 @@
-fastmcp
-asyncio
-datacommons-client
-requests
-python-dotenv>=1.0.0
-pydantic
-fastapi
-uvicorn
-uv
