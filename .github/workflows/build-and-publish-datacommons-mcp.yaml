@@ -1,0 +1,82 @@
+# This workflow publishes datacommons-mcp to PyPI if the version was bumped and creates a tag.
+name: Build and publish datacommons-mcp
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # JOB 1: Detects if the version was bumped
+  check_version:
+    runs-on: ubuntu-latest
+    # This job produces outputs that the next job will use
+    outputs:
+      bump: ${{ steps.versions.outputs.bump }}
+      new_version: ${{ steps.versions.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch the last 2 commits to be able to compare them
+          fetch-depth: 2
+
+      - name: Compare versions and check for bump
+        id: versions
+        run: |
+          VERSION_FILE="packages/datacommons-mcp/datacommons_mcp/version.py"
+
+          # Get the version from the current commit
+          NEW_VERSION=$(grep '__version__' $VERSION_FILE | sed 's/__version__ = "\(.*\)"/\1/')
+
+          # Get the version from the previous commit, ignoring errors if the file didn't exist
+          OLD_VERSION=$(git show HEAD~1:$VERSION_FILE | grep '__version__' | sed 's/__version__ = "\(.*\)"/\1/') || true
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
+            echo "Version has been bumped to $NEW_VERSION."
+            echo "bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version has not changed. Current version: $NEW_VERSION."
+            echo "bump=false" >> $GITHUB_OUTPUT
+          fi
+
+  # JOB 2: Builds and publishes the package IF a bump was detected
+  build_and_publish:
+    # This job depends on 'check_version' finishing successfully
+    needs: check_version
+    # This is the key: the job only runs if a version bump was detected
+    if: needs.check_version.outputs.bump == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Permission to create and push a Git tag
+      id-token: write # Permission for trusted publishing to PyPI
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Build
+        working-directory: packages/datacommons-mcp
+        run: uv build
+
+      - name: Publish to PyPI
+        # Assumes you have trusted publishing set up on PyPI
+        run: uv publish
+
+      - name: Create and Push Git Tag
+        # This step only runs if the publish step above was successful
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Use the new version from the first job's output
+          TAG="datacommons-mcp-v${{ needs.check_version.outputs.new_version }}"
+          echo "Creating and pushing tag: $TAG"
+          git tag $TAG
+          git push origin $TAG
