@@ -47,100 +47,55 @@ async def get_observations(
     variable_dcid: str | None = None,
     place_name: str | None = None,
     place_dcid: str | None = None,
+    child_place_type: str | None = None,
     facet_id_override: str | None = None,
+    period: str | None = "latest",
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> dict:
-    """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance) about a place from Data Commons.
-    This tool can retrieve various types of data, including time series, single values,
-    or categorical information, depending on the concept requested and the available data.
+    """Fetches observations for a statistical variable from Data Commons.
 
-    Note: This tool retrieves observations for all dates.
-    Unlike get_observations_for_child_places, this tool does NOT support filtering the results by a specific date.
+    This tool can operate in two primary modes:
+    1.  **Single Place Mode**: Get data for one specific place (e.g., "Population of California").
+    2.  **Child Places Mode**: Get data for all child places of a certain type within a parent place (e.g., "Population of all counties in California").
 
-    You must provide either a variable_desc or a variable_dcid, but not both.
-    You must provide either a place_name or a place_dcid, but not both.
+    ### Core Logic & Rules
 
-    Guidance on Variable Selection:
+    * **Variable Selection**: You **must** provide either `variable_dcid` or `variable_desc`.
+        * **Rule 1 (Preferred)**: If you have a relevant `variable_dcid` from a previous tool call (like `get_available_variables_for_place`), **use it**. This is more precise.
+        * **Rule 2 (Fallback)**: If you do not have a known `variable_dcid`, use `variable_desc` with a natural language description (e.g., "median household income").
 
-    When the user is asking for data about a place_name or place_dcid for which
-    you have previously successfully called get_available_variables_for_place,
-    you will have access to a list of available variable DCIDs and their id_name_mappings.
+    * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
 
-    Prioritization: Before attempting to use the variable_desc parameter,
-    if you have previously called get_available_variables_for_place for this place,
-    FIRST examine the user's request and compare it to the id_name_mappings
-    you already possess for this place.
+    * **Mode Selection**:
+        * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
+        * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
 
-    If you find a variable name in your id_name_mappings that appears to be a close
-    or exact match to the concept or indicator the user is asking for,
-    use the corresponding variable_dcid in your call to get_observations.
-    This is the preferred method when relevant DCIDs are known.
-    Example: If the user asks for "mean rainfall in Mumbai" and your id_name_mappings
-    for Mumbai includes "Mean_Rainfall": "Mean Rainfall",
-    use variable_dcid="Mean_Rainfall" and place_dcid="wikidataId/Q1156"
-    (assuming you have the place DCID).
-
-    Fallback: If you cannot find a sufficiently relevant variable name
-    in your existing id_name_mappings for the requested place,
-    should you use the variable_desc parameter to provide a natural language description
-    of the variable you are looking for.
+    * **Date Filtering**: The tool can filter observations by date. The logic is as follows:
+        1.  **`period`**: If provided, this takes priority. Use "latest" for the most recent data point or "all" for the complete time series.
+        2.  **`start_date` / `end_date`**: If `period` is **not** used, these define a custom date range. Dates can be 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. For a single date, set `start_date` and `end_date` to the same value.
+        3.  **Default**: If no date parameters are given, the tool defaults to fetching the 'latest' observation.
 
     Args:
-      variable_desc (str, optional): The concept or indicator to fetch data for.
-        Provide a natural language description of what data you are looking for.
-        Examples: "population", "gdp", "carbon emissions", "unemployment rate".
-      variable_dcid (str, optional): The DCID of the statistical variable.
-      place_name (str, optional): The name of the place to fetch the data for. e.g. "United States", "India", "NYC".
+      variable_desc (str, optional): A natural language description of the indicator. Ex: "carbon emissions", "unemployment rate".
+      variable_dcid (str, optional): The unique identifier (DCID) of the statistical variable.
+      place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC".
       place_dcid (str, optional): The DCID of the place.
-      facet_id_override (str, optional): An optional facet ID to force the selection of a specific data source.
-        If not specified, the tool will select the best data source based on the observation count.
+      child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
+      facet_id_override (str, optional): An optional facet ID to force the use of a specific data source.
+      period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
+      start_date (str, optional): The start date for a custom range (e.g., "2022-01-01"). **Ignored if `period` is set.**
+      end_date (str, optional): The end date for a custom range. **Ignored if `period` is set.**
+
     Returns:
-      dict: A dictionary containing the status of the request and the data if available.
+      dict: A dictionary containing the request status and data.
 
-      The dictionary has the following format:
-      {
-        "status": "SUCCESS" | "NO_DATA_FOUND" | "ERROR",
-        "data": <data_by_variable>,
-        "message": "..."
-      }
+      **Actionable Steps for Responding to the User:**
+      1.  **Check Status**: First, check the `status` field. If it's "ERROR" or "NO_DATA_FOUND", inform the user accordingly using the `message`.
+      2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
+      3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names in your response.
+      4.  **Cite Your Source**: In your final answer,cite the source of the data in your response and suffix it with "(Powered by {dc_provider})".
 
-      The data has the following format:
-      {
-            "dc_provider": "...",
-            "lookups": {
-                "id_name_mappings": { ... }
-            },
-            "data_by_variable": {
-                "variable_id_1": {
-                    "source": {
-                        "facet_id": "best_facet_id",
-                        "provenanceUrl": "...",
-                        "unit": "...",
-                        "observation_count": 120
-                    },
-                    "observations": [
-                        ["entity_id_1", "date_1", "value_1"],
-                        ["entity_id_2", "date_2", "value_2"]
-                    ],
-                    "other_available_sources": [
-                        {
-                            "facet_id": "other_facet_456",
-                            "provenanceUrl": "...",
-                            "unit": "...",
-                            "observation_count": 50
-                        }
-                    ]
-                }
-            }
-        }
-
-      The facet_id is a unique identifier for the data source.
-      Data is returned from a single source (facet).
-      Other available sources are returned in the other_available_sources list.
-      If the user asks for a specific data source, you can use the facet_id_override to force the selection of that source.
-
-      In your response, use the id_name_mappings to convert the variable_id, entity_id, and facet_id to human-readable names.
-
-      Also, cite the source of the data in your response and suffix it with "(Powered by {dc_provider})".
     """
     # 1. Input validation
     if not (variable_desc or variable_dcid) or (variable_desc and variable_dcid):
@@ -154,6 +109,28 @@ async def get_observations(
             "status": "ERROR",
             "message": "Specify either 'place_name' or 'place_dcid', but not both.",
         }
+
+    if period and (start_date or end_date):
+        return {
+            "status": "ERROR",
+            "message": "Specify either 'period' or ('start_date' and 'end_date'), but not both.",
+        }
+
+    if not period and not (start_date and end_date):
+        return {
+            "status": "ERROR",
+            "message": "Both 'start_date' and 'end_date' are required when period is None.",
+        }
+
+    filter_dates_post_fetch = False
+    if start_date != end_date:
+        # manually filter date post response
+        fetch_date = "all"
+        filter_dates_post_fetch = True
+    elif start_date:
+        fetch_date = start_date
+    else:
+        fetch_date = period
 
     # 2. Concurrently resolve identifiers if needed
     tasks = {}
@@ -188,20 +165,26 @@ async def get_observations(
         place_dcid_to_use = places.get(place_name, "")
         print(f"place: {place_name} -> {place_dcid_to_use}")
 
-    # 4. Final validation and fetch
+    # 4. Final validation
     if not sv_dcid_to_use or not place_dcid_to_use or not dc_id_to_use:
         return {"status": "NO_DATA_FOUND"}
 
+    # 5. Fetch Data
     response = await multi_dc_client.fetch_obs(
-        dc_id_to_use, sv_dcid_to_use, place_dcid_to_use
+        dc_id_to_use, [sv_dcid_to_use], place_dcid_to_use, child_place_type, fetch_date
     )
+
     dc_client = multi_dc_client.dc_map.get(dc_id_to_use)
     response["dc_provider"] = dc_client.dc_name
 
     return {
         "status": "SUCCESS",
         "data": transform_obs_response(
-            response, dc_client.fetch_entity_names, facet_id_override=facet_id_override
+            response,
+            dc_client.fetch_entity_names,
+            other_dcids_to_lookup=[place_dcid] if child_place_type else None,
+            facet_id_override=facet_id_override,
+            date_filter=[start_date, end_date] if filter_dates_post_fetch else None,
         ),
     }
 
@@ -267,124 +250,6 @@ async def validate_child_place_types(
     results = await asyncio.gather(*tasks)
 
     return dict(zip(child_place_types, results, strict=False))
-
-
-@mcp.tool()
-async def get_observations_for_child_places(
-    variable_desc: str,
-    parent_place_name: str,
-    child_place_type: str,
-    date: str = "LATEST",
-    facet_id_override: str | None = None,
-) -> dict:
-    """Get observations for a given concept or indicator (called a statistical variable in Data Commons parlance)
-    for all children of a given parent place of a given type from Data Commons.
-
-    Use this tool when you want data for all smaller regions of a certain type in a larger region.
-    For example, you can use this tool to get GDP for all states in the US, or population for all countries in Europe or in the World.
-
-    This tool can retrieve various types of data, including time series, single values,
-    or categorical information, depending on the concept requested and the available data.
-
-    Args:
-      variable_desc (str): The concept or indicator to fetch data for.
-        Provide a natural language description of what data you are looking for about the place.
-        Examples include: "population", "gdp", "carbon emissions", "unemployment rate",
-        "years of free education", "average temperature", "dominant political party", etc.
-        The tool has advanced internal logic to understand diverse requests and
-        find the best matching data available in Data Commons, regardless of whether it's
-        traditionally considered a 'statistical variable' or a 'time series'.
-      parent_place_name (str): The larger geographic region or administrative division containing the places to fetch data for.
-        This can be a city, county, state, country, a continent (like "Europe" or "Asia"), or the entire world.
-        Examples: "United States", "India", "NYC", "Europe", "World", etc.
-      child_place_type (str): The type of the child places within the parent place to fetch data for. The valid types depend on the parent.
-        Use the validate_child_place_types tool to check valid child place types for a given parent place.
-        Use the returned dictionary to determine the correct child place type when calling this tool.
-      date (str): The date to fetch the data for. If not specified, the latest available data will be returned.
-        The date should be in the format YYYY-MM-DD. e.g. "2022", "2022-01", "2022-01-01".
-      facet_id_override (str): An optional facet ID to force the selection of a specific data source.
-        If not specified, the tool will select the best data source based on the observation count.
-      Example usage: To get GDP for countries in Europe, use parent_place_name="Europe" and child_place_type="Country".
-    Returns:
-      dict: A dictionary containing the status of the request and the data if available.
-
-      The dictionary has the following format:
-      {
-        "status": "SUCCESS" | "NO_DATA_FOUND",
-        "data": <data_by_variable>
-      }
-
-      The data has the following format:
-      {
-            "dc_provider": "...",
-            "lookups": {
-                "id_name_mappings": { ... }
-            },
-            "data_by_variable": {
-                "variable_id_1": {
-                    "source": {
-                        "facet_id": "best_facet_id",
-                        "provenanceUrl": "...",
-                        "unit": "...",
-                        "observation_count": 120
-                    },
-                    "observations": [
-                        ["entity_id_1", "date_1", "value_1"],
-                        ["entity_id_2", "date_2", "value_2"]
-                    ],
-                    "other_available_sources": [
-                        {
-                            "facet_id": "other_facet_456",
-                            "provenanceUrl": "...",
-                            "unit": "...",
-                            "observation_count": 50
-                        }
-                    ]
-                }
-            }
-        }
-
-      The facet_id is a unique identifier for the data source.
-      Data is returned from a single source (facet).
-      Other available sources are returned in the other_available_sources list.
-      If the user asks for a specific data source, you can use the facet_id_override to force the selection of that source.
-
-      In your response, use the id_name_mappings to convert the variable_id, entity_id, and facet_id to human-readable names.
-
-      Also, cite the source of the data in your response and suffix it with "(Powered by {dc_provider})".
-    """
-    svs, places = await asyncio.gather(
-        multi_dc_client.search_svs([variable_desc]),
-        multi_dc_client.base_dc.search_places([parent_place_name]),
-    )
-
-    sv_data = svs.get(variable_desc, {})
-    print(f"sv_data: {variable_desc} -> {sv_data}")
-    dc_id = sv_data.get("dc_id")
-    sv_dcid = sv_data.get("SV", "")
-
-    place_dcid = places.get(parent_place_name, "")
-    print(f"place: {parent_place_name} -> {place_dcid}")
-
-    if not sv_dcid or not place_dcid:
-        return {"status": "NO_DATA_FOUND"}
-
-    # Use the DC ID from the search results
-    response = await multi_dc_client.fetch_obs_for_child_places(
-        dc_id, [sv_dcid], place_dcid, child_place_type, date
-    )
-    dc_client = multi_dc_client.dc_map.get(dc_id)
-    response["dc_provider"] = dc_client.dc_name
-
-    return {
-        "status": "SUCCESS",
-        "data": transform_obs_response(
-            response,
-            dc_client.fetch_entity_names,
-            other_dcids_to_lookup=[place_dcid],
-            facet_id_override=facet_id_override,
-        ),
-    }
 
 
 @mcp.tool()
@@ -616,4 +481,3 @@ async def get_datacommons_chart_config(
     except ValidationError as e:
         # Catch Pydantic errors and make them more user-friendly
         raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
-
