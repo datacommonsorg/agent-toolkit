@@ -10,6 +10,7 @@ dependencies = [
     "fastmcp",
     "requests",
     "datacommons-client",
+    "pydantic>=2.11.7",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 

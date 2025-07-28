@@ -243,6 +243,7 @@ dependencies = [
     { name = "datacommons-client" },
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "pydantic" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
@@ -252,6 +253,7 @@ requires-dist = [
     { name = "datacommons-client" },
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "pydantic", specifier = ">=2.11.7" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
