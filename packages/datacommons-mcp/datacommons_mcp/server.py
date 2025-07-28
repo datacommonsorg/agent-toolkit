@@ -77,7 +77,7 @@ async def get_observations(
 
     * **Date Filtering**: The tool can filter observations by date. The logic is as follows:
         1.  **`period`**: If you provide the `period` parameter ('all' or 'latest'), it takes top priority and will be used.
-        2.  **Date Range**: If `period` is not provided, you can specify a custom range using `start_date` and `end_date`.
+        2.  **Date Range**: If `period` is not provided, you can specify a custom range using **both** `start_date` and `end_date`.
         3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation by default.
 
     Args:
@@ -88,8 +88,8 @@ async def get_observations(
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
       facet_id_override (str, optional): An optional facet ID to force the use of a specific data source.
       period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
-      start_date (str, optional): The start date for a custom range (e.g., "2022-01-01"). **Ignored if `period` is set.**
-      end_date (str, optional): The end date for a custom range. **Ignored if `period` is set.**
+      start_date (str, optional): The start date for a custom range (e.g., "2022-01-01"). **Ignored if `period` is set.** Used with `end_date`.
+      end_date (str, optional): The end date for a custom range. **Ignored if `period` is set.** Used with `start_date`.
 
     Returns:
       dict: A dictionary containing the request status and data.
