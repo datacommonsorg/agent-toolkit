@@ -62,10 +62,11 @@ async def get_observations(
     ### Core Logic & Rules
 
     * **Variable Selection**: You **must** provide either `variable_dcid` or `variable_desc`.
-        * **Rule 1 (Preferred)**: If you have a relevant `variable_dcid` from a previous tool call (like `get_available_variables_for_place`), **use it**. This is more precise.
-        * **Rule 2 (Fallback)**: If you do not have a known `variable_dcid`, use `variable_desc` with a natural language description (e.g., "median household income").
+        * **Rule 1 (Preferred)**: If you have a relevant `variable_dcid` from a previous tool call (like `get_available_variables_for_place`), **use it**. This is more precise and takes priority.
+        * **Rule 2 (Fallback)**: If you do not have a known `variable_dcid`, use `variable_desc` with a natural language description (e.g., "median household income"). Ignored if `variable_dcid` is provided.
 
     * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
+        * If `place_dcid` is provided, it takes priority over `place_name`.
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
@@ -83,10 +84,10 @@ async def get_observations(
         3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation.
 
     Args:
-      variable_desc (str, optional): A natural language description of the indicator. Ex: "carbon emissions", "unemployment rate".
       variable_dcid (str, optional): The unique identifier (DCID) of the statistical variable.
-      place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC".
+      variable_desc (str, optional): A natural language description of the indicator. Ex: "carbon emissions", "unemployment rate". Ignored if `variable_dcid` is set.
       place_dcid (str, optional): The DCID of the place.
+      place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
       facet_id_override (str, optional): An optional facet ID to force the use of a specific data source.
       period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
