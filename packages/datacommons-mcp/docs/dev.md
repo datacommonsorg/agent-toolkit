@@ -77,7 +77,7 @@ uv run ruff check # to check files
 uv run ruff format # to format files
 ```
 
-### Publishing a New Version
+## Publishing a New Version
 
 To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project/datacommons-mcp):
 
