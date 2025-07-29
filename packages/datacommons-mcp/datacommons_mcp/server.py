@@ -24,7 +24,10 @@ from pydantic import ValidationError
 
 import datacommons_mcp.config as config
 from datacommons_mcp.clients import create_clients
-from datacommons_mcp.constants import BASE_DC_ID
+from datacommons_mcp.data_models.observations import (
+    ObservationToolRequest,
+    ObservationToolResponse,
+)
 from datacommons_mcp.datacommons_chart_types import (
     CHART_CONFIG_MAP,
     DataCommonsChartConfig,
@@ -33,7 +36,6 @@ from datacommons_mcp.datacommons_chart_types import (
     SinglePlaceLocation,
     SingleVariableChart,
 )
-from datacommons_mcp.response_transformers import transform_obs_response
 
 # Create clients based on config
 multi_dc_client = create_clients(config.BASE_DC_CONFIG)
@@ -43,16 +45,16 @@ mcp = FastMCP("DC MCP Server")
 
 @mcp.tool()
 async def get_observations(
-    variable_desc: str | None = None,
     variable_dcid: str | None = None,
-    place_name: str | None = None,
+    variable_desc: str | None = None,
     place_dcid: str | None = None,
+    place_name: str | None = None,
     child_place_type: str | None = None,
     facet_id_override: str | None = None,
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-) -> dict:
+) -> ObservationToolResponse:
     """Fetches observations for a statistical variable from Data Commons.
 
     This tool can operate in two primary modes:
@@ -102,96 +104,21 @@ async def get_observations(
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
       3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
-    # 1. Input validation
-    if not (variable_desc or variable_dcid) or (variable_desc and variable_dcid):
-        return {
-            "status": "ERROR",
-            "message": "Specify either 'variable_desc' or 'variable_dcid', but not both.",
-        }
-
-    if not (place_name or place_dcid) or (place_name and place_dcid):
-        return {
-            "status": "ERROR",
-            "message": "Specify either 'place_name' or 'place_dcid', but not both.",
-        }
-
-    if not period and (bool(start_date) ^ bool(end_date)):
-        return {
-            "status": "ERROR",
-            "message": "Both 'start_date' and 'end_date' are required to select a date range.",
-        }
-
-    filter_dates_post_fetch = False
-    if period:
-        # If period is provided, use it.
-        date = period
-    elif start_date != end_date:
-        # If date range is provided, fetch all data then filter response
-        date = "all"
-        filter_dates_post_fetch = True
-    elif start_date and end_date:
-        # If single date is requested, fetch the specific date
-        date = start_date
-    else:
-        # If neither period nor range are provided, default to latest date
-        # TODO(clincoln8): Replace literals with enums in pydantic models.
-        date = "latest"
-
-    # 2. Concurrently resolve identifiers if needed
-    tasks = {}
-    if variable_desc:
-        tasks["sv_search"] = multi_dc_client.search_svs([variable_desc])
-    if place_name:
-        tasks["place_search"] = multi_dc_client.base_dc.search_places([place_name])
-
-    svs = None
-    places = None
-    if tasks:
-        # Use asyncio.gather on the values (coroutines) of the tasks dict
-        task_coroutines = list(tasks.values())
-        task_results = await asyncio.gather(*task_coroutines)
-        # Map results back to their keys
-        results = dict(zip(tasks.keys(), task_results, strict=False))
-        svs = results.get("sv_search")
-        places = results.get("place_search")
-
-    # 3. Process results and set DCIDs
-    sv_dcid_to_use = variable_dcid
-    dc_id_to_use = BASE_DC_ID if variable_dcid else None
-    place_dcid_to_use = place_dcid
-
-    if svs:
-        sv_data = svs.get(variable_desc, {})
-        print(f"sv_data: {variable_desc} -> {sv_data}")
-        dc_id_to_use = sv_data.get("dc_id")
-        sv_dcid_to_use = sv_data.get("SV", "")
-
-    if places:
-        place_dcid_to_use = places.get(place_name, "")
-        print(f"place: {place_name} -> {place_dcid_to_use}")
-
-    # 4. Final validation
-    if not sv_dcid_to_use or not place_dcid_to_use or not dc_id_to_use:
-        return {"status": "NO_DATA_FOUND"}
-
-    # 5. Fetch Data
-    response = await multi_dc_client.fetch_obs(
-        dc_id_to_use, [sv_dcid_to_use], place_dcid_to_use, child_place_type, date
+    # Validate and parse inputs
+    observation_request = ObservationToolRequest.from_tool_inputs(
+        multi_dc_client=multi_dc_client,
+        variable_dcid=variable_dcid,
+        variable_desc=variable_desc,
+        place_dcid=place_dcid,
+        place_name=place_name,
+        child_place_type=child_place_type,
+        facet_id_override=facet_id_override,
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
     )
-
-    dc_client = multi_dc_client.dc_map.get(dc_id_to_use)
-    response["dc_provider"] = dc_client.dc_name
-
-    return {
-        "status": "SUCCESS",
-        "data": transform_obs_response(
-            response,
-            dc_client.fetch_entity_names,
-            other_dcids_to_lookup=[place_dcid_to_use] if child_place_type else None,
-            facet_id_override=facet_id_override,
-            date_filter=[start_date, end_date] if filter_dates_post_fetch else None,
-        ),
-    }
+    # Fetch data
+    return await multi_dc_client.fetch_obs(observation_request)
 
 
 @mcp.tool()

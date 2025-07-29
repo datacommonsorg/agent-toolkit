@@ -25,6 +25,11 @@ from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
 from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID
+from datacommons_mcp.data_models.observations import (
+    ObservationApiResponse,
+    ObservationToolRequest,
+    ObservationToolResponse,
+)
 from datacommons_mcp.topics import TopicStore, read_topic_cache
 
 
@@ -66,32 +71,51 @@ class DCClient:
         else:
             self.dc = DataCommonsClient(url=base_url)
 
-    def fetch_obs(
-        self, sv_dcids: list[str], place_dcids: list[str], date: str = "all"
-    ) -> dict:
+    def fetch_obs(self, request: ObservationToolRequest) -> ObservationApiResponse:
+        if request.child_place_type:
+            return self.dc.observation.fetch_observations_by_entity_type(
+                variable_dcids=request.variable_dcid,
+                parent_entity=request.place_dcid,
+                entity_type=request.child_place_type,
+                date=request.observation_period,
+                filter_facet_ids=request.facet_ids,
+            )
         return self.dc.observation.fetch(
-            variable_dcids=sv_dcids,
-            entity_dcids=place_dcids,
-            date=date,
-        ).to_dict()
-
-    def fetch_obs_for_child_places(
-        self,
-        sv_dcids: list[str],
-        parent_place_dcid: str,
-        child_place_type: str,
-        date: str = "latest",
-    ) -> dict:
-        return self.dc.observation.fetch_observations_by_entity_type(
-            variable_dcids=sv_dcids,
-            parent_entity=parent_place_dcid,
-            entity_type=child_place_type,
-            date=date,
-        ).to_dict()
+            variable_dcids=request.variable_dcid,
+            entity_dcids=request.place_dcid,
+            date=request.observation_period,
+            filter_facet_ids=request.facet_ids,
+        )
 
     def fetch_entity_names(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_entity_names(entity_dcids=dcids)
         return {dcid: name.value for dcid, name in response.items()}
+
+    def fetch_entity_types(self, dcids: list[str]) -> dict:
+        response = self.dc.node.fetch_property_values(
+            node_dcids=dcids, properties="typeOf"
+        )
+        return {
+            dcid: list(response.extract_connected_dcids(dcid, "typeOf"))
+            for dcid in response.get_properties()
+        }
+
+    def fetch_place_ancestors(self, dcids: list[str]) -> dict:
+        response = self.dc.node.fetch_place_ancestors(dcids)
+        dcid_to_ancestors = {}
+        for child_place, ancestors in response.items():
+            found_ancestors = dcid_to_ancestors.setdefault(child_place, set())
+            for ancestor in ancestors:
+                found_ancestors.add(ancestor.get("name", ""))
+                if "Country" in ancestor.get("types"):
+                    break
+        return dcid_to_ancestors
+
+    def add_place_metadata_to_obs(self, obs_response: ObservationToolResponse) -> None:
+        all_place_dcids = list(obs_response.place_data.keys())
+        names = self.fetch_entity_names(all_place_dcids)
+        for place_dcid, name in names.items():
+            obs_response.place_data[place_dcid].place_name = name
 
     async def fetch_topic_variables(
         self, place_dcid: str, topic_query: str = "statistics"
@@ -302,23 +326,37 @@ class MultiDCClient:
 
     async def fetch_obs(
         self,
-        dc_id: str,
-        sv_dcids: list[str],
-        place_dcid: str,
-        child_place_type: str,
-        date: str = "LATEST",
-    ) -> dict:
-        # Get the DC client from the ID
-        dc = self.dc_map.get(dc_id)
-        if not dc:
-            raise ValueError(f"Unknown DC ID: {dc_id}")
+        request: ObservationToolRequest,
+    ) -> ObservationToolResponse:
+        clients = [self.base_dc, self.custom_dc] if self.custom_dc else [self.base_dc]
 
-        if child_place_type:
-            return dc.fetch_obs_for_child_places(
-                sv_dcids, place_dcid, child_place_type, date
-            )
+        client_results = await asyncio.gather(
+            *[dc.fetch_obs(request) for dc in clients]
+        )
 
-        return dc.fetch_obs(sv_dcids, [place_dcid], date)
+        final_response = ObservationToolResponse()
+
+        base_dc_response = client_results[0]
+        # First populate data that is unique to custom dc
+        if self.custom_dc:
+            custom_dc_response = client_results[1]
+            if custom_facets := list(
+                custom_dc_response.facets.keys() - base_dc_response.facets.keys()
+            ):
+                final_response.merge_fetch_observation_response(
+                    custom_dc_response,
+                    self.custom_dc.dc_name,
+                    selected_facet_ids=custom_facets,
+                    date_filter=request.date_filter,
+                )
+
+        # Then merge in facets from base response
+        final_response.merge_fetch_observation_response(
+            base_dc_response, self.base_dc.dc_name, date_filter=request.date_filter
+        )
+
+        self.base_dc.add_place_metadata_to_obs(final_response)
+        return final_response
 
 
 def create_clients(config: dict) -> MultiDCClient:

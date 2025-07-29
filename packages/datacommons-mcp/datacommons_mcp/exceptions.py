@@ -15,3 +15,8 @@
 
 class NoDataFoundError(LookupError):  # Inheriting from LookupError is good practice
     """Raised when a query returns no data for a valid input."""
+
+
+# Define a custom exception for clarity when handling errors.
+class InvalidDateFormatError(ValueError):
+    """Raised when a date string has an invalid format."""

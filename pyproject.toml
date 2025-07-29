@@ -68,3 +68,10 @@ extend-ignore = [
   "COM812", # missing-trailing-comma may conflict with formatter
   "E501",   # line-too-long
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"packages/*/tests/**/*.py" = [
+    "S101",   # Allow using `assert` in pytests
+    "ANN201", # Ignore missing return types in public functions
+    "ANN202", # Ignore missing return types in private functions
+]

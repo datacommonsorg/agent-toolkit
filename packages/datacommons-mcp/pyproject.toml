@@ -11,6 +11,7 @@ dependencies = [
     "requests",
     "datacommons-client",
     "pydantic>=2.11.7",
+    "pytest>=8.4.1",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 
