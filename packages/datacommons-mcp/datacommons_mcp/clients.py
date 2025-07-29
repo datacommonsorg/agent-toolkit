@@ -66,11 +66,13 @@ class DCClient:
         else:
             self.dc = DataCommonsClient(url=base_url)
 
-    def fetch_obs(self, sv_dcids: list[str], place_dcids: list[str]) -> dict:
+    def fetch_obs(
+        self, sv_dcids: list[str], place_dcids: list[str], date: str = "all"
+    ) -> dict:
         return self.dc.observation.fetch(
             variable_dcids=sv_dcids,
             entity_dcids=place_dcids,
-            date="all",
+            date=date,
         ).to_dict()
 
     def fetch_obs_for_child_places(
@@ -78,7 +80,7 @@ class DCClient:
         sv_dcids: list[str],
         parent_place_dcid: str,
         child_place_type: str,
-        date: str = "LATEST",
+        date: str = "latest",
     ) -> dict:
         return self.dc.observation.fetch_observations_by_entity_type(
             variable_dcids=sv_dcids,
@@ -266,7 +268,7 @@ class MultiDCClient:
 
         # Search base DC
         base_results = await self.base_dc.search_svs(queries)
-        
+
         # Search custom DC if it exists
         custom_results = None
         if self.custom_dc:
@@ -274,7 +276,7 @@ class MultiDCClient:
 
         for query in queries:
             best_result = None
-            
+
             # Check custom DC first if it exists
             if custom_results and query in custom_results and custom_results[query]:
                 custom_score = custom_results[query][0]["CosineScore"]
@@ -285,7 +287,7 @@ class MultiDCClient:
                         "CosineScore": custom_score,
                         "dc_id": CUSTOM_DC_ID,
                     }
-            
+
             # Fall back to base DC
             if not best_result and query in base_results and base_results[query]:
                 best_result = {
@@ -298,19 +300,11 @@ class MultiDCClient:
 
         return results
 
-    async def fetch_obs(self, dc_id: str, sv_dcid: str, place_dcid: str) -> dict:
-        # Get the DC client from the ID
-        dc = self.dc_map.get(dc_id)
-        if not dc:
-            raise ValueError(f"Unknown DC ID: {dc_id}")
-
-        return dc.fetch_obs([sv_dcid], [place_dcid])
-
-    async def fetch_obs_for_child_places(
+    async def fetch_obs(
         self,
         dc_id: str,
         sv_dcids: list[str],
-        parent_place_dcid: str,
+        place_dcid: str,
         child_place_type: str,
         date: str = "LATEST",
     ) -> dict:
@@ -319,9 +313,12 @@ class MultiDCClient:
         if not dc:
             raise ValueError(f"Unknown DC ID: {dc_id}")
 
-        return dc.fetch_obs_for_child_places(
-            sv_dcids, parent_place_dcid, child_place_type, date
-        )
+        if child_place_type:
+            return dc.fetch_obs_for_child_places(
+                sv_dcids, place_dcid, child_place_type, date
+            )
+
+        return dc.fetch_obs(sv_dcids, [place_dcid], date)
 
 
 def create_clients(config: dict) -> MultiDCClient:

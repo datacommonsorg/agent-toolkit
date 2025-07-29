@@ -16,12 +16,75 @@ Response transformers module for Data Commons API responses.
 Contains functions for converting API responses into human-readable text format.
 """
 
+import calendar
+
+
+def _is_within_range(observation_date: str, date_range: tuple[str, str] | None) -> bool:
+    """
+    Checks if an observation date is within a given date range, inclusive.
+
+    This function correctly handles partial dates in 'YYYY', 'YYYY-MM', or
+    'YYYY-MM-DD' format by interpreting them as date intervals.
+
+    Args:
+        observation_date: The date to check.
+        date_range: A tuple containing the start and end date of the range.
+
+    Returns:
+        True if the observation date is within the range, False otherwise.
+    """
+
+    def _get_earliest_date(date_str: str) -> str:
+        """Converts a partial date string to its earliest possible full date."""
+        parts = date_str.split("-")
+        year = int(parts[0])
+        if len(parts) == 1:  # 'YYYY'
+            return f"{year:04d}-01-01"
+        month = int(parts[1])
+        if len(parts) == 2:  # 'YYYY-MM'
+            return f"{year:04d}-{month:02d}-01"
+        day = int(parts[2])  # 'YYYY-MM-DD'
+        return f"{year:04d}-{month:02d}-{day:02d}"
+
+    def _get_latest_date(date_str: str) -> str:
+        """Converts a partial date string to its latest possible full date."""
+        parts = date_str.split("-")
+        year = int(parts[0])
+        if len(parts) == 1:  # 'YYYY'
+            return f"{year:04d}-12-31"
+        month = int(parts[1])
+        if len(parts) == 2:  # 'YYYY-MM'
+            _, last_day = calendar.monthrange(year, month)
+            return f"{year:04d}-{month:02d}-{last_day:02d}"
+        day = int(parts[2])  # 'YYYY-MM-DD'
+        return f"{year:04d}-{month:02d}-{day:02d}"
+
+    if not date_range:
+        return True
+
+    range_start_str, range_end_str = date_range
+
+    # The effective range is from the earliest possible start date to the latest possible end date.
+    effective_range_start = _get_earliest_date(range_start_str)
+    effective_range_end = _get_latest_date(range_end_str)
+
+    # The observation's own interval must be fully contained within the effective range.
+    observation_start = _get_earliest_date(observation_date)
+    observation_end = _get_latest_date(observation_date)
+
+    # Lexicographical comparison works perfectly for 'YYYY-MM-DD' formatted strings.
+    return (
+        effective_range_start <= observation_start
+        and observation_end <= effective_range_end
+    )
+
 
 def transform_obs_response(
     api_response: dict,
     get_dcid_names_func: callable,
     other_dcids_to_lookup: list[str] = None,
     facet_id_override: str = None,
+    date_filter: tuple[str, str] = None,
 ) -> dict:
     """
     Transforms a Data Commons API v2 observation response into an LLM-friendly format.
@@ -39,6 +102,7 @@ def transform_obs_response(
         other_dcids_to_lookup: A list of DCIDs to lookup names for.
         facet_id_override: An optional facet ID to force the selection of a
                            specific data source.
+        date_filter: The start and end of date range to filter the observations down to.
 
     Returns:
         A dictionary in the new, LLM-friendly format, structured as follows:
@@ -109,6 +173,7 @@ def transform_obs_response(
                                 if (
                                     obs.get("date") is not None
                                     and obs.get("value") is not None
+                                    and _is_within_range(obs["date"], date_filter)
                                 ):
                                     temp_data_by_facet[facet_id]["observations"].append(
                                         [entity_id, obs["date"], obs["value"]]
