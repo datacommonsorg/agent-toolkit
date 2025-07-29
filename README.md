@@ -6,6 +6,7 @@ This is an experimental MCP server for fetching public information from [Data Co
 
 ## MCP Server
 
-PyPI: https://pypi.org/project/datacommons-mcp
+[datacommons-mcp source code](packages/datacommons-mcp/)
+* PyPI: https://pypi.org/project/datacommons-mcp
 
-[Package](packages/datacommons-mcp)
+[Developer docs](packages/datacommons-mcp/docs/dev.md)
