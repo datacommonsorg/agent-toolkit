@@ -20,7 +20,11 @@ from typing import TypeAlias
 from datacommons_client.endpoints.response import ObservationResponse
 from datacommons_client.models.observation import Facet, Observation, ObservationDate
 from datacommons_mcp.clients import MultiDCClient
-from datacommons_mcp.exceptions import InvalidDateFormatError, NoDataFoundError
+from datacommons_mcp.exceptions import (
+    InvalidDateFormatError,
+    InvalidDateRangeError,
+    NoDataFoundError,
+)
 from pydantic import BaseModel, Field
 
 DateFilter: TypeAlias = tuple[str, str]
@@ -55,7 +59,7 @@ class ObservationToolRequest(BaseModel):
         place_dcid: str | None = None,
         place_name: str | None = None,
         child_place_type: str | None = None,
-        facet_id_override: str | None = None,
+        facet_id_override: str | None = None,gi
         period: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
@@ -71,7 +75,7 @@ class ObservationToolRequest(BaseModel):
         if not (place_name or place_dcid):
             raise ValueError("Specify either 'place_name' or 'place_dcid'.")
 
-        if not period and (bool(start_date) ^ bool(end_date)):
+        if (not period) and (bool(start_date) ^ bool(end_date)):
             raise ValueError(
                 "Both 'start_date' and 'end_date' are required to specify a custom date range."
             )
@@ -257,6 +261,10 @@ def filter_by_date(
 
     range_start, _ = parse_date_interval(date_filter.start_date)
     _, range_end = parse_date_interval(date_filter.end_date)
+    if range_start > range_end:
+        raise InvalidDateRangeError(
+            f"Start date ({date_filter.start_date}) is later than end date ({date_filter.end_date}) for provided date range filter."
+        )
 
     filtered_list = []
     for obs in observations:

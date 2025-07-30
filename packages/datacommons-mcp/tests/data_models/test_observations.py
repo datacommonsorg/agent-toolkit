@@ -1,14 +1,14 @@
-import calendar
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from datacommons_client.models.observation import Observation, OrderedFacet
+from datacommons_client.models.observation import Facet, Observation, OrderedFacet
 
 # Import the classes and functions to be tested
 from datacommons_mcp.data_models.observations import (
     DateRange,
     InvalidDateFormatError,
     NoDataFoundError,
+    ObservationApiResponse,
     ObservationPeriod,
     ObservationToolRequest,
     ObservationToolResponse,
@@ -180,8 +180,8 @@ class TestObservationToolResponse:
                 )
             }
         }
-        facets = {"f1": MockFacetMetadata(), "f2": MockFacetMetadata()}
-        return MockApiResponse(data, facets)
+        facets = {"f1": Facet(), "f2": Facet()}
+        return ObservationApiResponse(data, facets)
 
     def test_merge_initial_data(self, mock_api_response):
         response = ObservationToolResponse()
