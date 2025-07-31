@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import requests
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Set
@@ -273,7 +272,6 @@ def _save_topic_store_to_cache(topic_store: TopicStore, cache_file_path: Path) -
         topic_store: The TopicStore to save
         cache_file_path: Path to the cache file
     """
-    import json
 
     # Convert TopicStore to a serializable format
     cache_data = {
@@ -308,7 +306,6 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
     Returns:
         TopicStore loaded from cache
     """
-    import json
 
     with open(cache_file_path, "r") as f:
         cache_data = json.load(f)
