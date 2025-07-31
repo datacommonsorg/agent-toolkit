@@ -48,12 +48,13 @@ class TopicVariables:
 
 
 @dataclass
-class NodeData:
-    """Represents the parsed data from a node API response."""
+class TopicNodeData:
+    """Represents the parsed topic data from a node API response."""
 
     name: str
     relevant_variables: list[str]
-    relevant_names: dict[str, str] = field(default_factory=dict)
+    # Maps the dcids of the `relevant_variables` to their name(s)
+    relevant_variable_names: dict[str, str] = field(default_factory=dict)
 
     def get_variables(self) -> list[str]:
         """Extract variable DCIDs from relevant_variables."""
@@ -75,7 +76,7 @@ class NodeData:
         """Get the mapping of variable DCIDs to their names."""
         return {
             dcid: name
-            for dcid, name in self.relevant_names.items()
+            for dcid, name in self.relevant_variable_names.items()
             if not _is_topic_dcid(dcid)
         }
 
@@ -83,7 +84,7 @@ class NodeData:
         """Get the mapping of topic DCIDs to their names."""
         return {
             dcid: name
-            for dcid, name in self.relevant_names.items()
+            for dcid, name in self.relevant_variable_names.items()
             if _is_topic_dcid(dcid)
         }
 
@@ -204,7 +205,7 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
 
 def _fetch_node_data(
     topic_dcids: List[str], dc_client: DataCommonsClient
-) -> Dict[str, NodeData]:
+) -> Dict[str, TopicNodeData]:
     """
     Fetch node data for the given topic DCIDs using DataCommonsClient.
 
@@ -224,33 +225,27 @@ def _fetch_node_data(
         )
 
         # Create a mapping of DCID to NodeData objects
-        nodes_by_dcid: dict[str, NodeData] = {}
+        nodes_by_dcid: dict[str, TopicNodeData] = {}
 
-        response_dict = response.to_dict()
-        for dcid, node_data in response_dict.get("data", {}).items():
+        for dcid in response.data:
             # Extract name from the arcs structure
-            name_nodes = node_data.get("arcs", {}).get("name", {}).get("nodes", [])
-            name = name_nodes[0].get("value", "") if name_nodes else ""
-
+            name_nodes = response.extract_connected_nodes(dcid, "name")
+            name = name_nodes[0].value if name_nodes else ""
             # Extract relevantVariable from the arcs structure
-            relevant_var_nodes = (
-                node_data.get("arcs", {}).get("relevantVariable", {}).get("nodes", [])
-            )
+            relevant_var_nodes = response.extract_connected_nodes(dcid, "relevantVariable")
             relevant_variables = []
-            relevant_names = {}
+            relevant_var_names = {}
 
             for var_node in relevant_var_nodes:
-                var_dcid = var_node.get("dcid", "")
-                var_name = var_node.get("name", "")
-                if var_dcid:
+                if var_dcid := var_node.dcid:
                     relevant_variables.append(var_dcid)
-                    if var_name:
-                        relevant_names[var_dcid] = var_name
+                    if var_name :=  var_node.name:
+                        relevant_var_names[var_dcid] = var_name
 
-            nodes_by_dcid[dcid] = NodeData(
+            nodes_by_dcid[dcid] = TopicNodeData(
                 name=name,
                 relevant_variables=relevant_variables,
-                relevant_names=relevant_names,
+                relevant_variable_names=relevant_var_names,
             )
 
         return nodes_by_dcid
