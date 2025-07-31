@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Set
 
+from datacommons_client.client import DataCommonsClient
+
 # Constants
 _SOURCE_DIR = Path(__file__).resolve().parent
 _TYPE_TOPIC = "Topic"
@@ -201,13 +203,15 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
     )
 
 
-def _fetch_node_data(topic_dcids: List[str], node_api_url: str) -> Dict[str, NodeData]:
+def _fetch_node_data(
+    topic_dcids: List[str], dc_client: DataCommonsClient
+) -> Dict[str, NodeData]:
     """
-    Fetch node data for the given topic DCIDs from the node API.
+    Fetch node data for the given topic DCIDs using DataCommonsClient.
 
     Args:
         topic_dcids: List of topic DCIDs to fetch
-        node_api_url: Base URL for the node API
+        dc_client: DataCommonsClient instance
 
     Returns:
         Dictionary mapping DCID to NodeData objects
@@ -215,18 +219,16 @@ def _fetch_node_data(topic_dcids: List[str], node_api_url: str) -> Dict[str, Nod
     if not topic_dcids:
         return {}
 
-    payload = {"nodes": topic_dcids, "property": "->[name, relevantVariable]"}
-
     try:
-        response = requests.post(node_api_url, json=payload)
-        response.raise_for_status()
-        data = response.json()
+        response = dc_client.node.fetch(
+            node_dcids=topic_dcids, expression="->[name, relevantVariable]"
+        )
 
         # Create a mapping of DCID to NodeData objects
         nodes_by_dcid: dict[str, NodeData] = {}
 
-        # The response has a nested structure: data -> {dcid: {arcs: {...}}}
-        for dcid, node_data in data.get("data", {}).items():
+        response_dict = response.to_dict()
+        for dcid, node_data in response_dict.get("data", {}).items():
             # Extract name from the arcs structure
             name_nodes = node_data.get("arcs", {}).get("name", {}).get("nodes", [])
             name = name_nodes[0].get("value", "") if name_nodes else ""
@@ -253,7 +255,7 @@ def _fetch_node_data(topic_dcids: List[str], node_api_url: str) -> Dict[str, Nod
             )
 
         return nodes_by_dcid
-    except requests.RequestException as e:
+    except Exception as e:
         print(f"Error fetching node data: {e}")
         return {}
 
@@ -333,15 +335,17 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
 
 
 def create_topic_store(
-    root_topic_dcids: List[str], node_api_url: str, cache_file_path: Path | None = None
+    root_topic_dcids: List[str],
+    dc_client: DataCommonsClient,
+    cache_file_path: Path | None = None,
 ) -> TopicStore:
     """
-    Recursively fetch topic data from the node API and create a TopicStore.
+    Recursively fetch topic data using DataCommonsClient and create a TopicStore.
     If a cache file is provided and exists, load from cache. Otherwise fetch from API and cache the result.
 
     Args:
         root_topic_dcids: List of root topic DCIDs to fetch
-        node_api_url: Base URL for the node API (e.g., "https://datacommons.one.org/core/api/v2/node")
+        dc_client: DataCommonsClient instance
         cache_file_path: Optional path to cache file for faster loading during development
 
     Returns:
@@ -368,7 +372,7 @@ def create_topic_store(
         current_topics = list(topics_to_fetch)
         topics_to_fetch.clear()
 
-        nodes_data = _fetch_node_data(current_topics, node_api_url)
+        nodes_data = _fetch_node_data(current_topics, dc_client)
 
         for topic_dcid in current_topics:
             if topic_dcid in visited_topics:
