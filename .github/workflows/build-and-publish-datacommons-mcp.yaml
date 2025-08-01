@@ -9,6 +9,7 @@ on:
 jobs:
   # JOB 1: Detects if the version was bumped
   check_version:
+    if: github.repository == 'datacommonsorg/agent-toolkit'
     runs-on: ubuntu-latest
     # This job produces outputs that the next job will use
     outputs:

@@ -15,6 +15,9 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Dict, List, Set
+
+from datacommons_client.client import DataCommonsClient
 
 # Constants
 _SOURCE_DIR = Path(__file__).resolve().parent
@@ -36,11 +39,54 @@ class Node:
 
 @dataclass
 class TopicVariables:
-    """Represents a topic and its flattened list of unique statistical variables."""
+    """Represents a topic and its members (both sub-topics and variables)."""
 
     topic_dcid: str
     topic_name: str
     variables: list[str] = field(default_factory=list)
+    member_topics: list[str] = field(default_factory=list)
+
+
+@dataclass
+class TopicNodeData:
+    """Represents the parsed topic data from a node API response."""
+
+    name: str
+    relevant_variables: list[str]
+    # Maps the dcids of the `relevant_variables` to their name(s)
+    relevant_variable_names: dict[str, str] = field(default_factory=dict)
+
+    def get_variables(self) -> list[str]:
+        """Extract variable DCIDs from relevant_variables."""
+        variables = []
+        for var in self.relevant_variables:
+            if not _is_topic_dcid(var):
+                variables.append(var)
+        return variables
+
+    def get_member_topics(self) -> list[str]:
+        """Extract topic DCIDs from relevant_variables."""
+        topics = []
+        for var in self.relevant_variables:
+            if _is_topic_dcid(var):
+                topics.append(var)
+        return topics
+
+    def get_variable_names(self) -> dict[str, str]:
+        """Get the mapping of variable DCIDs to their names."""
+        return {
+            dcid: name
+            for dcid, name in self.relevant_variable_names.items()
+            if not _is_topic_dcid(dcid)
+        }
+
+    def get_topic_names(self) -> dict[str, str]:
+        """Get the mapping of topic DCIDs to their names."""
+        return {
+            dcid: name
+            for dcid, name in self.relevant_variable_names.items()
+            if _is_topic_dcid(dcid)
+        }
 
 
 @dataclass
@@ -49,6 +95,7 @@ class TopicStore:
 
     topics_by_dcid: dict[str, TopicVariables]
     all_variables: set[str]
+    dcid_to_name: dict[str, str] = field(default_factory=dict)
 
     def has_variable(self, sv_dcid: str) -> bool:
         return sv_dcid in self.all_variables
@@ -56,6 +103,22 @@ class TopicStore:
     def get_topic_variables(self, topic_dcid: str) -> list[str]:
         topic_data = self.topics_by_dcid.get(topic_dcid)
         return topic_data.variables if topic_data else []
+
+    def get_topic_members(self, topic_dcid: str) -> list[str]:
+        """Get both member topics and variables for a topic."""
+        topic_data = self.topics_by_dcid.get(topic_dcid)
+        if not topic_data:
+            return []
+        return topic_data.member_topics + topic_data.variables
+
+    def get_member_topics(self, topic_dcid: str) -> list[str]:
+        """Get only member topics (not variables) for a topic."""
+        topic_data = self.topics_by_dcid.get(topic_dcid)
+        return topic_data.member_topics if topic_data else []
+
+    def get_name(self, dcid: str) -> str:
+        """Get the human-readable name for a DCID."""
+        return self.dcid_to_name.get(dcid, dcid)
 
 
 def _flatten_variables_recursive(
@@ -138,3 +201,271 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
     return TopicStore(
         topics_by_dcid=final_topic_variables, all_variables=all_variables_set
     )
+
+
+def _fetch_node_data(
+    topic_dcids: List[str], dc_client: DataCommonsClient
+) -> Dict[str, TopicNodeData]:
+    """
+    Fetch node data for the given topic DCIDs using DataCommonsClient.
+
+    Args:
+        topic_dcids: List of topic DCIDs to fetch
+        dc_client: DataCommonsClient instance
+
+    Returns:
+        Dictionary mapping DCID to NodeData objects
+    """
+    if not topic_dcids:
+        return {}
+
+    try:
+        response = dc_client.node.fetch(
+            node_dcids=topic_dcids, expression="->[name, relevantVariable]"
+        )
+
+        # Create a mapping of DCID to NodeData objects
+        nodes_by_dcid: dict[str, TopicNodeData] = {}
+
+        for dcid in response.data:
+            # Extract name from the arcs structure
+            name_nodes = response.extract_connected_nodes(dcid, "name")
+            name = name_nodes[0].value if name_nodes else ""
+            # Extract relevantVariable from the arcs structure
+            relevant_var_nodes = response.extract_connected_nodes(dcid, "relevantVariable")
+            relevant_variables = []
+            relevant_var_names = {}
+
+            for var_node in relevant_var_nodes:
+                if var_dcid := var_node.dcid:
+                    relevant_variables.append(var_dcid)
+                    if var_name :=  var_node.name:
+                        relevant_var_names[var_dcid] = var_name
+
+            nodes_by_dcid[dcid] = TopicNodeData(
+                name=name,
+                relevant_variables=relevant_variables,
+                relevant_variable_names=relevant_var_names,
+            )
+
+        return nodes_by_dcid
+    except Exception as e:
+        print(f"Error fetching node data: {e}")
+        return {}
+
+
+def _is_topic_dcid(dcid: str) -> bool:
+    """Check if a DCID represents a topic."""
+    return "/topic/" in dcid
+
+
+def _collect_descendant_variables(
+    topic_dcid: str,
+    topics_by_dcid: Dict[str, TopicVariables],
+    visited: Set[str],
+) -> Set[str]:
+    """
+    Recursively collect all descendant variables for a given topic.
+    
+    Args:
+        topic_dcid: The topic DCID to collect descendants for
+        topics_by_dcid: Dictionary of all topics
+        visited: Set of already visited topics to prevent cycles
+        
+    Returns:
+        Set of all descendant variable DCIDs
+    """
+    if topic_dcid in visited:
+        return set()
+    
+    visited.add(topic_dcid)
+    topic_data = topics_by_dcid.get(topic_dcid)
+    if not topic_data:
+        return set()
+    
+    # Start with direct variables
+    descendant_vars = set(topic_data.variables)
+    
+    # Add variables from all member topics
+    for member_topic in topic_data.member_topics:
+        member_vars = _collect_descendant_variables(
+            member_topic, topics_by_dcid, visited
+        )
+        descendant_vars.update(member_vars)
+    
+    return descendant_vars
+
+
+def _save_topic_store_to_cache(topic_store: TopicStore, cache_file_path: Path) -> None:
+    """
+    Save a TopicStore to a cache file.
+
+    Args:
+        topic_store: The TopicStore to save
+        cache_file_path: Path to the cache file
+    """
+
+    # Convert TopicStore to a serializable format
+    cache_data = {
+        "topics_by_dcid": {
+            dcid: {
+                "topic_dcid": topic_data.topic_dcid,
+                "topic_name": topic_data.topic_name,
+                "variables": topic_data.variables,
+                "member_topics": topic_data.member_topics,
+            }
+            for dcid, topic_data in topic_store.topics_by_dcid.items()
+        },
+        "all_variables": list(topic_store.all_variables),
+        "dcid_to_name": topic_store.dcid_to_name,
+    }
+
+    # Ensure the directory exists
+    cache_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Save to file
+    with open(cache_file_path, "w") as f:
+        json.dump(cache_data, f, indent=2)
+
+
+def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
+    """
+    Load a TopicStore from a cache file.
+
+    Args:
+        cache_file_path: Path to the cache file
+
+    Returns:
+        TopicStore loaded from cache
+    """
+
+    with open(cache_file_path, "r") as f:
+        cache_data = json.load(f)
+
+    # Reconstruct TopicStore from cache data
+    topics_by_dcid = {
+        dcid: TopicVariables(
+            topic_dcid=topic_data["topic_dcid"],
+            topic_name=topic_data["topic_name"],
+            variables=topic_data["variables"],
+            member_topics=topic_data.get("member_topics", []),
+        )
+        for dcid, topic_data in cache_data["topics_by_dcid"].items()
+    }
+
+    all_variables = set(cache_data["all_variables"])
+    dcid_to_name = cache_data["dcid_to_name"]
+
+    return TopicStore(
+        topics_by_dcid=topics_by_dcid,
+        all_variables=all_variables,
+        dcid_to_name=dcid_to_name,
+    )
+
+
+def create_topic_store(
+    root_topic_dcids: List[str],
+    dc_client: DataCommonsClient,
+    cache_file_path: Path | None = None,
+) -> TopicStore:
+    """
+    Recursively fetch topic data using DataCommonsClient and create a TopicStore.
+    If a cache file is provided and exists, load from cache. Otherwise fetch from API and cache the result.
+
+    Args:
+        root_topic_dcids: List of root topic DCIDs to fetch
+        dc_client: DataCommonsClient instance
+        cache_file_path: Optional path to cache file for faster loading during development
+
+    Returns:
+        TopicStore instance with topics and their variables
+    """
+    # Try to load from cache first
+    if cache_file_path and cache_file_path.exists():
+        try:
+            print(f"Loading topic store from cache: {cache_file_path}")
+            return _load_topic_store_from_cache(cache_file_path)
+        except Exception as e:
+            print(f"Failed to load from cache: {e}")
+            print("Falling back to API fetch...")
+
+    # Fetch from API
+    topics_by_dcid: Dict[str, TopicVariables] = {}
+    all_variables: Set[str] = set()
+    dcid_to_name: Dict[str, str] = {}
+    visited_topics: Set[str] = set()
+    topics_to_fetch: Set[str] = set(root_topic_dcids)
+
+    while topics_to_fetch:
+        # Fetch data for current batch of topics
+        current_topics = list(topics_to_fetch)
+        topics_to_fetch.clear()
+
+        nodes_data = _fetch_node_data(current_topics, dc_client)
+
+        for topic_dcid in current_topics:
+            if topic_dcid in visited_topics:
+                continue
+
+            visited_topics.add(topic_dcid)
+            node_data = nodes_data.get(topic_dcid)
+
+            if not node_data:
+                continue
+
+            # Extract topic name
+            topic_name = node_data.name
+
+            # Store topic name in dcid_to_name mapping
+            if topic_name:
+                dcid_to_name[topic_dcid] = topic_name
+
+            # Extract variables and sub-topics
+            variables = node_data.get_variables()
+            sub_topics = node_data.get_member_topics()
+
+            # Store variable names in dcid_to_name mapping
+            variable_names = node_data.get_variable_names()
+            dcid_to_name.update(variable_names)
+
+            # Add variables to the set
+            all_variables.update(variables)
+
+            # Add sub-topics to the fetch queue
+            for sub_topic in sub_topics:
+                if sub_topic not in visited_topics:
+                    topics_to_fetch.add(sub_topic)
+
+            # Create TopicVariables for this topic
+            topics_by_dcid[topic_dcid] = TopicVariables(
+                topic_dcid=topic_dcid,
+                topic_name=topic_name,
+                variables=variables,
+                member_topics=sub_topics,
+            )
+
+    # After all topics have been fetched, populate each topic with all its descendant variables
+    for topic_dcid in topics_by_dcid:
+        descendant_vars = _collect_descendant_variables(
+            topic_dcid, topics_by_dcid, set()
+        )
+        # Update the topic's variables to include all descendants
+        topics_by_dcid[topic_dcid].variables = list(descendant_vars)
+        # Update the all_variables set
+        all_variables.update(descendant_vars)
+
+    topic_store = TopicStore(
+        topics_by_dcid=topics_by_dcid,
+        all_variables=all_variables,
+        dcid_to_name=dcid_to_name,
+    )
+
+    # Cache the result if a cache file path is provided
+    if cache_file_path:
+        try:
+            print(f"Caching topic store to: {cache_file_path}")
+            _save_topic_store_to_cache(topic_store, cache_file_path)
+        except Exception as e:
+            print(f"Failed to cache topic store: {e}")
+
+    return topic_store
