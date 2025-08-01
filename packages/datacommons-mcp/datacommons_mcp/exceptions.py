@@ -13,13 +13,23 @@
 # limitations under the License.
 
 
-class NoDataFoundError(LookupError):  # Inheriting from LookupError is good practice
+class _ErrorStrMixin:
+    """A mixin to provide a descriptive __str__ representation for exceptions."""
+
+    def __str__(self) -> str:
+        """Returns a string representation of the exception."""
+        message = self.args[0] if self.args else ""
+        # Prepend the class name to the message for clarity.
+        return f"{self.__class__.__name__}: {message}"
+
+
+class NoDataFoundError(_ErrorStrMixin, LookupError):
     """Raised when a query returns no data for a valid input."""
 
 
-class InvalidDateFormatError(ValueError):
+class InvalidDateFormatError(_ErrorStrMixin, ValueError):
     """Raised when a date string has an invalid format."""
 
 
-class InvalidDateRangeError(ValueError):
+class InvalidDateRangeError(_ErrorStrMixin, ValueError):
     """Raised when a start date is later than end date for a date range."""

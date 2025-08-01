@@ -68,14 +68,16 @@ class TestBuildObservationRequest:
 
     async def test_resolution_failure(self, mock_client):
         mock_client.search_svs.return_value = {}  # No variable found
-        with pytest.raises(NoDataFoundError, match="No statistical variables found"):
+        with pytest.raises(
+            NoDataFoundError, match="NoDataFoundError: No statistical variables found"
+        ):
             await _build_observation_request(
                 mock_client, variable_desc="invalid", place_name="USA"
             )
 
         mock_client.search_svs.return_value = {"pop": {"SV": "Count_Person"}}
         mock_client.base_dc.search_places.return_value = {}  # No place found
-        with pytest.raises(NoDataFoundError, match="No place found"):
+        with pytest.raises(NoDataFoundError, match="NoDataFoundError: No place found"):
             await _build_observation_request(
                 mock_client, variable_desc="pop", place_name="invalid"
             )

@@ -2,7 +2,7 @@ import pytest
 
 # Import the classes and functions to be tested
 from datacommons_mcp.data_models.observations import DateRange
-from datacommons_mcp.exceptions import InvalidDateFormatError, InvalidDateRangeError
+from datacommons_mcp.exceptions import InvalidDateFormatError
 from pydantic import ValidationError
 
 
@@ -19,21 +19,22 @@ class TestDateRange:
     def test_invalid_range_raises_error(self):
         """Tests that an end_date before a start_date raises an error."""
         with pytest.raises(
-            InvalidDateRangeError,
-            match="start_date '2023' cannot be after end_date '2022'",
+            ValidationError,
+            match="InvalidDateRangeError: start_date '2023' cannot be after end_date '2022'",
         ):
             DateRange(start_date="2023", end_date="2022")
 
         with pytest.raises(
-            InvalidDateRangeError,
-            match="start_date '2023-02' cannot be after end_date '2023-01'",
+            ValidationError,
+            match="InvalidDateRangeError: start_date '2023-02' cannot be after end_date '2023-01'",
         ):
             DateRange(start_date="2023-02", end_date="2023-01")
 
     def test_invalid_format_raises_error(self):
         """Tests that an invalid date format raises an error."""
         with pytest.raises(
-            InvalidDateFormatError, match="Invalid date format: '2023-13'"
+            ValidationError,
+            match=r"InvalidDateFormatError: for date '2023-13': month must be in 1..12",
         ):
             DateRange(start_date="2023-13", end_date="2024")
 

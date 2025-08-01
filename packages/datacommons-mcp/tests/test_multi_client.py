@@ -65,7 +65,7 @@ class TestMultiDCClient:
             "f1": Facet(import_name="source1"),
             "f2": Facet(import_name="source2"),
         }
-        return ObservationApiResponse(data, facets)
+        return ObservationApiResponse(byVariable=data, facets=facets)
 
     async def test_fetch_obs_base_only(self, mock_base_dc, mock_api_response):
         """Tests that fetch_obs works correctly with only a base DC."""

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import calendar
+from datetime import datetime
 from functools import lru_cache
 
 from datacommons_client.endpoints.response import ObservationResponse
@@ -45,26 +46,40 @@ class DateRange(BaseModel):
         """
         try:
             parts = date_str.split("-")
-            year = int(parts[0])
+            num_parts = len(parts)
 
-            if len(parts) == 1:  # 'YYYY'
+            if num_parts == 1:
+                year = int(parts[0])
+                # Validate the year is reasonable, though int() handles non-numerics.
+                datetime(year=year, month=1, day=1)
                 return f"{year:04d}-01-01", f"{year:04d}-12-31"
 
-            month = int(parts[1])
-            if len(parts) == 2:  # 'YYYY-MM'
+            if num_parts == 2:
+                year, month = map(int, parts)
+                # This will raise ValueError for an invalid month.
+                datetime(year=year, month=month, day=1)
                 _, last_day = calendar.monthrange(year, month)
                 return (
                     f"{year:04d}-{month:02d}-01",
                     f"{year:04d}-{month:02d}-{last_day:02d}",
                 )
 
-            day = int(parts[2])  # 'YYYY-MM-DD'
-            full_date = f"{year:04d}-{month:02d}-{day:02d}"
-            return full_date, full_date
+            if num_parts == 3:
+                year, month, day = map(int, parts)
+                # This will raise ValueError for an invalid year, month, or day.
+                date_str = datetime(year=year, month=month, day=day).strftime(
+                    "%Y-%m-%d"
+                )
+                return date_str, date_str
 
-        except (ValueError, IndexError, calendar.IllegalMonthError) as e:
+            # If we reach here, the number of parts is not 1, 2, or 3.
+            raise ValueError(
+                "Date string must be in YYYY, YYYY-MM, or YYYY-MM-DD format."
+            )
+
+        except ValueError as e:
             # Catch multiple potential errors and raise a single, clear custom exception.
-            raise InvalidDateFormatError(f"Invalid date format: '{date_str}'") from e
+            raise InvalidDateFormatError(f"for date '{date_str}': {e}") from e
 
     @model_validator(mode="after")
     def validate_and_normalize_dates(self) -> "DateRange":

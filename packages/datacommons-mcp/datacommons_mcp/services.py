@@ -74,19 +74,21 @@ async def _build_observation_request(
         task_coroutines = list(resolve_tasks.values())
         task_results = await asyncio.gather(*task_coroutines)
         # Map results back to their keys
-        results = dict(zip(resolve_tasks.keys(), task_results, strict=False))
-
+        results = dict(zip(resolve_tasks.keys(), task_results, strict=True))
+        print(results)
         # Parse resolved stat vars (if any)
-        if sv_search_result := results.get("sv_search"):
-            variable_dcid = sv_search_result.get(variable_desc, {}).get("SV", "")
+        if "sv_search" in resolve_tasks:
+            variable_dcid = (
+                results.get("sv_search", {}).get(variable_desc, {}).get("SV")
+            )
             if not variable_dcid:
                 raise NoDataFoundError(
                     f"No statistical variables found matching '{variable_desc}'."
                 )
 
         # Parse resolved places (if any)
-        if place_search_result := results.get("place_search"):
-            place_dcid = place_search_result.get(place_name)
+        if "place_search" in resolve_tasks:
+            place_dcid = results.get("place_search", {}).get(place_name)
             if not place_dcid:
                 raise NoDataFoundError(f"No place found matching '{place_name}'.")
 
