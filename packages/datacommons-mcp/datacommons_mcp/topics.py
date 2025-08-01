@@ -118,7 +118,7 @@ class TopicStore:
 
     def get_name(self, dcid: str) -> str:
         """Get the human-readable name for a DCID."""
-        return self.dcid_to_name.get(dcid, dcid)
+        return self.dcid_to_name.get(dcid, '')
 
 
 def _flatten_variables_recursive(
@@ -259,41 +259,7 @@ def _is_topic_dcid(dcid: str) -> bool:
     return "/topic/" in dcid
 
 
-def _collect_descendant_variables(
-    topic_dcid: str,
-    topics_by_dcid: Dict[str, TopicVariables],
-    visited: Set[str],
-) -> Set[str]:
-    """
-    Recursively collect all descendant variables for a given topic.
-    
-    Args:
-        topic_dcid: The topic DCID to collect descendants for
-        topics_by_dcid: Dictionary of all topics
-        visited: Set of already visited topics to prevent cycles
-        
-    Returns:
-        Set of all descendant variable DCIDs
-    """
-    if topic_dcid in visited:
-        return set()
-    
-    visited.add(topic_dcid)
-    topic_data = topics_by_dcid.get(topic_dcid)
-    if not topic_data:
-        return set()
-    
-    # Start with direct variables
-    descendant_vars = set(topic_data.variables)
-    
-    # Add variables from all member topics
-    for member_topic in topic_data.member_topics:
-        member_vars = _collect_descendant_variables(
-            member_topic, topics_by_dcid, visited
-        )
-        descendant_vars.update(member_vars)
-    
-    return descendant_vars
+
 
 
 def _save_topic_store_to_cache(topic_store: TopicStore, cache_file_path: Path) -> None:
@@ -355,6 +321,13 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
 
     all_variables = set(cache_data["all_variables"])
     dcid_to_name = cache_data["dcid_to_name"]
+
+    # Note: Cached data now only contains direct variables
+    # Descendant variables are computed on-demand during existence checks
+    print(f"Loaded topic store from cache with {len(topics_by_dcid)} topics")
+    for topic_dcid in topics_by_dcid:
+        topic_data = topics_by_dcid[topic_dcid]
+        print(f"  Topic {topic_dcid}: {len(topic_data.variables)} direct variables, {len(topic_data.member_topics)} member topics")
 
     return TopicStore(
         topics_by_dcid=topics_by_dcid,
@@ -444,15 +417,12 @@ def create_topic_store(
                 member_topics=sub_topics,
             )
 
-    # After all topics have been fetched, populate each topic with all its descendant variables
+    # Note: We now only store direct variables in TopicVariables.variables
+    # Descendant variables are computed on-demand during existence checks
+    print(f"Created topic store with {len(topics_by_dcid)} topics")
     for topic_dcid in topics_by_dcid:
-        descendant_vars = _collect_descendant_variables(
-            topic_dcid, topics_by_dcid, set()
-        )
-        # Update the topic's variables to include all descendants
-        topics_by_dcid[topic_dcid].variables = list(descendant_vars)
-        # Update the all_variables set
-        all_variables.update(descendant_vars)
+        topic_data = topics_by_dcid[topic_dcid]
+        print(f"  Topic {topic_dcid}: {len(topic_data.variables)} direct variables, {len(topic_data.member_topics)} member topics")
 
     topic_store = TopicStore(
         topics_by_dcid=topics_by_dcid,

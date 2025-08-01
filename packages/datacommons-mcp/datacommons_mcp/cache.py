@@ -24,7 +24,7 @@ class LruCache:
         self.cache = collections.OrderedDict()
         self.capacity = capacity
 
-    def get(self, key: str) -> list[str]:
+    def get(self, key: str) -> set[str]:
         """
         Retrieves an item from the cache and marks it as recently used.
         Returns None if the key is not found.
@@ -34,7 +34,7 @@ class LruCache:
         self.cache.move_to_end(key)
         return self.cache[key]
 
-    def put(self, key: str, value: list[str]) -> None:
+    def put(self, key: str, value: set[str]) -> None:
         """
         Adds an item to the cache. If the cache is full, the least
         recently used item is removed.
