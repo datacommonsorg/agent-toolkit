@@ -3,28 +3,7 @@
 import pytest
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
-from datacommons_mcp.exceptions import InvalidDateFormatError
-from datacommons_mcp.utils import filter_by_date, parse_date_interval
-
-
-class TestParseDateInterval:
-    def test_yyyy_format(self):
-        assert parse_date_interval("2023") == ("2023-01-01", "2023-12-31")
-
-    def test_yyyymm_format(self):
-        # Non-leap year
-        assert parse_date_interval("2023-02") == ("2023-02-01", "2023-02-28")
-        # Leap year
-        assert parse_date_interval("2024-02") == ("2024-02-01", "2024-02-29")
-
-    def test_yyyymmdd_format(self):
-        assert parse_date_interval("2023-07-15") == ("2023-07-15", "2023-07-15")
-
-    def test_invalid_format_raises_error(self):
-        with pytest.raises(InvalidDateFormatError):
-            parse_date_interval("not-a-date")
-        with pytest.raises(InvalidDateFormatError):
-            parse_date_interval("2023-13-01")  # Invalid month
+from datacommons_mcp.utils import filter_by_date
 
 
 class TestFilterByDate:

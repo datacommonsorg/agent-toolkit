@@ -53,3 +53,22 @@ class TestDateRange:
         dr3 = DateRange(start_date="2023", end_date="2023-07-15")
         assert dr3.start_date == "2023-01-01"
         assert dr3.end_date == "2023-07-15"
+
+    # Tests for the static method parse_interval
+    def test_parse_interval_yyyy(self):
+        assert DateRange.parse_interval("2023") == ("2023-01-01", "2023-12-31")
+
+    def test_parse_interval_yyyymm(self):
+        # Non-leap year
+        assert DateRange.parse_interval("2023-02") == ("2023-02-01", "2023-02-28")
+        # Leap year
+        assert DateRange.parse_interval("2024-02") == ("2024-02-01", "2024-02-29")
+
+    def test_parse_interval_yyyymmdd(self):
+        assert DateRange.parse_interval("2023-07-15") == ("2023-07-15", "2023-07-15")
+
+    def test_parse_interval_invalid_format(self):
+        with pytest.raises(InvalidDateFormatError):
+            DateRange.parse_interval("not-a-date")
+        with pytest.raises(InvalidDateFormatError):
+            DateRange.parse_interval("2023-13-01")  # Invalid month

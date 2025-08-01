@@ -37,26 +37,33 @@ class TestMultiDCClient:
                 "place1": Mock(
                     orderedFacets=[
                         OrderedFacet(
-                            "f1",
-                            "2022",
-                            "2023",
-                            2,
-                            [Observation("2022", 1), Observation("2023", 2)],
+                            facetId="f1",
+                            earliestDate="2022",
+                            latestDate="2023",
+                            obsCount=2,
+                            observations=[
+                                Observation(date="2022", value=1),
+                                Observation(date="2023", value=2),
+                            ],
                         ),
                         OrderedFacet(
-                            "f2",
-                            "2020",
-                            "2021",
-                            2,
-                            [Observation("2020", 3), Observation("2021", 4)],
+                            facetId="f2",
+                            earliestDate="2020",
+                            latestDate="2021",
+                            obsCount=3,
+                            observations=[
+                                Observation(date="2020", value=3),
+                                Observation(date="2020", value=3),
+                                Observation(date="2021", value=4),
+                            ],
                         ),
                     ]
                 )
             }
         }
         facets = {
-            "f1": Facet(importName="source1"),
-            "f2": Facet(importName="source2"),
+            "f1": Facet(import_name="source1"),
+            "f2": Facet(import_name="source2"),
         }
         return ObservationApiResponse(data, facets)
 
@@ -77,18 +84,21 @@ class TestMultiDCClient:
 
     async def test_fetch_obs_merges_custom_and_base(self, mock_base_dc, mock_custom_dc):
         """Tests that results from custom and base DCs are merged correctly."""
-        # Custom DC has a unique facet 'f_custom'
+
         custom_data = {
-            "var1": {
-                "place1": Mock(
-                    orderedFacets=[
-                        OrderedFacet(
-                            "f_custom", "2025", "2025", 1, [Observation("2025", 100)]
-                        )
-                    ]
-                )
-            }
+            "place1": Mock(
+                orderedFacets=[
+                    OrderedFacet(
+                        "f_custom",
+                        "2025",
+                        "2025",
+                        1,
+                        [Observation(date="2025", value=100)],
+                    )
+                ]
+            )
         }
+
         custom_facets = {"f_custom": Facet(importName="custom_source")}
         mock_custom_dc.fetch_obs.return_value = ObservationApiResponse(
             custom_data, custom_facets
@@ -120,10 +130,10 @@ class TestMultiDCClient:
         assert "var1" in place_data.variable_series
 
         var_series = place_data.variable_series["var1"]
-        assert var_series.source_metadata.facetId == "f1"
+        assert var_series.source_metadata.facet_id == "f1"
         assert len(var_series.observations) == 2
         assert len(var_series.alternative_sources) == 1
-        assert var_series.alternative_sources[0].facetId == "f2"
+        assert var_series.alternative_sources[0].facet_id == "f2"
 
     def test_integrate_observation_alternative_sources(self, mock_api_response):
         response = ObservationToolResponse()

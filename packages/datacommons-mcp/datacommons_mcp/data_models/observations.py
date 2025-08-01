@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import calendar
+from functools import lru_cache
 
 from datacommons_client.endpoints.response import ObservationResponse
 from datacommons_client.models.observation import Facet, Observation, ObservationDate
 from datacommons_mcp.exceptions import (
+    InvalidDateFormatError,
     InvalidDateRangeError,
 )
-from datacommons_mcp.utils import parse_date_interval
 from pydantic import BaseModel, Field, model_validator
 
-
-class ObservationPeriod(ObservationDate):
-    """Wrapper to rename datacommons_client object to avoid confusion."""
+# Wrapper to rename datacommons_client object to avoid confusion.
+ObservationPeriod = ObservationDate
 
 
 class DateRange(BaseModel):
@@ -31,6 +32,39 @@ class DateRange(BaseModel):
 
     start_date: str
     end_date: str
+
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def parse_interval(date_str: str) -> tuple[str, str]:
+        """
+        Converts a partial date string into a full (start, end) date tuple.
+        Caches results to avoid re-calculating for the same input string.
+
+        Raises:
+            InvalidDateFormatError: If the date string format is invalid.
+        """
+        try:
+            parts = date_str.split("-")
+            year = int(parts[0])
+
+            if len(parts) == 1:  # 'YYYY'
+                return f"{year:04d}-01-01", f"{year:04d}-12-31"
+
+            month = int(parts[1])
+            if len(parts) == 2:  # 'YYYY-MM'
+                _, last_day = calendar.monthrange(year, month)
+                return (
+                    f"{year:04d}-{month:02d}-01",
+                    f"{year:04d}-{month:02d}-{last_day:02d}",
+                )
+
+            day = int(parts[2])  # 'YYYY-MM-DD'
+            full_date = f"{year:04d}-{month:02d}-{day:02d}"
+            return full_date, full_date
+
+        except (ValueError, IndexError, calendar.IllegalMonthError) as e:
+            # Catch multiple potential errors and raise a single, clear custom exception.
+            raise InvalidDateFormatError(f"Invalid date format: '{date_str}'") from e
 
     @model_validator(mode="after")
     def validate_and_normalize_dates(self) -> "DateRange":
@@ -43,8 +77,8 @@ class DateRange(BaseModel):
         original_start = self.start_date
         original_end = self.end_date
 
-        range_start, _ = parse_date_interval(original_start)
-        _, range_end = parse_date_interval(original_end)
+        range_start, _ = DateRange.parse_interval(original_start)
+        _, range_end = DateRange.parse_interval(original_end)
 
         if range_start > range_end:
             raise InvalidDateRangeError(
