@@ -1,13 +1,10 @@
-# tests/data_models/test_observations_utils.py
+# tests/test_utils.py
 
 import pytest
 from datacommons_client.models.observation import Observation
-from datacommons_mcp.data_models.observations import (
-    DateRange,
-    InvalidDateFormatError,
-    filter_by_date,
-    parse_date_interval,
-)
+from datacommons_mcp.data_models.observations import DateRange
+from datacommons_mcp.exceptions import InvalidDateFormatError
+from datacommons_mcp.utils import filter_by_date, parse_date_interval
 
 
 class TestParseDateInterval:

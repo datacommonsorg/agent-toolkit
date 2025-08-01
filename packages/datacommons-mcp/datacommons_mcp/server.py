@@ -25,7 +25,6 @@ from pydantic import ValidationError
 import datacommons_mcp.config as config
 from datacommons_mcp.clients import create_clients
 from datacommons_mcp.data_models.observations import (
-    ObservationToolRequest,
     ObservationToolResponse,
 )
 from datacommons_mcp.datacommons_chart_types import (
@@ -36,6 +35,7 @@ from datacommons_mcp.datacommons_chart_types import (
     SinglePlaceLocation,
     SingleVariableChart,
 )
+from datacommons_mcp.services import get_observation_data
 
 # Create clients based on config
 multi_dc_client = create_clients(config.BASE_DC_CONFIG)
@@ -104,9 +104,8 @@ async def get_observations(
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
       3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
-    # Validate and parse inputs
-    observation_request = ObservationToolRequest.from_tool_inputs(
-        multi_dc_client=multi_dc_client,
+    return await get_observation_data(
+        client=multi_dc_client,
         variable_dcid=variable_dcid,
         variable_desc=variable_desc,
         place_dcid=place_dcid,
@@ -117,8 +116,6 @@ async def get_observations(
         start_date=start_date,
         end_date=end_date,
     )
-    # Fetch data
-    return await multi_dc_client.fetch_obs(observation_request)
 
 
 @mcp.tool()

@@ -26,11 +26,16 @@ from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.cache import LruCache
 from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID
 from datacommons_mcp.data_models.observations import (
+    DateRange,
     ObservationApiResponse,
     ObservationToolRequest,
     ObservationToolResponse,
+    PlaceData,
+    SourceMetadata,
+    VariableSeries,
 )
 from datacommons_mcp.topics import TopicStore, read_topic_cache
+from datacommons_mcp.utils import filter_by_date
 
 
 class DCClient:
@@ -340,23 +345,81 @@ class MultiDCClient:
         # First populate data that is unique to custom dc
         if self.custom_dc:
             custom_dc_response = client_results[1]
-            if custom_facets := list(
-                custom_dc_response.facets.keys() - base_dc_response.facets.keys()
-            ):
-                final_response.merge_fetch_observation_response(
-                    custom_dc_response,
-                    self.custom_dc.dc_name,
-                    selected_facet_ids=custom_facets,
-                    date_filter=request.date_filter,
-                )
+            self._integrate_observation_response(
+                final_response,
+                custom_dc_response,
+                self.custom_dc.dc_name,
+                request.date_filter,
+                # Only merge facets that are unique to the custom DC
+                selected_facet_ids=list(
+                    custom_dc_response.facets.keys() - base_dc_response.facets.keys()
+                ),
+            )
 
         # Then merge in facets from base response
-        final_response.merge_fetch_observation_response(
-            base_dc_response, self.base_dc.dc_name, date_filter=request.date_filter
+        self._integrate_observation_response(
+            final_response,
+            base_dc_response,
+            self.base_dc.dc_name,
+            request.date_filter,
         )
 
         self.base_dc.add_place_metadata_to_obs(final_response)
         return final_response
+
+    @staticmethod
+    def _integrate_observation_response(
+        final_response: ObservationToolResponse,
+        api_response: ObservationApiResponse,
+        api_client_id: str,
+        date_filter: DateRange | None = None,
+        selected_facet_ids: list[str] | None = None,
+    ) -> None:
+        """Merges a single DC's API response into the final tool response."""
+        flattened_api_response = api_response.get_data_by_entity()
+        for variable_dcid, api_variable_data in flattened_api_response.items():
+            for place_dcid, api_place_data in api_variable_data.items():
+                # Get or initialize the place_data entry in final response
+                if place_dcid not in final_response.place_data:
+                    final_response.place_data[place_dcid] = PlaceData(
+                        place_dcid=place_dcid
+                    )
+                place_data = final_response.place_data[place_dcid]
+
+                first_obs = None
+                sources = []
+
+                for facet in api_place_data.orderedFacets:
+                    if selected_facet_ids and facet.facetId not in selected_facet_ids:
+                        continue
+
+                    facet_metadata = api_response.facets.get(facet.facetId)
+                    metadata = SourceMetadata(
+                        **facet_metadata.to_dict(),
+                        dc_client_id=api_client_id,
+                        earliest_date=facet.earliestDate,
+                        latest_date=facet.latestDate,
+                        total_observations=facet.obsCount,
+                    )
+                    sources.append(metadata)
+                    if not first_obs and (
+                        filtered_obs := filter_by_date(facet.observations, date_filter)
+                    ):
+                        first_obs = filtered_obs
+
+                # Append alternative sources to an existing variable series
+                if variable_dcid in place_data.variable_series:
+                    place_data.variable_series[
+                        variable_dcid
+                    ].alternative_sources.extend(sources)
+                # Otherwise create a new variable series with the first facet as the primary one.
+                elif first_obs and sources:
+                    place_data.variable_series[variable_dcid] = VariableSeries(
+                        variable_dcid=variable_dcid,
+                        source_metadata=sources[0],
+                        observations=first_obs,
+                        alternative_sources=sources[1:],
+                    )
 
 
 def create_clients(config: dict) -> MultiDCClient:

@@ -244,9 +244,13 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "pydantic" },
-    { name = "pytest" },
     { name = "requests" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "pytest" },
 ]
 
 [package.metadata]
@@ -255,10 +259,11 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "pydantic", specifier = ">=2.11.7" },
-    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.4.1" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
+provides-extras = ["test"]
 
 [[package]]
 name = "exceptiongroup"
