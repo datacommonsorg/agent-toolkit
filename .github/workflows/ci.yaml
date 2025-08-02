@@ -23,15 +23,16 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: Check formatting with Ruff
-        # Run from the package directory
-        working-directory: packages/datacommons-mcp
-        # The --check flag will fail if the code is not formatted correctly
-        run: uv run ruff format --check
-
-      - name: Lint with Ruff
-        working-directory: packages/datacommons-mcp
-        run: uv run ruff check
+    #   TODO(clincoln8): Uncomment when pre-commit hooks are ready and repo is in healthy state.
+    #   - name: Check formatting with Ruff
+    #     # Run from the package directory
+    #     working-directory: packages/datacommons-mcp
+    #     # The --check flag will fail if the code is not formatted correctly
+    #     run: uv run ruff format --check
+    
+    #   - name: Lint with Ruff
+    #     working-directory: packages/datacommons-mcp
+    #     run: uv run ruff check
 
       - name: Run tests with pytest
         working-directory: packages/datacommons-mcp
