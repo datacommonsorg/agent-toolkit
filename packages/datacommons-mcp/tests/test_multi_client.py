@@ -10,23 +10,25 @@ from datacommons_mcp.data_models.observations import (
 )
 
 
-class TestMultiDCClient:
-    @pytest.fixture
-    def mock_base_dc(self):
-        """Fixture for a mocked base DCClient."""
-        client = Mock(spec=DCClient)
-        client.fetch_obs = AsyncMock()
-        client.dc_name = "Data Commons"
-        return client
+@pytest.fixture
+def mock_base_dc():
+    """Fixture for a mocked base DCClient."""
+    client = Mock(spec=DCClient)
+    client.fetch_obs = AsyncMock()
+    client.dc_name = "Data Commons"
+    return client
 
-    @pytest.fixture
-    def mock_custom_dc(self):
-        """Fixture for a mocked custom DCClient."""
-        client = Mock(spec=DCClient)
-        client.fetch_obs = AsyncMock()
-        client.dc_name = "Custom DC"
-        return client
 
+@pytest.fixture
+def mock_custom_dc():
+    """Fixture for a mocked custom DCClient."""
+    client = Mock(spec=DCClient)
+    client.fetch_obs = AsyncMock()
+    client.dc_name = "Custom DC"
+    return client
+
+
+class TestMultiDCClientObservations:
     @pytest.fixture
     def mock_api_response(self):
         # Data Structure: {variable: {place: facet_data}}
