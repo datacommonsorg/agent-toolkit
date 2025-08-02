@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from datacommons_client.models.observation import Facet, Observation, OrderedFacet
 from datacommons_mcp.clients import DCClient, MultiDCClient
 from datacommons_mcp.data_models.observations import (
     DateRange,
