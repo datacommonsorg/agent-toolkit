@@ -11,7 +11,7 @@ dependencies = [
     "requests",
     "datacommons-client",
     "pydantic>=2.11.7",
-   
+    "pytest-asyncio>=1.1.0",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 
@@ -21,6 +21,7 @@ datacommons-mcp = "datacommons_mcp.cli:cli"
 [project.optional-dependencies]
 test = [
   "pytest>=8.4.1",
+  "pytest-asyncio>=1.1.0",
 ]
 
 [build-system]

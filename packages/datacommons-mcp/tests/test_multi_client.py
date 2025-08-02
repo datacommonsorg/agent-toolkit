@@ -10,7 +10,6 @@ from datacommons_mcp.data_models.observations import (
 )
 
 
-@pytest.mark.asyncio
 class TestMultiDCClient:
     @pytest.fixture
     def mock_base_dc(self):
@@ -73,6 +72,7 @@ class TestMultiDCClient:
         }
         return ObservationApiResponse.model_validate(raw_response_data)
 
+    @pytest.mark.asyncio
     async def test_fetch_obs_base_only(self, mock_base_dc, mock_api_response):
         """Tests that fetch_obs works correctly with only a base DC."""
         mock_base_dc.fetch_obs.return_value = mock_api_response
@@ -88,6 +88,7 @@ class TestMultiDCClient:
         assert var_series.source_metadata.importName == "source1"
         assert len(var_series.alternative_sources) == 1
 
+    @pytest.mark.asyncio
     async def test_fetch_obs_merges_custom_and_base(self, mock_base_dc, mock_custom_dc):
         """Tests that results from custom and base DCs are merged correctly."""
 
