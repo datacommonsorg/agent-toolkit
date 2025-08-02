@@ -20,12 +20,6 @@ cd packages/datacommons-mcp # navigate to package dir
 uv run fastmcp run datacommons_mcp/server.py:mcp -t (sse|stdio)
 ```
 
-### Run unit tests
-```bash
-cd packages/datacommons-mcp
-uv run --extra test pytest
-```
-
 ### Test with MCP Inspector
 
 > IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
@@ -57,6 +51,30 @@ The connection arguments should be prefilled with:
 * Transport Type = `STDIO`
 * Command = `uv`
 * Arguments = `run --with mcp mcp run datacommons_mcp/server.py`
+
+### Running + Debugging unit tests
+To run unit tests via command line:
+
+```bash
+cd packages/datacommons-mcp
+uv run --extra test pytest
+```
+
+To run and debug tests in VSCode:
+1. Select the Python Interpreter:
+  * Open the Command Palette (Cmd+Shift+P on macOS, Ctrl+Shift+P on Windows/Linux).
+  * Type "Python: Select Interpreter" and choose the one created by uv
+
+1. Configure the Test Runner:
+  * Open the Command Palette again.
+  * Type Python: Configure Tests and select pytest.
+    * When prompted, choose the `packages/datacommons-mcp/tests` directory.
+
+1.  Run and Debug from the Test Explorer:
+  * Open the Testing tab from the activity bar (it looks like a beaker).
+    * Click the "Refresh Tests" button if your tests haven't appeared.
+  * You can now run and debug tests! See [VSCode Testing documentation](https://code.visualstudio.com/docs/debugtest/testing#_run-and-debug-tests) for further instruction.
+
 
 ### DC client configuration
 
