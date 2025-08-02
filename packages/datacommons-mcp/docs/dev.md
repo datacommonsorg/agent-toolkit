@@ -69,18 +69,13 @@ uv venv
 # 2. Activate the virtual environment
 source .venv/bin/activate
 
-# 3. Navigate to the package directory
-cd packages/datacommons-mcp
-
-# 4. Install the package in editable mode with test dependencies
+# 3. Install the package in editable mode with test dependencies
 uv pip install -e .[test]
 ```
 
 Now your environment is ready for running tests.
 
 #### Run tests on the command line
-
-From the `packages/datacommons-mcp` directory:
 
 ```bash
 # If you followed the one-time setup and activated the venv:

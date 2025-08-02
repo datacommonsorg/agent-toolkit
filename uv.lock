@@ -216,11 +216,20 @@ dependencies = [
     { name = "ruff" },
 ]
 
+[package.optional-dependencies]
+test = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "datacommons-mcp", editable = "packages/datacommons-mcp" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.4.1" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.1.0" },
     { name = "ruff", specifier = ">=0.12.5" },
 ]
+provides-extras = ["test"]
 
 [[package]]
 name = "datacommons-client"
@@ -244,15 +253,8 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "pydantic" },
-    { name = "pytest-asyncio" },
     { name = "requests" },
     { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-test = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
 ]
 
 [package.metadata]
@@ -261,13 +263,9 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "pydantic", specifier = ">=2.11.7" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.4.1" },
-    { name = "pytest-asyncio", specifier = ">=1.1.0" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.1.0" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
-provides-extras = ["test"]
 
 [[package]]
 name = "exceptiongroup"

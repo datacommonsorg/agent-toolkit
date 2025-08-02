@@ -35,6 +35,4 @@ jobs:
     #     run: uv run ruff check
 
       - name: Run tests with pytest
-        working-directory: packages/datacommons-mcp
-        # This command runs the tests using the dependencies defined in pyproject.toml
         run: uv run --extra test pytest
