@@ -68,7 +68,7 @@ To run and debug tests in VSCode:
 1. Configure the Test Runner:
   * Open the Command Palette again.
   * Type Python: Configure Tests and select pytest.
-    * When prompted, choose the `packages/datacommons-mcp/tests` directory.
+    * When prompted, choose the `packages` directory.
 
 1.  Run and Debug from the Test Explorer:
   * Open the Testing tab from the activity bar (it looks like a beaker).
