@@ -50,5 +50,3 @@ CUSTOM_DC_CONFIG = {
         "idx": "user_all_minilm_mem",
     },
 }
-
-

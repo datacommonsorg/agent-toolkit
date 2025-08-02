@@ -7,14 +7,17 @@ import click
 def cli() -> None:
     """DataCommons MCP CLI - Model Context Protocol server for Data Commons."""
 
+
 @cli.command()
 def hello() -> None:
     """Print a hello message."""
     click.echo("Hello from datacommons-mcp CLI!")
 
+
 @cli.group()
 def serve() -> None:
     """Serve the MCP server in different modes."""
+
 
 @serve.command()
 @click.option("--host", default="localhost", help="Host to bind.")
@@ -36,6 +39,7 @@ def http(host: str, port: int, reload: bool) -> None:
         click.echo(f"Error importing server: {e}", err=True)
         sys.exit(1)
 
+
 @serve.command()
 def stdio() -> None:
     """Start the MCP server in stdio mode."""
@@ -51,7 +55,7 @@ def stdio() -> None:
         click.echo(f"Error importing server: {e}", err=True)
         sys.exit(1)
 
+
 def main() -> None:
     """Main entry point for the CLI."""
     cli()
-

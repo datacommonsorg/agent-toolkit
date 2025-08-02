@@ -1,0 +1,39 @@
+name: Run CI Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  ci-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Check formatting with Ruff
+        # Run from the package directory
+        working-directory: packages/datacommons-mcp
+        # The --check flag will fail if the code is not formatted correctly
+        run: uv run ruff format --check
+
+      - name: Lint with Ruff
+        working-directory: packages/datacommons-mcp
+        run: uv run ruff check
+
+      - name: Run tests with pytest
+        working-directory: packages/datacommons-mcp
+        # This command runs the tests using the dependencies defined in pyproject.toml
+        run: uv run --extra test pytest

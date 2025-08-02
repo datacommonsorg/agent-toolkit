@@ -23,27 +23,26 @@ from pydantic import BaseModel, Field
 
 
 class BaseChart(BaseModel):
-  """Contains fields required by ALL chart types."""
+    """Contains fields required by ALL chart types."""
 
-  header: str = Field(description="Title of the chart to be displayed.")
+    header: str = Field(description="Title of the chart to be displayed.")
 
 
 class SingleVariableChart(BaseChart):
-  """Provides a single required 'variable' field."""
+    """Provides a single required 'variable' field."""
 
-  variable_dcid: str = Field(
-      description=
-      "DCID of a single statistical variable to display in the chart.")
+    variable_dcid: str = Field(
+        description="DCID of a single statistical variable to display in the chart."
+    )
 
 
 class MultiVariableChart(BaseChart):
-  """Provides a list of one or more 'variables'."""
+    """Provides a list of one or more 'variables'."""
 
-  variable_dcids: list[str] = Field(
-      description=
-      "List of DCIDs of statistical variables to display in the chart.",
-      min_length=1,
-  )
+    variable_dcids: list[str] = Field(
+        description="List of DCIDs of statistical variables to display in the chart.",
+        min_length=1,
+    )
 
 
 # ==============================================================================
@@ -53,39 +52,40 @@ class MultiVariableChart(BaseChart):
 
 
 class SinglePlaceLocation(BaseModel):
-  """Defines a location using a specific list of places."""
+    """Defines a location using a specific list of places."""
 
-  location_type: Literal["single_place"] = "single_place"
-  place_dcid: str = Field(
-      description="DCID of a single place to display statistical data for.")
+    location_type: Literal["single_place"] = "single_place"
+    place_dcid: str = Field(
+        description="DCID of a single place to display statistical data for."
+    )
 
 
 class MultiPlaceLocation(BaseModel):
-  """Defines a location using a specific list of places."""
+    """Defines a location using a specific list of places."""
 
-  location_type: Literal["multi_place"] = "multi_place"
-  place_dcids: list[str] = Field(
-      description="List of place DCIDs to display statistical data for.",
-      min_length=1)
+    location_type: Literal["multi_place"] = "multi_place"
+    place_dcids: list[str] = Field(
+        description="List of place DCIDs to display statistical data for.", min_length=1
+    )
 
 
 class HierarchyLocation(BaseModel):
-  """Defines a location using a parent/child hierarchy."""
+    """Defines a location using a parent/child hierarchy."""
 
-  location_type: Literal["hierarchy"] = "hierarchy"
-  parent_place_dcid: str = Field(
-      description=
-      "DCID of a single place whose descendants should have statistical data displayed.",
-  )
-  child_place_type: str = Field(
-      description=
-      "DCID of a valid child place type such as AdministrativeArea1 or County.")
+    location_type: Literal["hierarchy"] = "hierarchy"
+    parent_place_dcid: str = Field(
+        description="DCID of a single place whose descendants should have statistical data displayed.",
+    )
+    child_place_type: str = Field(
+        description="DCID of a valid child place type such as AdministrativeArea1 or County."
+    )
 
 
 # A discriminated union for charts that can accept either Places or Hierarchy
 # location type (like BarChart).
-LocationChoice = Annotated[(MultiPlaceLocation | HierarchyLocation),
-                           Field(discriminator="location_type")]
+LocationChoice = Annotated[
+    (MultiPlaceLocation | HierarchyLocation), Field(discriminator="location_type")
+]
 
 # ==============================================================================
 # 3. CONCRETE MODELS
@@ -99,52 +99,52 @@ LocationChoice = Annotated[(MultiPlaceLocation | HierarchyLocation),
 
 
 class BarChart(MultiVariableChart):
-  type: Literal["bar"] = "bar"
-  location: LocationChoice  # Either list or hierarchy
+    type: Literal["bar"] = "bar"
+    location: LocationChoice  # Either list or hierarchy
 
 
 class LineChart(MultiVariableChart):
-  type: Literal["line"] = "line"
-  location: LocationChoice  # Either list or hierarchy
+    type: Literal["line"] = "line"
+    location: LocationChoice  # Either list or hierarchy
 
 
 class RankingChart(MultiVariableChart):
-  type: Literal["ranking"] = "ranking"
-  location: HierarchyLocation
+    type: Literal["ranking"] = "ranking"
+    location: HierarchyLocation
 
 
 class ScatterChart(MultiVariableChart):
-  """A Scatter Chart requires exactly two variables!"""
+    """A Scatter Chart requires exactly two variables!"""
 
-  type: Literal["scatter"] = "scatter"
-  location: HierarchyLocation
+    type: Literal["scatter"] = "scatter"
+    location: HierarchyLocation
 
-  # OVERRIDE: A scatter plot requires exactly two variable DCIDs, one for each axis (x,y).
-  variable_dcids: list[str] = Field(
-      description="The two variable DCIDs to plot on x and y axes.",
-      min_length=2,
-      max_length=2,
-  )
+    # OVERRIDE: A scatter plot requires exactly two variable DCIDs, one for each axis (x,y).
+    variable_dcids: list[str] = Field(
+        description="The two variable DCIDs to plot on x and y axes.",
+        min_length=2,
+        max_length=2,
+    )
 
 
 class PieChart(MultiVariableChart):
-  type: Literal["pie"] = "pie"
-  location: SinglePlaceLocation
+    type: Literal["pie"] = "pie"
+    location: SinglePlaceLocation
 
 
 class MapChart(SingleVariableChart):
-  type: Literal["map"] = "map"
-  location: HierarchyLocation
+    type: Literal["map"] = "map"
+    location: HierarchyLocation
 
 
 class GaugeChart(SingleVariableChart):
-  type: Literal["gauge"] = "gauge"
-  location: SinglePlaceLocation
+    type: Literal["gauge"] = "gauge"
+    location: SinglePlaceLocation
 
 
 class HighlightChart(SingleVariableChart):
-  type: Literal["highlight"] = "highlight"
-  location: SinglePlaceLocation
+    type: Literal["highlight"] = "highlight"
+    location: SinglePlaceLocation
 
 
 # ==============================================================================
@@ -152,8 +152,16 @@ class HighlightChart(SingleVariableChart):
 # ==============================================================================
 
 # When adding a new chart type, add class name to this list.
-DataCommonsChartUnion = (BarChart | GaugeChart | HighlightChart | LineChart |
-                         MapChart | PieChart | RankingChart | ScatterChart)
+DataCommonsChartUnion = (
+    BarChart
+    | GaugeChart
+    | HighlightChart
+    | LineChart
+    | MapChart
+    | PieChart
+    | RankingChart
+    | ScatterChart
+)
 
 DataCommonsChartConfig = Annotated[
     DataCommonsChartUnion,

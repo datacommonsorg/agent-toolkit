@@ -232,14 +232,16 @@ def _fetch_node_data(
             name_nodes = response.extract_connected_nodes(dcid, "name")
             name = name_nodes[0].value if name_nodes else ""
             # Extract relevantVariable from the arcs structure
-            relevant_var_nodes = response.extract_connected_nodes(dcid, "relevantVariable")
+            relevant_var_nodes = response.extract_connected_nodes(
+                dcid, "relevantVariable"
+            )
             relevant_variables = []
             relevant_var_names = {}
 
             for var_node in relevant_var_nodes:
                 if var_dcid := var_node.dcid:
                     relevant_variables.append(var_dcid)
-                    if var_name :=  var_node.name:
+                    if var_name := var_node.name:
                         relevant_var_names[var_dcid] = var_name
 
             nodes_by_dcid[dcid] = TopicNodeData(
@@ -266,33 +268,33 @@ def _collect_descendant_variables(
 ) -> Set[str]:
     """
     Recursively collect all descendant variables for a given topic.
-    
+
     Args:
         topic_dcid: The topic DCID to collect descendants for
         topics_by_dcid: Dictionary of all topics
         visited: Set of already visited topics to prevent cycles
-        
+
     Returns:
         Set of all descendant variable DCIDs
     """
     if topic_dcid in visited:
         return set()
-    
+
     visited.add(topic_dcid)
     topic_data = topics_by_dcid.get(topic_dcid)
     if not topic_data:
         return set()
-    
+
     # Start with direct variables
     descendant_vars = set(topic_data.variables)
-    
+
     # Add variables from all member topics
     for member_topic in topic_data.member_topics:
         member_vars = _collect_descendant_variables(
             member_topic, topics_by_dcid, visited
         )
         descendant_vars.update(member_vars)
-    
+
     return descendant_vars
 
 
