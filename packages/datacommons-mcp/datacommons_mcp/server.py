@@ -24,16 +24,16 @@ from pydantic import ValidationError
 
 import datacommons_mcp.config as config
 from datacommons_mcp.clients import create_clients
-from datacommons_mcp.data_models.observations import (
-    ObservationToolResponse,
-)
-from datacommons_mcp.datacommons_chart_types import (
+from datacommons_mcp.data_models.charts import (
     CHART_CONFIG_MAP,
     DataCommonsChartConfig,
     HierarchyLocation,
     MultiPlaceLocation,
     SinglePlaceLocation,
     SingleVariableChart,
+)
+from datacommons_mcp.data_models.observations import (
+    ObservationToolResponse,
 )
 from datacommons_mcp.services import get_observation_data
 
