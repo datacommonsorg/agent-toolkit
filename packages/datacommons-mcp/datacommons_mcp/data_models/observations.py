@@ -41,6 +41,16 @@ class DateRange(BaseModel):
         Converts a partial date string into a full (start, end) date tuple.
         Caches results to avoid re-calculating for the same input string.
 
+        Examples:
+            >>> DateRange.parse_interval("2022")
+            ('2022-01-01', '2022-12-31')
+
+            >>> DateRange.parse_interval("2023-05")
+            ('2023-05-01', '2023-05-31')
+
+            >>> DateRange.parse_interval("2024-01-15")
+            ('2024-01-15', '2024-01-15')
+
         Raises:
             InvalidDateFormatError: If the date string format is invalid.
         """
