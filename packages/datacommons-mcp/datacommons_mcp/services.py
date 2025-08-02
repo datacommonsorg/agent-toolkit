@@ -75,7 +75,6 @@ async def _build_observation_request(
         task_results = await asyncio.gather(*task_coroutines)
         # Map results back to their keys
         results = dict(zip(resolve_tasks.keys(), task_results, strict=True))
-        print(results)
         # Parse resolved stat vars (if any)
         if "sv_search" in resolve_tasks:
             variable_dcid = (

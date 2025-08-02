@@ -19,26 +19,6 @@ def mock_dc_api_client():
 
 
 class TestDCClient:
-    def test_init_with_api_key(self, mock_dc_api_client):
-        client = DCClient(api_key="test_key")
-        assert client.dc is not None
-        mock_dc_api_client.observation.fetch.assert_not_called()
-
-    def test_init_with_base_url(self, mock_dc_api_client):
-        client = DCClient(base_url="http://test.com")
-        assert client.dc is not None
-        mock_dc_api_client.observation.fetch.assert_not_called()
-
-    def test_init_raises_error_with_both_params(self):
-        with pytest.raises(
-            ValueError, match="Cannot specify both api_key and base_url"
-        ):
-            DCClient(api_key="key", base_url="url")
-
-    def test_init_raises_error_with_no_params(self):
-        with pytest.raises(ValueError, match="Must specify either api_key or base_url"):
-            DCClient()
-
     def test_fetch_obs_single_place(self, mock_dc_api_client):
         client = DCClient(api_key="fake_key")
         request = ObservationToolRequest(

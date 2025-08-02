@@ -333,18 +333,18 @@ class MultiDCClient:
         self,
         request: ObservationToolRequest,
     ) -> ObservationToolResponse:
-        clients = [self.base_dc, self.custom_dc] if self.custom_dc else [self.base_dc]
-
-        client_results = await asyncio.gather(
-            *[dc.fetch_obs(request) for dc in clients]
-        )
+        # Create a dictionary of tasks to run, keyed by their client ID.
+        tasks = {dc_id: dc.fetch_obs(request) for dc_id, dc in self.dc_map.items()}
+        # Run all tasks concurrently.
+        results = await asyncio.gather(*tasks.values())
+        # Map the results back to their client IDs for explicit access.
+        client_results = dict(zip(tasks.keys(), results, strict=True))
 
         final_response = ObservationToolResponse()
 
-        base_dc_response = client_results[0]
+        base_dc_response = client_results[BASE_DC_ID]
         # First populate data that is unique to custom dc
-        if self.custom_dc:
-            custom_dc_response = client_results[1]
+        if self.custom_dc and (custom_dc_response := client_results.get(CUSTOM_DC_ID)):
             self._integrate_observation_response(
                 final_response,
                 custom_dc_response,
@@ -396,6 +396,7 @@ class MultiDCClient:
                     facet_metadata = api_response.facets.get(facet.facetId)
                     metadata = SourceMetadata(
                         **facet_metadata.to_dict(),
+                        facet_id=facet.facetId,
                         dc_client_id=api_client_id,
                         earliest_date=facet.earliestDate,
                         latest_date=facet.latestDate,

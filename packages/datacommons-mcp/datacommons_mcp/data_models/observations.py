@@ -114,6 +114,7 @@ class ObservationToolRequest(BaseModel):
 
 
 class SourceMetadata(Facet):
+    facet_id: str
     dc_client_id: str
     earliest_date: str
     latest_date: str
@@ -138,4 +139,6 @@ class ObservationApiResponse(ObservationResponse):
 
 
 class ObservationToolResponse(BaseModel):
-    place_data: dict[str, PlaceData] = Field(default_factory=dict)
+    place_data: dict[str, PlaceData] = Field(
+        default_factory=dict, description="PlaceData objects keyed by their dcid."
+    )

@@ -32,40 +32,47 @@ class TestMultiDCClient:
     @pytest.fixture
     def mock_api_response(self):
         # Data Structure: {variable: {place: facet_data}}
-        data = {
-            "var1": {
-                "place1": Mock(
-                    orderedFacets=[
-                        OrderedFacet(
-                            facetId="f1",
-                            earliestDate="2022",
-                            latestDate="2023",
-                            obsCount=2,
-                            observations=[
-                                Observation(date="2022", value=1),
-                                Observation(date="2023", value=2),
-                            ],
-                        ),
-                        OrderedFacet(
-                            facetId="f2",
-                            earliestDate="2020",
-                            latestDate="2021",
-                            obsCount=3,
-                            observations=[
-                                Observation(date="2020", value=3),
-                                Observation(date="2020", value=3),
-                                Observation(date="2021", value=4),
-                            ],
-                        ),
-                    ]
-                )
-            }
+        # This fixture creates a raw dictionary that mimics the JSON response
+        # from the Data Commons API. The ObservationApiResponse class is
+        # designed to parse this dictionary.
+        raw_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "place1": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "f1",
+                                    "earliestDate": "2022",
+                                    "latestDate": "2023",
+                                    "obsCount": 2,
+                                    "observations": [
+                                        {"date": "2022", "value": 1},
+                                        {"date": "2023", "value": 2},
+                                    ],
+                                },
+                                {
+                                    "facetId": "f2",
+                                    "earliestDate": "2020",
+                                    "latestDate": "2021",
+                                    "obsCount": 3,
+                                    "observations": [
+                                        {"date": "2020", "value": 3},
+                                        {"date": "2020", "value": 3},
+                                        {"date": "2021", "value": 4},
+                                    ],
+                                },
+                            ]
+                        }
+                    }
+                }
+            },
+            "facets": {
+                "f1": {"importName": "source1"},
+                "f2": {"importName": "source2"},
+            },
         }
-        facets = {
-            "f1": Facet(import_name="source1"),
-            "f2": Facet(import_name="source2"),
-        }
-        return ObservationApiResponse(byVariable=data, facets=facets)
+        return ObservationApiResponse.model_validate(raw_response_data)
 
     async def test_fetch_obs_base_only(self, mock_base_dc, mock_api_response):
         """Tests that fetch_obs works correctly with only a base DC."""
@@ -85,30 +92,38 @@ class TestMultiDCClient:
     async def test_fetch_obs_merges_custom_and_base(self, mock_base_dc, mock_custom_dc):
         """Tests that results from custom and base DCs are merged correctly."""
 
-        custom_data = {
-            "place1": Mock(
-                orderedFacets=[
-                    OrderedFacet(
-                        "f_custom",
-                        "2025",
-                        "2025",
-                        1,
-                        [Observation(date="2025", value=100)],
-                    )
-                ]
-            )
+        # Custom DC has a unique facet 'f_custom'
+        custom_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "place1": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "f_custom",
+                                    "earliestDate": "2025",
+                                    "latestDate": "2025",
+                                    "obsCount": 1,
+                                    "observations": [{"date": "2025", "value": 100}],
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "facets": {"f_custom": {"import_name": "custom_source"}},
         }
-
-        custom_facets = {"f_custom": Facet(importName="custom_source")}
-        mock_custom_dc.fetch_obs.return_value = ObservationApiResponse(
-            custom_data, custom_facets
+        mock_custom_dc.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            custom_response_data
         )
 
         # Base DC has a different facet 'f_base' that doesn't overlap with custom
-        base_data = {"var1": {"place1": Mock(orderedFacets=[])}}
-        base_facets = {}
-        mock_base_dc.fetch_obs.return_value = ObservationApiResponse(
-            base_data, base_facets
+        base_response_data = {
+            "byVariable": {"var1": {"byEntity": {"place1": {"orderedFacets": []}}}},
+            "facets": {},
+        }
+        mock_base_dc.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            base_response_data
         )
 
         multi_client = MultiDCClient(base_dc=mock_base_dc, custom_dc=mock_custom_dc)
