@@ -142,6 +142,8 @@ class PlaceData(BaseModel):
     place_dcid: str = Field(default_factory=str)
     place_name: str = Field(default_factory=str)
     variable_series: dict[str, VariableSeries] = Field(default_factory=dict)
+    contained_in: list["PlaceData"] = Field(default_factory=list)
+    place_types: list[str] = Field(default_factory=list)
 
 
 class ObservationApiResponse(ObservationResponse):

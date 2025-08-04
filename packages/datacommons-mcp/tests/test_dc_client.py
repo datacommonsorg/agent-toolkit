@@ -54,7 +54,8 @@ def mocked_datacommons_client():
 class TestDCClientObservations:
     """Tests for the observation-fetching methods of DCClient."""
 
-    def test_fetch_obs_single_place(self, mocked_datacommons_client):
+    @pytest.mark.asyncio
+    async def test_fetch_obs_single_place(self, mocked_datacommons_client):
         """
         Verifies that fetch_obs calls the correct underlying method for a single place query.
         """
@@ -68,7 +69,7 @@ class TestDCClientObservations:
         )
 
         # Act: Call the method on our wrapper client.
-        client_under_test.fetch_obs(request)
+        await client_under_test.fetch_obs(request)
 
         # Assert: Verify that our wrapper correctly called the `fetch` method
         # on the underlying (mocked) datacommons_client instance.
@@ -79,7 +80,8 @@ class TestDCClientObservations:
             filter_facet_ids=None,
         )
 
-    def test_fetch_obs_child_places(self, mocked_datacommons_client):
+    @pytest.mark.asyncio
+    async def test_fetch_obs_child_places(self, mocked_datacommons_client):
         """
         Verifies that fetch_obs calls the correct underlying method for a child place query.
         """
@@ -93,7 +95,7 @@ class TestDCClientObservations:
         )
 
         # Act: Call the method on our wrapper client.
-        client_under_test.fetch_obs(request)
+        await client_under_test.fetch_obs(request)
 
         # Assert: Verify that our wrapper correctly called the `fetch_observations_by_entity_type`
         # method on the underlying (mocked) datacommons_client instance.

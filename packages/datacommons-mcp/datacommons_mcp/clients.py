@@ -76,7 +76,9 @@ class DCClient:
         else:
             self.dc = DataCommonsClient(url=base_url)
 
-    def fetch_obs(self, request: ObservationToolRequest) -> ObservationApiResponse:
+    async def fetch_obs(
+        self, request: ObservationToolRequest
+    ) -> ObservationApiResponse:
         if request.child_place_type:
             return self.dc.observation.fetch_observations_by_entity_type(
                 variable_dcids=request.variable_dcid,
@@ -105,22 +107,30 @@ class DCClient:
             for dcid in response.get_properties()
         }
 
-    def fetch_place_ancestors(self, dcids: list[str]) -> dict:
+    def fetch_place_ancestors(self, dcids: list[str]) -> dict[str, list[PlaceData]]:
         response = self.dc.node.fetch_place_ancestors(dcids)
-        dcid_to_ancestors = {}
+        place_to_ancestors = {}
         for child_place, ancestors in response.items():
-            found_ancestors = dcid_to_ancestors.setdefault(child_place, set())
-            for ancestor in ancestors:
-                found_ancestors.add(ancestor.get("name", ""))
-                if "Country" in ancestor.get("types"):
-                    break
-        return dcid_to_ancestors
+            parsed_ancestors = [
+                PlaceData(
+                    name=ancestor.get("name", ""),
+                    place_dcid=ancestor.get("dcid", ""),
+                    place_types=ancestor.get("types", []),
+                )
+                for ancestor in ancestors
+            ]
+            place_to_ancestors[child_place] = parsed_ancestors
+        return place_to_ancestors
 
     def add_place_metadata_to_obs(self, obs_response: ObservationToolResponse) -> None:
         all_place_dcids = list(obs_response.place_data.keys())
         names = self.fetch_entity_names(all_place_dcids)
+        ancestors = self.fetch_place_ancestors(all_place_dcids)
         for place_dcid, name in names.items():
             obs_response.place_data[place_dcid].place_name = name
+            obs_response.place_data[place_dcid].contained_in = ancestors.get(
+                place_dcid, []
+            )
 
     async def fetch_topic_variables(
         self, place_dcid: str, topic_query: str = "statistics"
@@ -387,6 +397,7 @@ class MultiDCClient:
                 place_data = final_response.place_data[place_dcid]
 
                 first_obs = None
+                primary_source = None
                 sources = []
 
                 for facet in api_place_data.orderedFacets:
@@ -403,10 +414,14 @@ class MultiDCClient:
                         total_observations=facet.obsCount,
                     )
                     sources.append(metadata)
+
+                    # If we haven't found our primary observations yet, try to get them from this facet.
                     if not first_obs and (
                         filtered_obs := filter_by_date(facet.observations, date_filter)
                     ):
+                        # If date-filtered observations exist, store them and the corresponding source.
                         first_obs = filtered_obs
+                        primary_source = metadata
 
                 # Append alternative sources to an existing variable series
                 if variable_dcid in place_data.variable_series:
@@ -414,12 +429,17 @@ class MultiDCClient:
                         variable_dcid
                     ].alternative_sources.extend(sources)
                 # Otherwise create a new variable series with the first facet as the primary one.
-                elif first_obs and sources:
+                elif primary_source:
+                    # Use the captured primary source and filter it out from the list of
+                    # all sources to get the list of alternatives.
+                    alternative_sources = [
+                        s for s in sources if s.facet_id != primary_source.facet_id
+                    ]
                     place_data.variable_series[variable_dcid] = VariableSeries(
                         variable_dcid=variable_dcid,
-                        source_metadata=sources[0],
+                        source_metadata=primary_source,
                         observations=first_obs,
-                        alternative_sources=sources[1:],
+                        alternative_sources=alternative_sources,
                     )
 
 
