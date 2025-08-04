@@ -154,19 +154,18 @@ class DCClient:
             # TODO(keyurva): This is a hack to filter out internal variables that look like IDs.
             # We should find a better way to do this or fix the schema so they have names.
             # TODO(keyurva): Since we're only supporting topic variables now, should we only keep those that are in the topic store?
-            all_variables = [
+            all_variables = set(
                 var
                 for var in unfiltered_variables
                 if self.topic_store.has_variable(var)
                 or not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
-            ]
+            )
             # Store the full filtered list in the cache
             self.variable_cache.put(place_dcid, all_variables)
 
         topic_svs = await self._get_topic_svs(topic_query)
-        all_vars_set = set(all_variables)
         # Get an intersection of the topic SVs and the place SVs while maintaining order.
-        topic_svs = [sv for sv in topic_svs if sv in all_vars_set]
+        topic_svs = [sv for sv in topic_svs if sv in all_variables]
         return {"topic_variable_ids": topic_svs}
 
     async def search_places(self, names: list[str]) -> dict:
@@ -280,6 +279,204 @@ class DCClient:
             place_dcids=parent_place_dcid, children_type=child_place_type, as_dict=True
         )
         return len(response.get(parent_place_dcid, [])) > 0
+
+    async def fetch_topics_and_variables(
+        self, query: str, place_dcid: str = None, max_results: int = 10
+    ) -> dict:
+        """
+        Search for topics and variables matching a query, optionally filtered by place existence.
+        
+        Args:
+            query: Search query string
+            place_dcid: Optional place DCID to filter by existence
+            max_results: Maximum number of results to return (default 10)
+            
+        Returns:
+            Dictionary with topics, variables, and lookups
+        """
+        # Search for entities (both topics and variables)
+        search_results = await self._search_entities(query)
+        
+        # Separate topics and variables
+        topics = search_results.get("topics", [])
+        variables = search_results.get("variables", [])
+        
+        # Apply existence filtering if place is specified
+        if place_dcid:
+            # Ensure place variables are cached
+            self._ensure_place_variables_cached(place_dcid)
+            
+            # Filter topics and variables by existence
+            topics = self._filter_topics_by_existence(topics, place_dcid)
+            variables = self._filter_variables_by_existence(variables, place_dcid)
+        
+        # Limit results
+        topics = topics[:max_results]
+        variables = variables[:max_results]
+        
+        # Get member information for topics
+        topic_members = self._get_topics_members_with_existence(
+            topics, place_dcid
+        )
+        
+        # Build response structure
+        response = {
+            "topics": [
+                {
+                    "dcid": topic,
+                    "member_topics": topic_members.get(topic, {}).get("member_topics", []),
+                    "member_variables": topic_members.get(topic, {}).get("member_variables", []),
+                }
+                for topic in topics
+            ],
+            "variables": variables,
+            "lookups": self._build_lookups(topics + variables),
+        }
+        
+        return response
+
+    async def _search_entities(self, query: str) -> dict:
+        """Search for topics and variables using search_svs."""
+        # Search with topics included
+        search_results = await self.search_svs([query], skip_topics=False)
+        results = search_results.get(query, [])
+        
+        topics = []
+        variables = []
+        
+        for result in results:
+            sv_dcid = result.get("SV", "")
+            if not sv_dcid:
+                continue
+            
+            # Check if it's a topic (contains "/topic/")
+            if "/topic/" in sv_dcid:
+                topics.append(sv_dcid)
+            else:
+                variables.append(sv_dcid)
+        
+        return {"topics": topics, "variables": variables}
+
+    def _ensure_place_variables_cached(self, place_dcid: str) -> None:
+        """Ensure variables for a place are cached."""
+        if self.variable_cache.get(place_dcid) is None:
+            # Fetch and cache variables for the place
+            response = self.dc.observation.fetch_available_statistical_variables(
+                entity_dcids=[place_dcid]
+            )
+            unfiltered_variables = response.get(place_dcid, [])
+            # Filter out internal variables
+            all_variables = set(
+                var
+                for var in unfiltered_variables
+                if self.topic_store.has_variable(var)
+                or not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
+            )
+            self.variable_cache.put(place_dcid, all_variables)
+
+    def _filter_variables_by_existence(
+        self, variable_dcids: list[str], place_dcid: str
+    ) -> list[str]:
+        """Filter variables by existence for the given place."""
+        if not variable_dcids:
+            return []
+        
+        # Get cached variables for the place
+        place_variables = self.variable_cache.get(place_dcid)
+        if place_variables is None:
+            # This shouldn't happen if _ensure_place_variables_cached was called
+            return []
+        
+        # Check which variables exist for this place
+        return [var for var in variable_dcids if var in place_variables]
+
+    def _filter_topics_by_existence(
+        self, topic_dcids: list[str], place_dcid: str
+    ) -> list[str]:
+        """Filter topics by existence using recursive checks."""
+        if not topic_dcids:
+            return []
+        
+        existing_topics = []
+        for topic_dcid in topic_dcids:
+            if self._check_topic_exists_recursive(topic_dcid, place_dcid):
+                existing_topics.append(topic_dcid)
+        
+        return existing_topics
+
+    def _check_topic_exists_recursive(self, topic_dcid: str, place_dcid: str) -> bool:
+        """Recursively check if any variable in the topic hierarchy exists for the place."""
+        if not self.topic_store:
+            return False
+        
+        topic_data = self.topic_store.topics_by_dcid.get(topic_dcid)
+        if not topic_data:
+            return False
+        
+        # Get cached variables for the place
+        place_variables = self.variable_cache.get(place_dcid)
+        if place_variables is None:
+            return False
+        
+        # Check if any direct variable exists
+        if any(var in place_variables for var in topic_data.variables):
+            return True
+        
+        # Recursively check member topics
+        for member_topic in topic_data.member_topics:
+            if self._check_topic_exists_recursive(member_topic, place_dcid):
+                return True
+        
+        return False
+
+    def _get_topics_members_with_existence(
+        self, topic_dcids: list[str], place_dcid: str = None
+    ) -> dict:
+        """Get member topics and variables for topics, filtered by existence if place specified."""
+        if not topic_dcids or not self.topic_store:
+            return {}
+        
+        result = {}
+        
+        for topic_dcid in topic_dcids:
+            topic_data = self.topic_store.topics_by_dcid.get(topic_dcid)
+            if not topic_data:
+                continue
+            
+            member_topics = topic_data.member_topics
+            member_variables = topic_data.variables
+            
+            # Filter by existence if place is specified
+            if place_dcid:
+                # Filter member variables by existence
+                member_variables = self._filter_variables_by_existence(
+                    member_variables, place_dcid
+                )
+                
+                # Filter member topics by existence
+                member_topics = self._filter_topics_by_existence(
+                    member_topics, place_dcid
+                )
+            
+            result[topic_dcid] = {
+                "member_topics": member_topics,
+                "member_variables": member_variables,
+            }
+        
+        return result
+
+    def _build_lookups(self, entities: list[str]) -> dict:
+        """Build DCID-to-name mappings using TopicStore."""
+        if not self.topic_store:
+            return {}
+        
+        lookups = {}
+        for entity in entities:
+            name = self.topic_store.get_name(entity)
+            if name:
+                lookups[entity] = name
+        
+        return lookups
 
 
 class MultiDCClient:

@@ -118,7 +118,7 @@ class TopicStore:
 
     def get_name(self, dcid: str) -> str:
         """Get the human-readable name for a DCID."""
-        return self.dcid_to_name.get(dcid, dcid)
+        return self.dcid_to_name.get(dcid, "")
 
 
 def _flatten_variables_recursive(
@@ -358,6 +358,15 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
     all_variables = set(cache_data["all_variables"])
     dcid_to_name = cache_data["dcid_to_name"]
 
+    # Note: Cached data now only contains direct variables
+    # Descendant variables are computed on-demand during existence checks
+    print(f"Loaded topic store from cache with {len(topics_by_dcid)} topics")
+    for topic_dcid in topics_by_dcid:
+        topic_data = topics_by_dcid[topic_dcid]
+        print(
+            f"  Topic {topic_dcid}: {len(topic_data.variables)} direct variables, {len(topic_data.member_topics)} member topics"
+        )
+
     return TopicStore(
         topics_by_dcid=topics_by_dcid,
         all_variables=all_variables,
@@ -446,15 +455,14 @@ def create_topic_store(
                 member_topics=sub_topics,
             )
 
-    # After all topics have been fetched, populate each topic with all its descendant variables
+    # Note: We now only store direct variables in TopicVariables.variables
+    # Descendant variables are computed on-demand during existence checks
+    print(f"Created topic store with {len(topics_by_dcid)} topics")
     for topic_dcid in topics_by_dcid:
-        descendant_vars = _collect_descendant_variables(
-            topic_dcid, topics_by_dcid, set()
+        topic_data = topics_by_dcid[topic_dcid]
+        print(
+            f"  Topic {topic_dcid}: {len(topic_data.variables)} direct variables, {len(topic_data.member_topics)} member topics"
         )
-        # Update the topic's variables to include all descendants
-        topics_by_dcid[topic_dcid].variables = list(descendant_vars)
-        # Update the all_variables set
-        all_variables.update(descendant_vars)
 
     topic_store = TopicStore(
         topics_by_dcid=topics_by_dcid,

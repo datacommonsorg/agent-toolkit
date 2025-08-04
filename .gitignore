@@ -186,3 +186,5 @@ Thumbs.db
 # VSCode
 .vscode
 
+# Gemini
+gemini.md
