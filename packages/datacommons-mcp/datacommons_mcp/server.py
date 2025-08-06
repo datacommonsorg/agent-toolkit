@@ -16,7 +16,6 @@ Server module for the DC MCP server.
 """
 
 import asyncio
-from asyncore import loop
 import types
 from typing import Union, get_args, get_origin
 
@@ -35,6 +34,7 @@ from datacommons_mcp.datacommons_chart_types import (
     SingleVariableChart,
 )
 from datacommons_mcp.response_transformers import transform_obs_response
+import logging
 
 # Create clients based on config
 multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
@@ -67,10 +67,10 @@ async def get_observations(
         * **Rule 2 (Fallback)**: If you do not have a known `variable_dcid`, use `variable_desc` with a natural language description (e.g., "median household income").
 
     * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
-      * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., grants from one country to another), 
-      the `variable_dcid` often encodes one of the places (e.g., `CRS_BasicHealth-ODAGrants-BOL` refers to grants *to* Bolivia). 
+      * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., exports from one country to another), 
+      the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France). 
       In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship 
-      (e.g., the donor country, such as 'France' for grants *from* France). 
+      (e.g., the exporter country, such as 'USA' for exports *from* USA). 
       The `search_topics_and_variables` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
 
     * **Mode Selection**:
@@ -505,14 +505,14 @@ async def search_topics_and_variables(
 
     **How to Use This Tool:**
 
-    * **For place-constrained queries** like "basic health grants to Bolivia":
-        - Call with `query="basic health grants"` and `place1_name="Bolivia"`
+    * **For place-constrained queries** like "trade exports to France":
+        - Call with `query="trade exports"` and `place1_name="France"`
         - The tool will match indicators and perform existence checks for the specified place
 
-    * **For bilateral place-constrained queries** like "basic health grants from France to Bolivia":
-        - Call with `query="basic health grants"`, `place1_name="France"`, and `place2_name="Bolivia"`
+    * **For bilateral place-constrained queries** like "trade exports from USA to France":
+        - Call with `query="trade exports"`, `place1_name="USA"`, and `place2_name="France"`
         - The tool will match indicators and perform existence checks for both places
-        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "Bolivia") is where we have observations
+        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA") is where we have observations
         - Use `places_with_data` to identify which place has observations.
 
     * **For non-place-constrained queries** like "what basic health data do you have":
@@ -569,8 +569,8 @@ async def _search_topics_and_variables_impl(
     if place_names:
         try:
             place_dcids_map = await multi_dc_client.base_dc.search_places(place_names)
-        except Exception:
-            # If place resolution fails, continue with empty map (not an error)
+        except Exception as e:
+            logging.error(f"Error resolving place names: {e}")
             pass
     
     place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
