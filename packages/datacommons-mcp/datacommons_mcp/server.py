@@ -587,6 +587,8 @@ async def _search_topics_and_variables_impl(
         base_place_dcids.append(place2_dcid)
     
     search_tasks.append((query, base_place_dcids))
+
+    # The following queries are not needed for bilateral relationships where we append the place name(s) to the query.
     
     # Place1 query: search for query + place1_name, filter by place2_dcid
     if place1_dcid:
