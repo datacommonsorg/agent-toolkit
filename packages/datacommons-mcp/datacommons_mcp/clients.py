@@ -107,30 +107,12 @@ class DCClient:
             for dcid in response.get_properties()
         }
 
-    def fetch_place_ancestors(self, dcids: list[str]) -> dict[str, list[PlaceData]]:
-        response = self.dc.node.fetch_place_ancestors(dcids)
-        place_to_ancestors = {}
-        for child_place, ancestors in response.items():
-            parsed_ancestors = [
-                PlaceData(
-                    name=ancestor.get("name", ""),
-                    place_dcid=ancestor.get("dcid", ""),
-                    place_types=ancestor.get("types", []),
-                )
-                for ancestor in ancestors
-            ]
-            place_to_ancestors[child_place] = parsed_ancestors
-        return place_to_ancestors
-
     def add_place_metadata_to_obs(self, obs_response: ObservationToolResponse) -> None:
         all_place_dcids = list(obs_response.place_data.keys())
         names = self.fetch_entity_names(all_place_dcids)
-        ancestors = self.fetch_place_ancestors(all_place_dcids)
+
         for place_dcid, name in names.items():
             obs_response.place_data[place_dcid].place_name = name
-            obs_response.place_data[place_dcid].contained_in = ancestors.get(
-                place_dcid, []
-            )
 
     async def fetch_topic_variables(
         self, place_dcid: str, topic_query: str = "statistics"
