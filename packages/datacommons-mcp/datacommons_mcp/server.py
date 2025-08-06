@@ -200,7 +200,7 @@ async def validate_child_place_types(
     """
     Checks which of the child place types are valid for the parent place.
 
-    Use this tool to validate the child place types before calling get_observations_for_child_places.
+    Use this tool to validate the child place types before calling get_observations for those places.
 
     Example:
     - For counties in Kenya, you can check for both "County" and "AdministrativeArea1" to determine which is valid.
