@@ -102,7 +102,7 @@ async def _build_observation_request(
     )
 
 
-async def get_observation_data(
+async def get_observations(
     client: MultiDCClient,
     variable_dcid: str | None = None,
     variable_desc: str | None = None,

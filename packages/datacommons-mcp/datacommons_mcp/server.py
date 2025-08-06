@@ -35,7 +35,7 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.services import get_observation_data
+from datacommons_mcp.services import get_observations as get_observations_service
 
 # Create clients based on config
 multi_dc_client = create_clients(config.BASE_DC_CONFIG)
@@ -104,7 +104,7 @@ async def get_observations(
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
       3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
-    return await get_observation_data(
+    return await get_observations_service(
         client=multi_dc_client,
         variable_dcid=variable_dcid,
         variable_desc=variable_desc,
