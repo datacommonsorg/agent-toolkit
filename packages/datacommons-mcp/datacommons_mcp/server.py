@@ -50,7 +50,7 @@ async def get_observations(
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
-    facet_id_override: str | None = None,
+    source_id_override: str | None = None,
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -91,7 +91,7 @@ async def get_observations(
       place_dcid (str, optional): The DCID of the place.
       place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
-      facet_id_override (str, optional): An optional facet ID to force the use of a specific data source.
+      source_id_override (str, optional): An optional facet ID to force the use of a specific data source.
       period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
       start_date (str, optional): The start date for a custom range. **Used only with `end_date` and ignored if `period` is set.**
       end_date (str, optional): The end date for a custom range. **Used only with `start_date` and ignored if `period` is set.**
@@ -111,7 +111,7 @@ async def get_observations(
         place_dcid=place_dcid,
         place_name=place_name,
         child_place_type=child_place_type,
-        facet_id_override=facet_id_override,
+        source_id_override=source_id_override,
         period=period,
         start_date=start_date,
         end_date=end_date,

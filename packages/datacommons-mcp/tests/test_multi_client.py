@@ -101,7 +101,9 @@ class TestMultiDCClientObservations:
         mock_base_dc.fetch_obs.assert_awaited_once_with(request)
         assert "place1" in response.place_data
         var_series = response.place_data["place1"].variable_series["var1"]
-        assert var_series.source_metadata.importName == "source1"
+        assert (
+            response.source_metadata.get(var_series.source_id).importName == "source1"
+        )
         assert len(var_series.alternative_sources) == 1
 
     @pytest.mark.asyncio
@@ -161,10 +163,10 @@ class TestMultiDCClientObservations:
         assert "var1" in place_data.variable_series
 
         var_series = place_data.variable_series["var1"]
-        assert var_series.source_metadata.facet_id == "f1"
+        assert var_series.source_id == "f1"
         assert len(var_series.observations) == 2
         assert len(var_series.alternative_sources) == 1
-        assert var_series.alternative_sources[0].facet_id == "f2"
+        assert var_series.alternative_sources[0] == "f2"
 
     def test_integrate_observation_alternative_sources(self, mock_api_response):
         response = ObservationToolResponse()

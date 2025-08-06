@@ -117,14 +117,14 @@ class ObservationToolRequest(BaseModel):
     variable_dcid: str
     place_dcid: str
     child_place_type_dcid: str | None = None
-    facet_ids: list[str] | None = None
+    source_ids: list[str] | None = None
     observation_period: ObservationPeriod | str = None
     date_filter: DateRange | None = None
     child_place_type: str | None = None
 
 
 class SourceMetadata(Facet):
-    facet_id: str
+    source_id: str
     dc_client_id: str
     earliest_date: str | None = None
     latest_date: str | None = None
@@ -133,9 +133,9 @@ class SourceMetadata(Facet):
 
 class VariableSeries(BaseModel):
     variable_dcid: str
-    source_metadata: SourceMetadata
+    source_id: str
     observations: list[Observation]
-    alternative_sources: list[SourceMetadata] = Field(default_factory=list)
+    alternative_sources: list[str] = Field(default_factory=list)
 
 
 class PlaceData(BaseModel):
@@ -153,4 +153,8 @@ class ObservationApiResponse(ObservationResponse):
 class ObservationToolResponse(BaseModel):
     place_data: dict[str, PlaceData] = Field(
         default_factory=dict, description="PlaceData objects keyed by their dcid."
+    )
+    source_metadata: dict[str, SourceMetadata] = Field(
+        default_factory=dict,
+        description="SourceMetdata objectes keyed by their source_id.",
     )

@@ -85,13 +85,13 @@ class DCClient:
                 parent_entity=request.place_dcid,
                 entity_type=request.child_place_type,
                 date=request.observation_period,
-                filter_facet_ids=request.facet_ids,
+                filter_facet_ids=request.source_ids,
             )
         return self.dc.observation.fetch(
             variable_dcids=request.variable_dcid,
             entity_dcids=request.place_dcid,
             date=request.observation_period,
-            filter_facet_ids=request.facet_ids,
+            filter_facet_ids=request.source_ids,
         )
 
     def fetch_entity_names(self, dcids: list[str]) -> dict:
@@ -560,7 +560,7 @@ class MultiDCClient:
                 self.custom_dc.dc_name,
                 request.date_filter,
                 # Only merge facets that are unique to the custom DC
-                selected_facet_ids=list(
+                selected_source_ids=list(
                     custom_dc_response.facets.keys() - base_dc_response.facets.keys()
                 ),
             )
@@ -582,9 +582,17 @@ class MultiDCClient:
         api_response: ObservationApiResponse,
         api_client_id: str,
         date_filter: DateRange | None = None,
-        selected_facet_ids: list[str] | None = None,
+        selected_source_ids: list[str] | None = None,
     ) -> None:
-        """Merges a single DC's API response into the final tool response."""
+        """
+        Merges a single DC's API response into the final tool response.
+
+        This method populates two main parts of the final_response:
+        1.  `source_metadata`: A global dictionary of all unique data sources (facets)
+            encountered across all API calls, keyed by source_id.
+        2.  `place_data`: A dictionary keyed by place, containing variable series.
+            Each series has one primary source and a list of alternative source IDs.
+        """
         flattened_api_response = api_response.get_data_by_entity()
         for variable_dcid, api_variable_data in flattened_api_response.items():
             for place_dcid, api_place_data in api_variable_data.items():
@@ -596,23 +604,27 @@ class MultiDCClient:
                 place_data = final_response.place_data[place_dcid]
 
                 first_obs = None
-                primary_source = None
-                sources = []
+                primary_source_id = None
+                all_sources_for_place_var = []
 
                 for facet in api_place_data.orderedFacets:
-                    if selected_facet_ids and facet.facetId not in selected_facet_ids:
+                    if selected_source_ids and facet.facetId not in selected_source_ids:
                         continue
 
                     facet_metadata = api_response.facets.get(facet.facetId)
                     metadata = SourceMetadata(
                         **facet_metadata.to_dict(),
-                        facet_id=facet.facetId,
+                        source_id=facet.facetId,
                         dc_client_id=api_client_id,
                         earliest_date=facet.earliestDate,
                         latest_date=facet.latestDate,
                         total_observations=facet.obsCount,
                     )
-                    sources.append(metadata)
+                    all_sources_for_place_var.append(metadata)
+
+                    # Add the source metadata to the global dict if it's new.
+                    if metadata.source_id not in final_response.source_metadata:
+                        final_response.source_metadata[metadata.source_id] = metadata
 
                     # If we haven't found our primary observations yet, try to get them from this facet.
                     if not first_obs and (
@@ -620,25 +632,34 @@ class MultiDCClient:
                     ):
                         # If date-filtered observations exist, store them and the corresponding source.
                         first_obs = filtered_obs
-                        primary_source = metadata
+                        primary_source_id = metadata.source_id
+
+                # Get the facet IDs for all sources found for this place/variable.
+                all_source_ids_for_place_var = [
+                    s.source_id for s in all_sources_for_place_var
+                ]
 
                 # Append alternative sources to an existing variable series
                 if variable_dcid in place_data.variable_series:
+                    # Add all new source IDs as alternatives.
+                    # The primary source for the series remains unchanged.
                     place_data.variable_series[
                         variable_dcid
-                    ].alternative_sources.extend(sources)
+                    ].alternative_sources.extend(all_source_ids_for_place_var)
                 # Otherwise create a new variable series with the first facet as the primary one.
-                elif primary_source:
+                elif primary_source_id:
                     # Use the captured primary source and filter it out from the list of
                     # all sources to get the list of alternatives.
-                    alternative_sources = [
-                        s for s in sources if s.facet_id != primary_source.facet_id
+                    alternative_source_ids = [
+                        sid
+                        for sid in all_source_ids_for_place_var
+                        if sid != primary_source_id
                     ]
                     place_data.variable_series[variable_dcid] = VariableSeries(
                         variable_dcid=variable_dcid,
-                        source_metadata=primary_source,
+                        source_id=primary_source_id,
                         observations=first_obs,
-                        alternative_sources=alternative_sources,
+                        alternative_sources=alternative_source_ids,
                     )
 
 
