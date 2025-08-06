@@ -31,6 +31,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationToolRequest,
     ObservationToolResponse,
     PlaceData,
+    Source,
     SourceMetadata,
     VariableSeries,
 )
@@ -570,10 +571,12 @@ class MultiDCClient:
         Merges a single DC's API response into the final tool response.
 
         This method populates two main parts of the final_response:
-        1.  `source_metadata`: A global dictionary of all unique data sources (facets)
-            encountered across all API calls, keyed by source_id.
+        1.  `source_info`: A global dictionary of all unique data sources (facets)
+            encountered across all API calls, keyed by source_id. This contains
+            static info like import name.
         2.  `place_data`: A dictionary keyed by place, containing variable series.
-            Each series has one primary source and a list of alternative source IDs.
+            Each series has its own `source_metadata` (with dynamic info like
+            observation dates for this query) and a list of alternative sources.
         """
         flattened_api_response = api_response.get_data_by_entity()
         for variable_dcid, api_variable_data in flattened_api_response.items():
@@ -585,63 +588,103 @@ class MultiDCClient:
                     )
                 place_data = final_response.place_data[place_dcid]
 
-                first_obs = None
-                primary_source_id = None
-                all_sources_for_place_var = []
-
+                # 1. Collect all sources from this API call, creating both
+                #    Source (global) and SourceMetadata (series-specific) objects.
+                all_sources_from_api = []
                 for facet in api_place_data.orderedFacets:
                     if selected_source_ids and facet.facetId not in selected_source_ids:
                         continue
 
-                    facet_metadata = api_response.facets.get(facet.facetId)
-                    metadata = SourceMetadata(
-                        **facet_metadata.to_dict(),
+                    facet_metadata_from_api = api_response.facets.get(facet.facetId)
+
+                    # If obsCount is not provided, calculate it from the observations list.
+                    obs_count = (
+                        facet.obsCount
+                        if facet.obsCount is not None
+                        else len(facet.observations or [])
+                    )
+
+                    # Calculate earliest/latest dates if not provided by the API
+                    earliest_date = facet.earliestDate
+                    latest_date = facet.latestDate
+                    if (not earliest_date or not latest_date) and facet.observations:
+                        obs_dates = [obs.date for obs in facet.observations]
+                        if obs_dates:
+                            parsed_intervals = [
+                                DateRange.parse_interval(d) for d in obs_dates
+                            ]
+                            all_start_dates = [
+                                interval[0] for interval in parsed_intervals
+                            ]
+                            all_end_dates = [
+                                interval[1] for interval in parsed_intervals
+                            ]
+                            if not earliest_date:
+                                earliest_date = min(all_start_dates)
+                            if not latest_date:
+                                latest_date = max(all_end_dates)
+
+                    # Create the series-specific metadata object
+                    series_metadata = SourceMetadata(
                         source_id=facet.facetId,
                         dc_client_id=api_client_id,
-                        earliest_date=facet.earliestDate,
-                        latest_date=facet.latestDate,
-                        total_observations=facet.obsCount,
+                        earliest_date=earliest_date,
+                        latest_date=latest_date,
+                        total_observations=obs_count,
                     )
-                    all_sources_for_place_var.append(metadata)
 
-                    # Add the source metadata to the global dict if it's new.
-                    if metadata.source_id not in final_response.source_metadata:
-                        final_response.source_metadata[metadata.source_id] = metadata
+                    # Create and add the global Source object to the main response if new.
+                    if facet.facetId not in final_response.source_info:
+                        final_response.source_info[facet.facetId] = Source(
+                            **facet_metadata_from_api.to_dict(),
+                            source_id=facet.facetId,
+                        )
 
-                    # If we haven't found our primary observations yet, try to get them from this facet.
-                    if not first_obs and (
-                        filtered_obs := filter_by_date(facet.observations, date_filter)
-                    ):
-                        # If date-filtered observations exist, store them and the corresponding source.
-                        first_obs = filtered_obs
-                        primary_source_id = metadata.source_id
+                    filtered_obs = filter_by_date(facet.observations, date_filter)
 
-                # Get the facet IDs for all sources found for this place/variable.
-                all_source_ids_for_place_var = [
-                    s.source_id for s in all_sources_for_place_var
-                ]
+                    all_sources_from_api.append((series_metadata, filtered_obs))
 
-                # Append alternative sources to an existing variable series
+                # 2. Now, decide on the primary source *if needed*. This only happens if the
+                # variable series doesn't exist yet.
+                primary_metadata = None
+                primary_obs = None
+
+                # Filter to only sources that have observations for the given date range
+                sources_with_obs = [s for s in all_sources_from_api if s[1]]
+
+                if sources_with_obs:
+                    # Sort to find the best source: 1. latest date, 2. most observations
+                    sources_with_obs.sort(
+                        key=lambda x: (
+                            x[0].latest_date or "",
+                            x[0].total_observations or 0,
+                        ),
+                        reverse=True,
+                    )
+                    # The best one becomes the primary source
+                    primary_metadata, primary_obs = sources_with_obs[0]
+
+                # 3. Get all SourceMetadata objects from this API call
+                all_metadata_for_place_var = [s[0] for s in all_sources_from_api]
+
+                # 4. Integrate into the final response
                 if variable_dcid in place_data.variable_series:
-                    # Add all new source IDs as alternatives.
-                    # The primary source for the series remains unchanged.
+                    # If series exists, just add all sources from this API call as alternatives.
                     place_data.variable_series[
                         variable_dcid
-                    ].alternative_sources.extend(all_source_ids_for_place_var)
-                # Otherwise create a new variable series with the first facet as the primary one.
-                elif primary_source_id:
-                    # Use the captured primary source and filter it out from the list of
-                    # all sources to get the list of alternatives.
-                    alternative_source_ids = [
-                        sid
-                        for sid in all_source_ids_for_place_var
-                        if sid != primary_source_id
+                    ].alternative_sources.extend(all_metadata_for_place_var)
+                elif primary_metadata:
+                    # Otherwise, create a new series using the best source we found.
+                    alternative_sources = [
+                        m
+                        for m in all_metadata_for_place_var
+                        if m.source_id != primary_metadata.source_id
                     ]
                     place_data.variable_series[variable_dcid] = VariableSeries(
                         variable_dcid=variable_dcid,
-                        source_id=primary_source_id,
-                        observations=first_obs,
-                        alternative_sources=alternative_source_ids,
+                        source_metadata=primary_metadata,
+                        observations=primary_obs,
+                        alternative_sources=alternative_sources,
                     )
 
 

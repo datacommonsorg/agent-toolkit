@@ -21,6 +21,8 @@ from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
     ObservationToolRequest,
     ObservationToolResponse,
+    SourceMetadata,
+    VariableSeries,
 )
 
 
@@ -101,9 +103,7 @@ class TestMultiDCClientObservations:
         mock_base_dc.fetch_obs.assert_awaited_once_with(request)
         assert "place1" in response.place_data
         var_series = response.place_data["place1"].variable_series["var1"]
-        assert (
-            response.source_metadata.get(var_series.source_id).importName == "source1"
-        )
+        assert response.source_info.get(var_series.source_id).importName == "source1"
         assert len(var_series.alternative_sources) == 1
 
     @pytest.mark.asyncio
@@ -163,25 +163,32 @@ class TestMultiDCClientObservations:
         assert "var1" in place_data.variable_series
 
         var_series = place_data.variable_series["var1"]
-        assert var_series.source_id == "f1"
+        assert var_series.source_metadata.source_id == "f1"
+        assert var_series.source_id == "f1"  # Test the property
         assert len(var_series.observations) == 2
         assert len(var_series.alternative_sources) == 1
-        assert var_series.alternative_sources[0] == "f2"
+        assert var_series.alternative_sources[0].source_id == "f2"
 
     def test_integrate_observation_alternative_sources(self, mock_api_response):
         response = ObservationToolResponse()
         # Pre-populate with some data
-        response.place_data["place1"] = Mock(
-            variable_series={"var1": Mock(alternative_sources=[])}
+        initial_metadata = SourceMetadata(source_id="f_initial", dc_client_id="dc0")
+        initial_series = VariableSeries(
+            variable_dcid="var1",
+            source_metadata=initial_metadata,
+            observations=[],
+            alternative_sources=[],
         )
+        response.place_data["place1"] = Mock(variable_series={"var1": initial_series})
 
         MultiDCClient._integrate_observation_response(
             response, mock_api_response, "dc1"
         )
 
         # Check that the new sources were appended
-        var_series = response.place_data["place1"].variable_series["var1"]
-        assert len(var_series.alternative_sources) == 2  # 2 new sources added
+        final_series = response.place_data["place1"].variable_series["var1"]
+        assert len(final_series.alternative_sources) == 2  # 2 new sources added
+        assert {s.source_id for s in final_series.alternative_sources} == {"f1", "f2"}
 
     def test_integrate_observation_with_date_filter(self, mock_api_response):
         response = ObservationToolResponse()

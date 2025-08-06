@@ -123,7 +123,7 @@ class ObservationToolRequest(BaseModel):
     child_place_type: str | None = None
 
 
-class SourceMetadata(Facet):
+class SourceMetadata(BaseModel):
     source_id: str
     dc_client_id: str
     earliest_date: str | None = None
@@ -131,11 +131,20 @@ class SourceMetadata(Facet):
     total_observations: int | None = None
 
 
+class Source(Facet):
+    source_id: str
+
+
 class VariableSeries(BaseModel):
     variable_dcid: str
-    source_id: str
+    source_metadata: SourceMetadata
     observations: list[Observation]
-    alternative_sources: list[str] = Field(default_factory=list)
+    alternative_sources: list[SourceMetadata] = Field(default_factory=list)
+
+    @property
+    def source_id(self) -> str:
+        """Returns the source_id from the nested source_metadata."""
+        return self.source_metadata.source_id
 
 
 class PlaceData(BaseModel):
@@ -154,7 +163,7 @@ class ObservationToolResponse(BaseModel):
     place_data: dict[str, PlaceData] = Field(
         default_factory=dict, description="PlaceData objects keyed by their dcid."
     )
-    source_metadata: dict[str, SourceMetadata] = Field(
+    source_info: dict[str, Source] = Field(
         default_factory=dict,
-        description="SourceMetdata objectes keyed by their source_id.",
+        description="Source objects keyed by their source_id.",
     )
