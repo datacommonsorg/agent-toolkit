@@ -284,15 +284,6 @@ class DCClient:
         topics = search_results.get("topics", [])
         variables = search_results.get("variables", [])
 
-        # Apply existence filtering if place is specified
-        if place_dcid:
-            # Ensure place variables are cached
-            self._ensure_place_variables_cached(place_dcid)
-
-            # Filter topics and variables by existence
-            topics = self._filter_topics_by_existence(topics, place_dcid)
-            variables = self._filter_variables_by_existence(variables, place_dcid)
-
         # Apply existence filtering if places are specified
         if place_dcids:
             # Ensure place variables are cached for all places
