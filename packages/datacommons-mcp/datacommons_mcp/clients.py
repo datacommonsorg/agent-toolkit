@@ -305,19 +305,10 @@ class DCClient:
         # Get member information for topics
         topic_members = self._get_topics_members_with_existence(topics, place_dcid)
 
-        topic_members = self._get_topics_members_with_existence(topics, place_dcids)
-
         # Build response structure
         response = {
             "topics": [
                 {
-                    "dcid": topic,
-                    "member_topics": topic_members.get(topic, {}).get(
-                        "member_topics", []
-                    ),
-                    "member_variables": topic_members.get(topic, {}).get(
-                        "member_variables", []
-                    ),
                     "dcid": topic_info["dcid"],
                     "member_topics": topic_members.get(topic_info["dcid"], {}).get(
                         "member_topics", []
@@ -349,7 +340,6 @@ class DCClient:
                 + [var_info["dcid"] for var_info in variables]
             ),
         }
-
         return response
 
     async def _search_entities(self, query: str) -> dict:
