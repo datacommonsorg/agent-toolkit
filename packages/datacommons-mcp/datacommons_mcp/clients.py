@@ -303,7 +303,7 @@ class DCClient:
         variables = variables[:max_results]
 
         # Get member information for topics
-        topic_members = self._get_topics_members_with_existence(topics, place_dcid)
+        topic_members = self._get_topics_members_with_existence(topics, place_dcids)
 
         # Build response structure
         response = {
