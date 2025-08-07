@@ -70,12 +70,11 @@ async def get_observations(
 
     * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
         * If `place_dcid` is provided, it takes priority over `place_name`.
-
-      * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., exports from one country to another),
-      the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France).
-      In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
-      (e.g., the exporter country, such as 'USA' for exports *from* USA).
-      The `search_topics_and_variables` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
+        * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., exports from one country to another),
+        the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France).
+        In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
+        (e.g., the exporter country, such as 'USA' for exports *from* USA).
+        The `search_topics_and_variables` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
