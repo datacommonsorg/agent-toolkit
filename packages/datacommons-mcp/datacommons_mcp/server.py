@@ -16,6 +16,7 @@ Server module for the DC MCP server.
 """
 
 import asyncio
+import logging
 import types
 from typing import Union, get_args, get_origin
 
@@ -38,7 +39,7 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.services import get_observations as get_observations_service
 
 # Create clients based on config
-multi_dc_client = create_clients(config.BASE_DC_CONFIG)
+multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
 
 mcp = FastMCP("DC MCP Server")
 
@@ -69,6 +70,12 @@ async def get_observations(
 
     * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
         * If `place_dcid` is provided, it takes priority over `place_name`.
+
+      * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., exports from one country to another),
+      the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France).
+      In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
+      (e.g., the exporter country, such as 'USA' for exports *from* USA).
+      The `search_topics_and_variables` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
@@ -125,7 +132,7 @@ async def validate_child_place_types(
     """
     Checks which of the child place types are valid for the parent place.
 
-    Use this tool to validate the child place types before calling get_observations_for_child_places.
+    Use this tool to validate the child place types before calling get_observations for those places.
 
     Example:
     - For counties in Kenya, you can check for both "County" and "AdministrativeArea1" to determine which is valid.
@@ -410,3 +417,219 @@ async def get_datacommons_chart_config(
     except ValidationError as e:
         # Catch Pydantic errors and make them more user-friendly
         raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
+
+
+@mcp.tool()
+async def search_topics_and_variables(
+    query: str,
+    place1_name: str | None = None,
+    place2_name: str | None = None,
+) -> dict:
+    """Search for topics and variables (collectively called "indicators") across Data Commons.
+
+    This tool returns candidate indicators that match your query. You should treat these as
+    candidates and filter them based on the user's query and context to surface the most
+    relevant results.
+
+    **How to Use This Tool:**
+
+    * **For place-constrained queries** like "trade exports to France":
+        - Call with `query="trade exports"` and `place1_name="France"`
+        - The tool will match indicators and perform existence checks for the specified place
+
+    * **For bilateral place-constrained queries** like "trade exports from USA to France":
+        - Call with `query="trade exports"`, `place1_name="USA"`, and `place2_name="France"`
+        - The tool will match indicators and perform existence checks for both places
+        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA") is where we have observations
+        - Use `places_with_data` to identify which place has observations.
+
+    * **For non-place-constrained queries** like "what basic health data do you have":
+        - Call with just the `query` parameter
+        - No place existence checks are performed
+
+    Args:
+        query (str): The search query for indicators (topics, categories, or variables).
+            Examples: "health grants", "carbon emissions", "unemployment rate"
+        place1_name (str, optional): First place name for filtering and existence checks.
+            Examples: "France", "United States", "California"
+        place2_name (str, optional): Second place name for filtering and existence checks.
+            Examples: "Albania", "Germany", "New York"
+
+    Returns:
+        dict: A dictionary containing candidate indicators with the following structure:
+            {
+                "topics": [
+                    {
+                        "dcid": str,  # Topic DCID
+                        "member_topics": list[str],  # Direct member topic DCIDs
+                        "member_variables": list[str],  # Direct member variable DCIDs
+                        "places_with_data": list[str]  # Place DCIDs where data exists (only if place filtering was performed)
+                    }
+                ],
+                "variables": [
+                    {
+                        "dcid": str,  # Variable DCID
+                        "places_with_data": list[str]  # Place DCIDs where data exists (only if place filtering was performed)
+                    }
+                ],
+                "lookups": dict[str, str]  # DCID to name mappings
+            }
+
+    **Processing the Response:**
+    * **Topics**: Collections of variables and sub-topics. Use the lookups to get readable names.
+    * **Variables**: Individual data indicators. Use the lookups to get readable names.
+    * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
+    * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
+    * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
+    """
+    return await _search_topics_and_variables_impl(query, place1_name, place2_name)
+
+
+async def _search_topics_and_variables_impl(
+    query: str, place1_name: str | None = None, place2_name: str | None = None
+) -> dict:
+    """Implementation of search_topics_and_variables tool."""
+
+    # Resolve all place names to DCIDs in a single call
+    place_names = [name for name in [place1_name, place2_name] if name]
+    place_dcids_map = {}
+
+    if place_names:
+        try:
+            place_dcids_map = await multi_dc_client.base_dc.search_places(place_names)
+        except Exception as e:
+            logging.error(f"Error resolving place names: {e}")
+            pass
+
+    place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
+    place2_dcid = place_dcids_map.get(place2_name) if place2_name else None
+
+    # Construct search queries with their corresponding place DCIDs for filtering
+    search_tasks = []
+
+    # Base query: search for the original query, filter by all available places
+    base_place_dcids = []
+    if place1_dcid:
+        base_place_dcids.append(place1_dcid)
+    if place2_dcid:
+        base_place_dcids.append(place2_dcid)
+
+    search_tasks.append((query, base_place_dcids))
+
+    # The following queries are not needed for bilateral relationships where we append the place name(s) to the query.
+
+    # Place1 query: search for query + place1_name, filter by place2_dcid
+    if place1_dcid:
+        place1_place_dcids = [place2_dcid] if place2_dcid else []
+        search_tasks.append((f"{query} {place1_name}", place1_place_dcids))
+
+    # Place2 query: search for query + place2_name, filter by place1_dcid
+    if place2_dcid:
+        place2_place_dcids = [place1_dcid] if place1_dcid else []
+        search_tasks.append((f"{query} {place2_name}", place2_place_dcids))
+
+    # Execute parallel searches
+    tasks = []
+    for search_query, place_dcids in search_tasks:
+        task = multi_dc_client.fetch_topics_and_variables(
+            search_query, place_dcids=place_dcids, max_results=10
+        )
+        tasks.append(task)
+
+    # Wait for all searches to complete
+    results = await asyncio.gather(*tasks)
+
+    # Merge and deduplicate results
+    # Filter out None place DCIDs
+    valid_place_dcids = [
+        dcid for dcid in [place1_dcid, place2_dcid] if dcid is not None
+    ]
+    merged_result = await _merge_search_results(results, valid_place_dcids)
+
+    return merged_result
+
+
+def _collect_all_dcids(
+    topics: list[dict], variables: list[str], place_dcids: list[str] = None
+) -> list[str]:
+    """Collect all DCIDs from topics, variables, and places."""
+    all_dcids = set()
+
+    # Collect topic DCIDs and their member DCIDs
+    for topic in topics:
+        all_dcids.add(topic["dcid"])
+        # Handle member_topics - could be strings or dicts
+        member_topics = topic.get("member_topics", [])
+        for member in member_topics:
+            if isinstance(member, dict):
+                all_dcids.add(member["dcid"])
+            else:
+                all_dcids.add(member)
+        # Handle member_variables - could be strings or dicts
+        member_variables = topic.get("member_variables", [])
+        for member in member_variables:
+            if isinstance(member, dict):
+                all_dcids.add(member["dcid"])
+            else:
+                all_dcids.add(member)
+
+    # Collect variable DCIDs
+    all_dcids.update(variables)
+
+    # Collect place DCIDs if provided
+    if place_dcids:
+        all_dcids.update(place_dcids)
+
+    # Filter out None values and empty strings
+    result = [dcid for dcid in all_dcids if dcid is not None and dcid.strip()]
+    return result
+
+
+async def _fetch_and_update_lookups(dcids: list[str]) -> dict:
+    """Fetch names for all DCIDs and return as lookups dictionary."""
+    if not dcids:
+        return {}
+
+    try:
+        result = multi_dc_client.fetch_entity_names(dcids)
+        return result
+    except Exception:
+        # If fetching fails, return empty dict (not an error)
+        return {}
+
+
+async def _merge_search_results(
+    results: list[dict], place_dcids: list[str] = None
+) -> dict:
+    """Union results from multiple search calls."""
+
+    # Collect all topics and variables
+    all_topics = {}
+    all_variables = {}
+
+    for result in results:
+        # Union topics
+        for topic in result.get("topics", []):
+            topic_dcid = topic["dcid"]
+            if topic_dcid not in all_topics:
+                all_topics[topic_dcid] = topic
+
+        # Union variables
+        for variable in result.get("variables", []):
+            var_dcid = variable["dcid"]
+            if var_dcid not in all_variables:
+                all_variables[var_dcid] = variable
+
+    # Collect all DCIDs and fetch their names
+    all_dcids = _collect_all_dcids(
+        list(all_topics.values()), list(all_variables.keys()), place_dcids
+    )
+
+    # Fetch names for all DCIDs and use as lookups
+    lookups = await _fetch_and_update_lookups(all_dcids)
+
+    return {
+        "topics": list(all_topics.values()),
+        "variables": list(all_variables.values()),
+        "lookups": lookups,
+    }

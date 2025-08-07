@@ -45,8 +45,11 @@ CUSTOM_DC_CONFIG = {
     },
     "custom_dc": {
         "name": "ONE Data Commons",
-        "base_url": "https://datacommons.one.org/core/api/v2/",
-        "sv_search_base_url": "https://datacommons.one.org",
+        "base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/",
+        "sv_search_base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
         "idx": "user_all_minilm_mem",
+        "root_topic_dcids": [
+            "ONE/topic/BasicHealth",
+        ],
     },
 }

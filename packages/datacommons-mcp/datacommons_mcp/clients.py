@@ -35,7 +35,7 @@ from datacommons_mcp.data_models.observations import (
     SourceMetadata,
     VariableSeries,
 )
-from datacommons_mcp.topics import TopicStore, read_topic_cache
+from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
 from datacommons_mcp.utils import filter_by_date
 
 
@@ -264,14 +264,14 @@ class DCClient:
         return len(response.get(parent_place_dcid, [])) > 0
 
     async def fetch_topics_and_variables(
-        self, query: str, place_dcid: str = None, max_results: int = 10
+        self, query: str, place_dcids: list[str] = [], max_results: int = 10
     ) -> dict:
         """
         Search for topics and variables matching a query, optionally filtered by place existence.
 
         Args:
             query: Search query string
-            place_dcid: Optional place DCID to filter by existence
+            place_dcids: Optional list of place DCIDs to filter by existence (OR logic)
             max_results: Maximum number of results to return (default 10)
 
         Returns:
@@ -293,12 +293,28 @@ class DCClient:
             topics = self._filter_topics_by_existence(topics, place_dcid)
             variables = self._filter_variables_by_existence(variables, place_dcid)
 
+        # Apply existence filtering if places are specified
+        if place_dcids:
+            # Ensure place variables are cached for all places
+            for place_dcid in place_dcids:
+                self._ensure_place_variables_cached(place_dcid)
+
+            # Filter topics and variables by existence (OR logic)
+            topics = self._filter_topics_by_existence(topics, place_dcids)
+            variables = self._filter_variables_by_existence(variables, place_dcids)
+        else:
+            # No existence checks performed, convert to simple lists
+            topics = [{"dcid": topic} for topic in topics]
+            variables = [{"dcid": var} for var in variables]
+
         # Limit results
         topics = topics[:max_results]
         variables = variables[:max_results]
 
         # Get member information for topics
         topic_members = self._get_topics_members_with_existence(topics, place_dcid)
+
+        topic_members = self._get_topics_members_with_existence(topics, place_dcids)
 
         # Build response structure
         response = {
@@ -311,11 +327,36 @@ class DCClient:
                     "member_variables": topic_members.get(topic, {}).get(
                         "member_variables", []
                     ),
+                    "dcid": topic_info["dcid"],
+                    "member_topics": topic_members.get(topic_info["dcid"], {}).get(
+                        "member_topics", []
+                    ),
+                    "member_variables": topic_members.get(topic_info["dcid"], {}).get(
+                        "member_variables", []
+                    ),
+                    **(
+                        {"places_with_data": topic_info["places_with_data"]}
+                        if "places_with_data" in topic_info
+                        else {}
+                    ),
                 }
-                for topic in topics
+                for topic_info in topics
             ],
-            "variables": variables,
-            "lookups": self._build_lookups(topics + variables),
+            "variables": [
+                {
+                    "dcid": var_info["dcid"],
+                    **(
+                        {"places_with_data": var_info["places_with_data"]}
+                        if "places_with_data" in var_info
+                        else {}
+                    ),
+                }
+                for var_info in variables
+            ],
+            "lookups": self._build_lookups(
+                [topic_info["dcid"] for topic_info in topics]
+                + [var_info["dcid"] for var_info in variables]
+            ),
         }
 
         return response
@@ -360,70 +401,110 @@ class DCClient:
             self.variable_cache.put(place_dcid, all_variables)
 
     def _filter_variables_by_existence(
-        self, variable_dcids: list[str], place_dcid: str
-    ) -> list[str]:
-        """Filter variables by existence for the given place."""
-        if not variable_dcids:
+        self, variable_dcids: list[str], place_dcids: list[str]
+    ) -> list[dict]:
+        """Filter variables by existence for the given places (OR logic)."""
+        if not variable_dcids or not place_dcids:
             return []
 
-        # Get cached variables for the place
-        place_variables = self.variable_cache.get(place_dcid)
-        if place_variables is None:
-            # This shouldn't happen if _ensure_place_variables_cached was called
-            return []
+        # Check which variables exist for any of the places
+        existing_variables = []
+        for var in variable_dcids:
+            places_with_data = []
+            for place_dcid in place_dcids:
+                place_variables = self.variable_cache.get(place_dcid)
+                if place_variables is not None and var in place_variables:
+                    places_with_data.append(place_dcid)
 
-        # Check which variables exist for this place
-        return [var for var in variable_dcids if var in place_variables]
+            if places_with_data:
+                existing_variables.append(
+                    {"dcid": var, "places_with_data": places_with_data}
+                )
+
+        return existing_variables
 
     def _filter_topics_by_existence(
-        self, topic_dcids: list[str], place_dcid: str
-    ) -> list[str]:
+        self, topic_dcids: list[str], place_dcids: list[str]
+    ) -> list[dict]:
         """Filter topics by existence using recursive checks."""
         if not topic_dcids:
             return []
 
         existing_topics = []
         for topic_dcid in topic_dcids:
-            if self._check_topic_exists_recursive(topic_dcid, place_dcid):
-                existing_topics.append(topic_dcid)
+            places_with_data = self._get_topic_places_with_data(topic_dcid, place_dcids)
+            if places_with_data:
+                existing_topics.append(
+                    {"dcid": topic_dcid, "places_with_data": places_with_data}
+                )
 
         return existing_topics
 
-    def _check_topic_exists_recursive(self, topic_dcid: str, place_dcid: str) -> bool:
-        """Recursively check if any variable in the topic hierarchy exists for the place."""
-        if not self.topic_store:
+    def _check_topic_exists_recursive(
+        self, topic_dcid: str, place_dcids: list[str]
+    ) -> bool:
+        """Recursively check if any variable in the topic hierarchy exists for any of the places (OR logic)."""
+        if not self.topic_store or not place_dcids:
             return False
 
         topic_data = self.topic_store.topics_by_dcid.get(topic_dcid)
         if not topic_data:
             return False
 
-        # Get cached variables for the place
-        place_variables = self.variable_cache.get(place_dcid)
-        if place_variables is None:
-            return False
-
-        # Check if any direct variable exists
-        if any(var in place_variables for var in topic_data.variables):
-            return True
+        # Check if any direct variable exists for any of the places
+        for place_dcid in place_dcids:
+            place_variables = self.variable_cache.get(place_dcid)
+            if place_variables is not None:
+                if any(var in place_variables for var in topic_data.variables):
+                    return True
 
         # Recursively check member topics
         for member_topic in topic_data.member_topics:
-            if self._check_topic_exists_recursive(member_topic, place_dcid):
+            if self._check_topic_exists_recursive(member_topic, place_dcids):
                 return True
 
         return False
 
+    def _get_topic_places_with_data(
+        self, topic_dcid: str, place_dcids: list[str]
+    ) -> list[str]:
+        """Get list of places where the topic has data."""
+        if not self.topic_store or not place_dcids:
+            return []
+
+        topic_data = self.topic_store.topics_by_dcid.get(topic_dcid)
+        if not topic_data:
+            return []
+
+        places_with_data = []
+
+        # Check direct variables
+        for place_dcid in place_dcids:
+            place_variables = self.variable_cache.get(place_dcid)
+            if place_variables is not None:
+                if any(var in place_variables for var in topic_data.variables):
+                    places_with_data.append(place_dcid)
+
+        # Check member topics recursively
+        for member_topic in topic_data.member_topics:
+            member_places = self._get_topic_places_with_data(member_topic, place_dcids)
+            for place in member_places:
+                if place not in places_with_data:
+                    places_with_data.append(place)
+
+        return places_with_data
+
     def _get_topics_members_with_existence(
-        self, topic_dcids: list[str], place_dcid: str = None
+        self, topic_dcids: list[dict], place_dcids: list[str] = None
     ) -> dict:
-        """Get member topics and variables for topics, filtered by existence if place specified."""
+        """Get member topics and variables for topics, filtered by existence if places specified."""
         if not topic_dcids or not self.topic_store:
             return {}
 
         result = {}
 
-        for topic_dcid in topic_dcids:
+        for topic_info in topic_dcids:
+            topic_dcid = topic_info["dcid"]
             topic_data = self.topic_store.topics_by_dcid.get(topic_dcid)
             if not topic_data:
                 continue
@@ -431,16 +512,16 @@ class DCClient:
             member_topics = topic_data.member_topics
             member_variables = topic_data.variables
 
-            # Filter by existence if place is specified
-            if place_dcid:
+            # Filter by existence if places are specified
+            if place_dcids:
                 # Filter member variables by existence
                 member_variables = self._filter_variables_by_existence(
-                    member_variables, place_dcid
+                    member_variables, place_dcids
                 )
 
                 # Filter member topics by existence
                 member_topics = self._filter_topics_by_existence(
-                    member_topics, place_dcid
+                    member_topics, place_dcids
                 )
 
             result[topic_dcid] = {
@@ -687,6 +768,51 @@ class MultiDCClient:
                         alternative_sources=alternative_sources,
                     )
 
+    async def fetch_topics_and_variables(
+        self, query: str, place_dcids: list[str] = [], max_results: int = 10
+    ) -> dict:
+        """
+        Search for topics and variables across base DC and optional custom DC.
+
+        TODO: Add search_scope parameter to support searching both custom and base DCs
+        based on scope (e.g., custom-only, base-only, both). Currently prioritizes
+        custom DC if available, otherwise falls back to base DC.
+
+        Args:
+            query: Search query string
+            place_dcids: Optional list of place DCIDs to filter by existence (OR logic)
+            max_results: Maximum number of results to return (default 10)
+
+        Returns:
+            Dictionary with topics, variables, and lookups from the selected DC
+        """
+        # TODO: Implement search_scope logic to support searching both DCs
+        # For now, prioritize custom DC if available, otherwise use base DC
+
+        if self.custom_dc:
+            return await self.custom_dc.fetch_topics_and_variables(
+                query, place_dcids, max_results
+            )
+        else:
+            return await self.base_dc.fetch_topics_and_variables(
+                query, place_dcids, max_results
+            )
+
+    def fetch_entity_names(self, dcids: list[str]) -> dict:
+        """
+        Fetch entity names using custom DC if available, otherwise use base DC.
+
+        Args:
+            dcids: List of entity DCIDs to fetch names for
+
+        Returns:
+            Dictionary mapping DCIDs to entity names
+        """
+        if self.custom_dc:
+            return self.custom_dc.fetch_entity_names(dcids)
+        else:
+            return self.base_dc.fetch_entity_names(dcids)
+
 
 def create_clients(config: dict) -> MultiDCClient:
     """
@@ -725,11 +851,19 @@ def create_clients(config: dict) -> MultiDCClient:
     # Create custom DC client if specified
     custom_dc = None
     if custom_config:
+        # Create topic store if root_topic_dcids is specified
+        topic_store = None
+        if "root_topic_dcids" in custom_config:
+            # Create a temporary DataCommonsClient to build the topic store
+            temp_dc = DataCommonsClient(url=custom_config.get("base_url"))
+            topic_store = create_topic_store(custom_config["root_topic_dcids"], temp_dc)
+
         custom_dc = DCClient(
             dc_name=custom_config.get("name", "Custom DC"),
             base_url=custom_config.get("base_url"),
             sv_search_base_url=custom_config.get("sv_search_base_url"),
             idx=custom_config.get("idx"),
+            topic_store=topic_store,
         )
 
     return MultiDCClient(base_dc, custom_dc)
