@@ -18,11 +18,6 @@ Contains configuration settings for both base and custom Data Commons instances.
 
 import os
 
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
 # Get API key from environment
 DC_API_KEY = os.getenv("DC_API_KEY")
 if not DC_API_KEY:

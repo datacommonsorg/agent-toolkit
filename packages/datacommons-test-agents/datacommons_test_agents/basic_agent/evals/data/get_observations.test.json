@@ -1,0 +1,30 @@
+[
+  {
+    "query": "What's the population of California?",
+    "expected_tool_use": [
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "period": "latest",
+          "place_name": "California",
+          "variable_desc": "Population"
+        }
+      }
+    ],
+    "reference": "The total population of California was 39,431,263 in 2024 (Source: U.S. Census Bureau).\n"
+  },
+  {
+    "query": "What was the population of California in 2023?",
+    "expected_tool_use": [
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "period": "2023",
+          "place_name": "California",
+          "variable_desc": "Population"
+        }
+      }
+    ],
+    "reference": "The population of California was 39,198,693 in 2023 (U.S. Census Bureau).\n"
+  }
+]

@@ -20,6 +20,15 @@ cd packages/datacommons-mcp # navigate to package dir
 uv run fastmcp run datacommons_mcp/server.py:mcp -t (sse|stdio)
 ```
 
+### Run Unit Tests
+
+Run unit tests and evals using pyest:
+
+```
+export DC_API_KEY={YOUR_API_KEY}
+uv run pytest
+```
+
 ### Test with MCP Inspector
 
 > IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
