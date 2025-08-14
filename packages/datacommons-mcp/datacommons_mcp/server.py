@@ -39,7 +39,7 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.services import get_observations as get_observations_service
 
 # Create clients based on config
-multi_dc_client = create_clients(config.BASE_DC_CONFIG)
+multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
 
 mcp = FastMCP("DC MCP Server")
 
