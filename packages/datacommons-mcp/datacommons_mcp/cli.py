@@ -39,6 +39,27 @@ def http(host: str, port: int, reload: bool) -> None:
         click.echo(f"Error importing server: {e}", err=True)
         sys.exit(1)
 
+@serve.command()
+@click.option("--host", default="localhost", help="Host to bind.")
+@click.option("--port", default=8080, help="Port to bind.", type=int)
+@click.option("--reload", is_flag=True, help="Enable auto-reload on code changes.")
+def streamable_http(host: str, port: int, reload: bool) -> None:
+    """Start the MCP server in Streamable HTTP mode."""
+    try:
+        from datacommons_mcp.server import mcp
+
+        click.echo("Starting DataCommons MCP server in Streamable HTTP mode")
+        click.echo(f"Server URL: http://{host}:{port}")
+        click.echo(f"SSE endpoint: http://{host}:{port}/mcp")
+        click.echo("Press CTRL+C to stop")
+
+        mcp.run(host=host, port=port, transport="streamable-http")
+
+    except ImportError as e:
+        click.echo(f"Error importing server: {e}", err=True)
+        sys.exit(1)
+
+
 
 @serve.command()
 def stdio() -> None:

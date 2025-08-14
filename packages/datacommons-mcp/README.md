@@ -26,6 +26,14 @@ This will run the server with SSE on port 8080. You can access it at `http://loc
 ```bash
 DC_API_KEY=<your-key> uvx datacommons-mcp serve http
 ```
+**Streamable http**
+
+This will run the server with Streamable HTTP on port 8080. You can access it at `http://localhost:8080/mcp`.
+Since SSE is deprecated by the MCP standard, this option is now recommended.
+
+```bash
+DC_API_KEY=<your-key> uvx datacommons-mcp serve streamable_http
+```
 
 **Debugging**
 
