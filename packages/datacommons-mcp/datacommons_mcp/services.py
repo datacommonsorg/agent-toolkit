@@ -26,8 +26,7 @@ from datacommons_mcp.exceptions import NoDataFoundError
 
 async def _build_observation_request(
     client: MultiDCClient,
-    variable_dcid: str | None = None,
-    variable_desc: str | None = None,
+    variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
@@ -41,8 +40,8 @@ async def _build_observation_request(
     This method contains the logic to resolve names to DCIDs and structure the data.
     """
     # 0. Perform inital validations
-    if not (variable_desc or variable_dcid):
-        raise ValueError("Specify either 'variable_desc' or 'variable_dcid'.")
+    if not variable_dcid:
+        raise ValueError("'variable_dcid' must be specified.")
 
     if not (place_name or place_dcid):
         raise ValueError("Specify either 'place_name' or 'place_dcid'.")
@@ -62,34 +61,12 @@ async def _build_observation_request(
         observation_period = ObservationPeriod.ALL
         date_filter = DateRange(start_date=start_date, end_date=end_date)
 
-    # 3. Resolve variable and place DCIDs
-    resolve_tasks = {}
-    if not variable_dcid:
-        resolve_tasks["sv_search"] = client.search_svs([variable_desc])
+    # 3. Resolve place DCID
     if not place_dcid:
-        resolve_tasks["place_search"] = client.base_dc.search_places([place_name])
-
-    if resolve_tasks:
-        # Use asyncio.gather on the values (coroutines) of the tasks dict
-        task_coroutines = list(resolve_tasks.values())
-        task_results = await asyncio.gather(*task_coroutines)
-        # Map results back to their keys
-        results = dict(zip(resolve_tasks.keys(), task_results, strict=True))
-        # Parse resolved stat vars (if any)
-        if "sv_search" in resolve_tasks:
-            variable_dcid = (
-                results.get("sv_search", {}).get(variable_desc, {}).get("SV")
-            )
-            if not variable_dcid:
-                raise NoDataFoundError(
-                    f"No statistical variables found matching '{variable_desc}'."
-                )
-
-        # Parse resolved places (if any)
-        if "place_search" in resolve_tasks:
-            place_dcid = results.get("place_search", {}).get(place_name)
-            if not place_dcid:
-                raise NoDataFoundError(f"No place found matching '{place_name}'.")
+        results = await client.base_dc.search_places([place_name])
+        place_dcid = results.get(place_name)
+    if not place_dcid:
+        raise NoDataFoundError(f"No place found matching '{place_name}'.")
 
     # 3. Return an instance of the class
     return ObservationToolRequest(
@@ -104,8 +81,7 @@ async def _build_observation_request(
 
 async def get_observations(
     client: MultiDCClient,
-    variable_dcid: str | None = None,
-    variable_desc: str | None = None,
+    variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
@@ -121,7 +97,6 @@ async def get_observations(
     observation_request = await _build_observation_request(
         client=client,
         variable_dcid=variable_dcid,
-        variable_desc=variable_desc,
         place_dcid=place_dcid,
         place_name=place_name,
         child_place_type=child_place_type,

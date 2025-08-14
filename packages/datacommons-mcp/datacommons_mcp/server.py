@@ -39,15 +39,14 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.services import get_observations as get_observations_service
 
 # Create clients based on config
-multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
+multi_dc_client = create_clients(config.BASE_DC_CONFIG)
 
 mcp = FastMCP("DC MCP Server")
 
 
 @mcp.tool()
 async def get_observations(
-    variable_dcid: str | None = None,
-    variable_desc: str | None = None,
+    variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
@@ -64,9 +63,9 @@ async def get_observations(
 
     ### Core Logic & Rules
 
-    * **Variable Selection**: You **must** provide either `variable_dcid` or `variable_desc`.
-        * **Rule 1 (Preferred)**: If you have a relevant `variable_dcid` from a previous tool call (like `get_available_variables_for_place`), **use it**. This is more precise and takes priority.
-        * **Rule 2 (Fallback)**: If you do not have a known `variable_dcid`, use `variable_desc` with a natural language description (e.g., "median household income"). Ignored if `variable_dcid` is provided.
+    * **Variable Selection**: You **must** provide the `variable_dcid`.
+        * Variable DCIDs are unique identifiers for statistical variables in Data Commons and are returned by prior calls to the
+        `get_available_variables` and `search_topics_and_variables` tools.
 
     * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
         * If `place_dcid` is provided, it takes priority over `place_name`.
@@ -92,8 +91,7 @@ async def get_observations(
         3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation.
 
     Args:
-      variable_dcid (str, optional): The unique identifier (DCID) of the statistical variable.
-      variable_desc (str, optional): A natural language description of the indicator. Ex: "carbon emissions", "unemployment rate". Ignored if `variable_dcid` is set.
+      variable_dcid (str, required): The unique identifier (DCID) of the statistical variable.
       place_dcid (str, optional): The DCID of the place.
       place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
@@ -113,7 +111,6 @@ async def get_observations(
     return await get_observations_service(
         client=multi_dc_client,
         variable_dcid=variable_dcid,
-        variable_desc=variable_desc,
         place_dcid=place_dcid,
         place_name=place_name,
         child_place_type=child_place_type,
@@ -189,18 +186,20 @@ async def validate_child_place_types(
 
 @mcp.tool()
 async def get_available_variables(
-    place_name: str = "world", category: str = "statistics"
+    place_name: str = "world", indicator_desc: str = "statistics"
 ) -> dict:
     """
-    Gets available variables for a place and category.
+    Gets available variables for a place and indicator (category or variable).
     If a place is not specified, it returns variables for the world.
-    If not specified, it returns variables for a generic category called "statistics".
+    If indicator_desc is not specified, it returns variables for a generic category called "statistics".
 
-    Use this tool to discover what statistical data is available for a particular geographic area and category.
+    Use this tool to discover what statistical data is available for a particular geographic area and indicator.
 
     Args:
         place_name (str): The name of the place to fetch variables for. e.g. "United States", "India", "NYC", etc.
-        category (str): The category of variables to fetch. e.g. "Demographics", "Economy", "Health", "Education", "Environment", "Women With Arthritis by Age", etc.
+        category (str): The category of variables or a descriptor of the variable to fetch.
+        Examples of categories: "Demographics", "Economy", "Health", "Education", "Environment", etc.
+        Examples of variables: "Women With Arthritis by Age", "population", "unemployment rate", "carbon emissions", "health grants", etc.
 
     Returns:
         A dictionary containing the status of the request and the data if available.
@@ -210,22 +209,26 @@ async def get_available_variables(
           "status": "SUCCESS",
           "data": {
             "place_dcid": str,
-            "category_variable_ids": list[str],
+            "variable_dcids": list[str],
             "id_name_mappings": dict
           }
         }
 
         In your response, use the id_name_mappings to convert the variable and place dcids to human-readable names.
 
-        You can use the category_variable_ids to get the variables in the requested category (or for "statistics" by default).
+        You can use the variable_dcids to get the variables in the requested category (or for "statistics" by default) or those that match the indicator_desc.
 
-        If the user asks to see the data for this category and there are a high number of variables, pick those most pertinent to the user's query and context.
+        If the user asks to see the data for a category and there are a high number of variables, pick those most pertinent to the user's query and context.
         When showing this info to the user, inform them of the total number of variables available *for this specific place and category* (e.g., 'statistics for the world')
         and the variables for that combination.
 
         **Crucially**, categorize the variables into categories as appropriate (e.g. "Demographics", "Economy", "Health", "Education", "Environment", etc.) to make the information easier to digest.
 
-        Typically this tool is called when the user asks to see the data for a specific category for a given place.
+        Typically this tool is called when the user asks to see the data for a specific category or variable for a given place.
+
+        Consider the variables returned by this tool as candidates
+        and filter them based on the user's query and context to surface or use the most
+        relevant results.
 
         It can also be called for a general "what data do you have".
         In this case we'll return generic statistics data for the world.
@@ -234,7 +237,7 @@ async def get_available_variables(
         You can then prompt the user to ask a specific question about the data and
         possibly suggest a few questions to ask.
 
-        Most importantly, in all cases, categorize the variables as mentioned above when displaying them to the user.
+        Most importantly, for category queries, categorize the variables as mentioned above when displaying them to the user.
     """
     places = await multi_dc_client.base_dc.search_places([place_name])
     place_dcid = places.get(place_name)
@@ -246,7 +249,9 @@ async def get_available_variables(
         }
 
     dc = multi_dc_client.base_dc
-    variable_data = await dc.fetch_topic_variables(place_dcid, topic_query=category)
+    variable_data = await dc.fetch_topic_variables(
+        place_dcid, topic_query=indicator_desc
+    )
 
     dcids_to_lookup = [place_dcid]
 
@@ -259,7 +264,7 @@ async def get_available_variables(
         "status": "SUCCESS",
         "data": {
             "place_dcid": place_dcid,
-            "topic_variable_ids": topic_variable_ids,
+            "variable_ids": topic_variable_ids,
             "id_name_mappings": id_name_mappings,
         },
     }
