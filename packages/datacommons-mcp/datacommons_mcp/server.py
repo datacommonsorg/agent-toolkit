@@ -197,7 +197,7 @@ async def get_available_variables(
 
     Args:
         place_name (str): The name of the place to fetch variables for. e.g. "United States", "India", "NYC", etc.
-        category (str): The category of variables or a descriptor of the variable to fetch.
+        indicator_desc (str): The description of category or variable to fetch.
         Examples of categories: "Demographics", "Economy", "Health", "Education", "Environment", etc.
         Examples of variables: "Women With Arthritis by Age", "population", "unemployment rate", "carbon emissions", "health grants", etc.
 
