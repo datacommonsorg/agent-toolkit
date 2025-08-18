@@ -19,12 +19,13 @@ Provides classes for managing connections to both base and custom Data Commons i
 import asyncio
 import json
 import re
+from typing import Optional
 
 import requests
 from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
-from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID
+from datacommons_mcp.constants import SearchScope
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
