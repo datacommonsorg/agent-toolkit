@@ -26,6 +26,7 @@ from unittest.mock import Mock, patch
 import pytest
 from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.clients import DCClient
+from datacommons_mcp.constants import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationPeriod,
     ObservationToolRequest,
@@ -51,6 +52,153 @@ def mocked_datacommons_client():
         yield mock_instance
 
 
+class TestDCClientConstructor:
+    """Tests for the DCClient constructor and search indices computation."""
+
+    def test_dc_client_constructor_base_dc(self, mocked_datacommons_client):
+        """
+        Test base DC constructor with default parameters.
+        """
+        # Arrange: Create a base DC client with default parameters
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+
+        # Assert: Verify the client is configured correctly
+        assert client_under_test.dc == mocked_datacommons_client
+        assert client_under_test.search_scope == SearchScope.BASE_ONLY
+        assert client_under_test.base_index == "base_uae_mem"
+        assert client_under_test.custom_index is None
+        assert client_under_test.search_indices == ["base_uae_mem"]
+
+    def test_dc_client_constructor_custom_dc(self, mocked_datacommons_client):
+        """
+        Test custom DC constructor with custom index.
+        """
+        # Arrange: Create a custom DC client with custom index
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client,
+            search_scope=SearchScope.CUSTOM_ONLY,
+            base_index="medium_ft",
+            custom_index="user_all_minilm_mem"
+        )
+
+        # Assert: Verify the client is configured correctly
+        assert client_under_test.dc == mocked_datacommons_client
+        assert client_under_test.search_scope == SearchScope.CUSTOM_ONLY
+        assert client_under_test.base_index == "medium_ft"
+        assert client_under_test.custom_index == "user_all_minilm_mem"
+        assert client_under_test.search_indices == ["user_all_minilm_mem"]
+
+    def test_dc_client_constructor_base_and_custom(self, mocked_datacommons_client):
+        """
+        Test constructor with BASE_AND_CUSTOM search scope.
+        """
+        # Arrange: Create a client that searches both base and custom indices
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client,
+            search_scope=SearchScope.BASE_AND_CUSTOM,
+            base_index="medium_ft",
+            custom_index="user_all_minilm_mem"
+        )
+
+        # Assert: Verify the client is configured correctly
+        assert client_under_test.search_scope == SearchScope.BASE_AND_CUSTOM
+        assert client_under_test.search_indices == ["user_all_minilm_mem", "medium_ft"]
+
+    def test_compute_search_indices_validation_custom_only_without_index(self, mocked_datacommons_client):
+        """
+        Test that CUSTOM_ONLY search scope without custom_index raises ValueError.
+        """
+        # Arrange & Act & Assert: Creating client with invalid configuration should raise ValueError
+        with pytest.raises(ValueError, match="Custom index not configured but CUSTOM_ONLY search scope requested"):
+            DCClient(
+                dc=mocked_datacommons_client,
+                search_scope=SearchScope.CUSTOM_ONLY,
+                custom_index=None
+            )
+
+    def test_compute_search_indices_validation_custom_only_with_empty_index(self, mocked_datacommons_client):
+        """
+        Test that CUSTOM_ONLY search scope with empty custom_index raises ValueError.
+        """
+        # Arrange & Act & Assert: Creating client with invalid configuration should raise ValueError
+        with pytest.raises(ValueError, match="Custom index not configured but CUSTOM_ONLY search scope requested"):
+            DCClient(
+                dc=mocked_datacommons_client,
+                search_scope=SearchScope.CUSTOM_ONLY,
+                custom_index=""
+            )
+
+
+class TestDCClientSearch:
+    """Tests for the search_svs method of DCClient."""
+
+    @pytest.mark.asyncio
+    @patch('datacommons_mcp.clients.requests.post')
+    async def test_search_svs_single_api_call(self, mock_post, mocked_datacommons_client):
+        """
+        Test that search_svs makes a single API call with comma-separated indices.
+        """
+        # Arrange: Create client and mock response
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client,
+            search_scope=SearchScope.BASE_AND_CUSTOM,
+            base_index="medium_ft",
+            custom_index="user_all_minilm_mem"
+        )
+        
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "queryResults": {
+                "test query": {
+                    "SV": ["var1", "var2"],
+                    "CosineScore": [0.8, 0.6]
+                }
+            }
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Act: Call search_svs
+        result = await client_under_test.search_svs(["test query"])
+
+        # Assert: Verify single API call with comma-separated indices
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert "idx=user_all_minilm_mem,medium_ft" in call_args[0][0]
+        assert result["test query"] == [
+            {"SV": "var1", "CosineScore": 0.8},
+            {"SV": "var2", "CosineScore": 0.6}
+        ]
+
+    @pytest.mark.asyncio
+    @patch('datacommons_mcp.clients.requests.post')
+    async def test_search_svs_skip_topics(self, mock_post, mocked_datacommons_client):
+        """
+        Test that search_svs respects the skip_topics parameter.
+        """
+        # Arrange: Create client and mock response
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "queryResults": {
+                "test query": {
+                    "SV": ["var1"],
+                    "CosineScore": [0.8]
+                }
+            }
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Act: Call search_svs with skip_topics=True
+        await client_under_test.search_svs(["test query"], skip_topics=True)
+
+        # Assert: Verify skip_topics parameter is included in API call
+        call_args = mock_post.call_args
+        assert "skip_topics=true" in call_args[0][0]
+
+
 class TestDCClientObservations:
     """Tests for the observation-fetching methods of DCClient."""
 
@@ -61,7 +209,7 @@ class TestDCClientObservations:
         """
         # Arrange: Create an instance of our wrapper client.
         # Its self.dc attribute will be the mocked_datacommons_client.
-        client_under_test = DCClient(api_key="fake_key")
+        client_under_test = DCClient(dc=mocked_datacommons_client)
         request = ObservationToolRequest(
             variable_dcid="var1",
             place_dcid="place1",
@@ -86,7 +234,7 @@ class TestDCClientObservations:
         Verifies that fetch_obs calls the correct underlying method for a child place query.
         """
         # Arrange: Create an instance of our wrapper client.
-        client_under_test = DCClient(api_key="fake_key")
+        client_under_test = DCClient(dc=mocked_datacommons_client)
         request = ObservationToolRequest(
             variable_dcid="var1",
             place_dcid="parent_place",

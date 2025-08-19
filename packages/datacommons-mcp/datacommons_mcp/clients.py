@@ -25,7 +25,7 @@ import requests
 from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
-from datacommons_mcp.constants import SearchScope
+from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID, SearchScope
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
@@ -43,40 +43,57 @@ from datacommons_mcp.utils import filter_by_date
 class DCClient:
     def __init__(
         self,
-        dc_name: str = "Data Commons",
-        base_url: str = None,
-        api_key: str = None,
+        dc: DataCommonsClient,
+        search_scope: SearchScope = SearchScope.BASE_ONLY,
+        base_index: str = "base_uae_mem",
+        custom_index: Optional[str] = None,
         sv_search_base_url: str = "https://dev.datacommons.org",
-        idx: str = "base_uae_mem",
-        topic_store: TopicStore = None,
+        topic_store: Optional[TopicStore] = None,
     ) -> None:
         """
-        Initialize the DCClient with either an API key or a base URL.
+        Initialize the DCClient with a DataCommonsClient and search configuration.
 
         Args:
-            api_key: API key for authentication (mutually exclusive with base_url)
-            base_url: Base URL for custom Data Commons instance (mutually exclusive with api_key)
+            dc: DataCommonsClient instance
+            search_scope: SearchScope enum controlling search behavior
+            base_index: Index to use for base DC searches
+            custom_index: Index to use for custom DC searches (None for base DC)
             sv_search_base_url: Base URL for SV search endpoint
-            idx: Index to use for SV search
+            topic_store: Optional TopicStore for caching
         """
-        if api_key and base_url:
-            raise ValueError("Cannot specify both api_key and base_url")
-        if not api_key and not base_url:
-            raise ValueError("Must specify either api_key or base_url")
-
-        self.dc_name = dc_name
+        self.dc = dc
+        self.search_scope = search_scope
+        self.base_index = base_index
+        self.custom_index = custom_index
+        # Precompute search indices to validate configuration at instantiation time
+        self.search_indices = self._compute_search_indices()
         self.sv_search_base_url = sv_search_base_url
-        self.idx = idx
         self.variable_cache = LruCache(128)
 
         if topic_store is None:
-            TopicStore(topics_by_dcid={}, all_variables=set())
+            topic_store = TopicStore(topics_by_dcid={}, all_variables=set())
         self.topic_store = topic_store
 
-        if api_key:
-            self.dc = DataCommonsClient(api_key=api_key)
-        else:
-            self.dc = DataCommonsClient(url=base_url)
+    def _compute_search_indices(self) -> list[str]:
+        """Compute and validate search indices based on the configured search_scope.
+
+        Raises a ValueError immediately for invalid configurations (e.g., CUSTOM_ONLY
+        without a custom_index).
+        """
+        indices: list[str] = []
+
+        if self.search_scope in [SearchScope.CUSTOM_ONLY, SearchScope.BASE_AND_CUSTOM]:
+            if self.custom_index is not None and self.custom_index != "":
+                indices.append(self.custom_index)
+            elif self.search_scope == SearchScope.CUSTOM_ONLY:
+                raise ValueError(
+                    "Custom index not configured but CUSTOM_ONLY search scope requested"
+                )
+
+        if self.search_scope in [SearchScope.BASE_ONLY, SearchScope.BASE_AND_CUSTOM]:
+            indices.append(self.base_index)
+
+        return indices
 
     async def fetch_obs(
         self, request: ObservationToolRequest
@@ -206,15 +223,26 @@ class DCClient:
         # If no topic was found, return all the SVs found in the search.
         return svs_before_topic
 
-    async def search_svs(self, queries: list[str], *, skip_topics: bool = True) -> dict:
+    async def search_svs(
+        self, 
+        queries: list[str], 
+        *, 
+        skip_topics: bool = True
+    ) -> dict:
         results_map = {}
         skip_topics_param = "&skip_topics=true" if skip_topics else ""
         endpoint_url = f"{self.sv_search_base_url}/api/nl/search-vector"
-        api_endpoint = f"{endpoint_url}?idx={self.idx}{skip_topics_param}"
         headers = {"Content-Type": "application/json"}
 
+        # Use precomputed indices based on configured search scope
+        indices = self.search_indices
+
         for query in queries:
+            # Search all indices in a single API call using comma-separated list
+            indices_param = ",".join(indices)
+            api_endpoint = f"{endpoint_url}?idx={indices_param}{skip_topics_param}"
             payload = {"queries": [query]}
+            
             try:
                 response = requests.post(  # noqa: S113
                     api_endpoint, data=json.dumps(payload), headers=headers
@@ -230,30 +258,20 @@ class DCClient:
                 ):
                     sv_list = results[query]["SV"]
                     score_list = results[query]["CosineScore"]
-                    sorted_results = sorted(
-                        zip(sv_list, score_list, strict=False),
-                        key=lambda x: (-x[1], x[0]),
-                    )
-                    sv_list, score_list = zip(*sorted_results, strict=False)
-
-                    # Assuming len(sv_list) == len(score_list) as per user prompt
-                    # Iterate up to the top 5, or fewer if less than 5 results are available.
-                    num_results_available = len(sv_list)
-                    num_results_to_take = min(num_results_available, 5)
-
-                    top_results = [
+                    
+                    # Return results in API order (no ranking)
+                    all_results = [
                         {"SV": sv_list[i], "CosineScore": score_list[i]}
-                        for i in range(num_results_to_take)
+                        for i in range(len(sv_list))
                     ]
-
-                    results_map[query] = top_results
+                    results_map[query] = all_results[:5]  # Limit to top 5 results
                 else:
-                    # This case handles if the query is in the response, but SV/CosineScore is missing/empty
                     results_map[query] = []
 
             except Exception as e:  # noqa: BLE001
                 print(f"An unexpected error occurred for query '{query}': {e}")
                 results_map[query] = []
+
         return results_map
 
     async def child_place_type_exists(
