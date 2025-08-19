@@ -155,7 +155,7 @@ class TestMultiDCClientObservations:
     def test_integrate_observation_initial_data(self, mock_api_response):
         response = ObservationToolResponse()
         MultiDCClient._integrate_observation_response(
-            response, mock_api_response, "dc1"
+            response, mock_api_response
         )
 
         assert "place1" in response.place_data
@@ -172,7 +172,7 @@ class TestMultiDCClientObservations:
     def test_integrate_observation_alternative_sources(self, mock_api_response):
         response = ObservationToolResponse()
         # Pre-populate with some data
-        initial_metadata = SourceMetadata(source_id="f_initial", dc_client_id="dc0")
+        initial_metadata = SourceMetadata(source_id="f_initial")
         initial_series = VariableSeries(
             variable_dcid="var1",
             source_metadata=initial_metadata,
@@ -182,7 +182,7 @@ class TestMultiDCClientObservations:
         response.place_data["place1"] = Mock(variable_series={"var1": initial_series})
 
         MultiDCClient._integrate_observation_response(
-            response, mock_api_response, "dc1"
+            response, mock_api_response
         )
 
         # Check that the new sources were appended
@@ -195,7 +195,7 @@ class TestMultiDCClientObservations:
         date_filter = DateRange(start_date="2023", end_date="2023")
 
         MultiDCClient._integrate_observation_response(
-            response, mock_api_response, "dc1", date_filter=date_filter
+            response, mock_api_response, date_filter=date_filter
         )
 
         var_series = response.place_data["place1"].variable_series["var1"]

@@ -97,21 +97,35 @@ class DCClient:
 
     async def fetch_obs(
         self, request: ObservationToolRequest
-    ) -> ObservationApiResponse:
+    ) -> ObservationToolResponse:
+        # Get the raw API response
         if request.child_place_type:
-            return self.dc.observation.fetch_observations_by_entity_type(
+            api_response = self.dc.observation.fetch_observations_by_entity_type(
                 variable_dcids=request.variable_dcid,
                 parent_entity=request.place_dcid,
                 entity_type=request.child_place_type,
                 date=request.observation_period,
                 filter_facet_ids=request.source_ids,
             )
-        return self.dc.observation.fetch(
-            variable_dcids=request.variable_dcid,
-            entity_dcids=request.place_dcid,
-            date=request.observation_period,
-            filter_facet_ids=request.source_ids,
+        else:
+            api_response = self.dc.observation.fetch(
+                variable_dcids=request.variable_dcid,
+                entity_dcids=request.place_dcid,
+                date=request.observation_period,
+                filter_facet_ids=request.source_ids,
+            )
+
+        # Convert to tool response format
+        final_response = ObservationToolResponse()
+        self._integrate_observation_response(
+            final_response,
+            api_response,
+            request.date_filter,
         )
+
+        # Add place metadata
+        self.add_place_metadata_to_obs(final_response)
+        return final_response
 
     def fetch_entity_names(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_entity_names(entity_dcids=dcids)
@@ -132,6 +146,132 @@ class DCClient:
 
         for place_dcid, name in names.items():
             obs_response.place_data[place_dcid].place_name = name
+
+    @staticmethod
+    def _integrate_observation_response(
+        final_response: ObservationToolResponse,
+        api_response: ObservationApiResponse,
+        date_filter: DateRange | None = None,
+        selected_source_ids: list[str] | None = None,
+    ) -> None:
+        """
+        Merges a single DC's API response into the final tool response.
+
+        This method populates two main parts of the final_response:
+        1.  `source_info`: A global dictionary of all unique data sources (facets)
+            encountered across all API calls, keyed by source_id. This contains
+            static info like import name.
+        2.  `place_data`: A dictionary keyed by place, containing variable series.
+            Each series has its own `source_metadata` (with dynamic info like
+            observation dates for this query) and a list of alternative sources.
+        """
+        flattened_api_response = api_response.get_data_by_entity()
+        for variable_dcid, api_variable_data in flattened_api_response.items():
+            for place_dcid, api_place_data in api_variable_data.items():
+                # Get or initialize the place_data entry in final response
+                if place_dcid not in final_response.place_data:
+                    final_response.place_data[place_dcid] = PlaceData(
+                        place_dcid=place_dcid
+                    )
+                place_data = final_response.place_data[place_dcid]
+
+                # 1. Collect all sources from this API call, creating both
+                #    Source (global) and SourceMetadata (series-specific) objects.
+                all_sources_from_api = []
+                for facet in api_place_data.orderedFacets:
+                    if selected_source_ids and facet.facetId not in selected_source_ids:
+                        continue
+
+                    facet_metadata_from_api = api_response.facets.get(facet.facetId)
+
+                    # If obsCount is not provided, calculate it from the observations list.
+                    obs_count = (
+                        facet.obsCount
+                        if facet.obsCount is not None
+                        else len(facet.observations or [])
+                    )
+
+                    # Calculate earliest/latest dates if not provided by the API
+                    earliest_date = facet.earliestDate
+                    latest_date = facet.latestDate
+                    if (not earliest_date or not latest_date) and facet.observations:
+                        obs_dates = [obs.date for obs in facet.observations]
+                        if obs_dates:
+                            parsed_intervals = [
+                                DateRange.parse_interval(d) for d in obs_dates
+                            ]
+                            all_start_dates = [
+                                interval[0] for interval in parsed_intervals
+                            ]
+                            all_end_dates = [
+                                interval[1] for interval in parsed_intervals
+                            ]
+                            if not earliest_date:
+                                earliest_date = min(all_start_dates)
+                            if not latest_date:
+                                latest_date = max(all_end_dates)
+
+                    # Create the series-specific metadata object
+                    series_metadata = SourceMetadata(
+                        source_id=facet.facetId,
+                        earliest_date=earliest_date,
+                        latest_date=latest_date,
+                        total_observations=obs_count,
+                    )
+
+                    # Create and add the global Source object to the main response if new.
+                    if facet.facetId not in final_response.source_info:
+                        final_response.source_info[facet.facetId] = Source(
+                            **facet_metadata_from_api.to_dict(),
+                            source_id=facet.facetId,
+                        )
+
+                    filtered_obs = filter_by_date(facet.observations, date_filter)
+
+                    all_sources_from_api.append((series_metadata, filtered_obs))
+
+                # 2. Now, decide on the primary source *if needed*. This only happens if the
+                # variable series doesn't exist yet.
+                primary_metadata = None
+                primary_obs = None
+
+                # Filter to only sources that have observations for the given date range
+                sources_with_obs = [s for s in all_sources_from_api if s[1]]
+
+                if sources_with_obs:
+                    # Sort to find the best source: 1. latest date, 2. most observations
+                    sources_with_obs.sort(
+                        key=lambda x: (
+                            x[0].latest_date or "",
+                            x[0].total_observations or 0,
+                        ),
+                        reverse=True,
+                    )
+                    # The best one becomes the primary source
+                    primary_metadata, primary_obs = sources_with_obs[0]
+
+                # 3. Get all SourceMetadata objects from this API call
+                all_metadata_for_place_var = [s[0] for s in all_sources_from_api]
+
+                # 4. Integrate into the final response
+                if variable_dcid in place_data.variable_series:
+                    # If series exists, just add all sources from this API call as alternatives.
+                    place_data.variable_series[
+                        variable_dcid
+                    ].alternative_sources.extend(all_metadata_for_place_var)
+                elif primary_metadata:
+                    # Otherwise, create a new series using the best source we found.
+                    alternative_sources = [
+                        m
+                        for m in all_metadata_for_place_var
+                        if m.source_id != primary_metadata.source_id
+                    ]
+                    place_data.variable_series[variable_dcid] = VariableSeries(
+                        variable_dcid=variable_dcid,
+                        source_metadata=primary_metadata,
+                        observations=primary_obs,
+                        alternative_sources=alternative_sources,
+                    )
 
     async def fetch_topic_variables(
         self, place_dcid: str, topic_query: str = "statistics"
@@ -621,7 +761,6 @@ class MultiDCClient:
             self._integrate_observation_response(
                 final_response,
                 custom_dc_response,
-                self.custom_dc.dc_name,
                 request.date_filter,
                 # Only merge facets that are unique to the custom DC
                 selected_source_ids=list(
@@ -633,7 +772,6 @@ class MultiDCClient:
         self._integrate_observation_response(
             final_response,
             base_dc_response,
-            self.base_dc.dc_name,
             request.date_filter,
         )
 
@@ -644,7 +782,6 @@ class MultiDCClient:
     def _integrate_observation_response(
         final_response: ObservationToolResponse,
         api_response: ObservationApiResponse,
-        api_client_id: str,
         date_filter: DateRange | None = None,
         selected_source_ids: list[str] | None = None,
     ) -> None:
@@ -708,7 +845,6 @@ class MultiDCClient:
                     # Create the series-specific metadata object
                     series_metadata = SourceMetadata(
                         source_id=facet.facetId,
-                        dc_client_id=api_client_id,
                         earliest_date=earliest_date,
                         latest_date=latest_date,
                         total_observations=obs_count,

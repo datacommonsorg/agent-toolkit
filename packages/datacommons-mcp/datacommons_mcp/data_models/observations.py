@@ -125,7 +125,6 @@ class ObservationToolRequest(BaseModel):
 
 class SourceMetadata(BaseModel):
     source_id: str
-    dc_client_id: str
     earliest_date: str | None = None
     latest_date: str | None = None
     total_observations: int | None = None
