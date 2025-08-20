@@ -655,14 +655,18 @@ class DCClient:
             # Filter by existence if places are specified
             if place_dcids:
                 # Filter member variables by existence
-                member_variables = self._filter_variables_by_existence(
+                filtered_variables = self._filter_variables_by_existence(
                     member_variables, place_dcids
                 )
+                # Extract just the dcids from the filtered results
+                member_variables = [var["dcid"] for var in filtered_variables]
 
                 # Filter member topics by existence
-                member_topics = self._filter_topics_by_existence(
+                filtered_topics = self._filter_topics_by_existence(
                     member_topics, place_dcids
                 )
+                # Extract just the dcids from the filtered results
+                member_topics = [topic["dcid"] for topic in filtered_topics]
 
             result[topic_dcid] = {
                 "member_topics": member_topics,

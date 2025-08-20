@@ -21,7 +21,7 @@ to ensure that our wrapper logic calls the correct methods on the underlying cli
 without making actual network calls.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from datacommons_client.client import DataCommonsClient
@@ -421,6 +421,201 @@ class TestDCClientObservations:
         
         # Verify that place metadata was added for both child places
         client_under_test.fetch_entity_names.assert_called_once_with(["child_place1", "child_place2"])
+
+
+class TestDCClientFetchTopicsAndVariables:
+    """Tests for the fetch_topics_and_variables method of DCClient."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_topics_and_variables_basic(self, mocked_datacommons_client):
+        """Test basic functionality without place filtering."""
+        # Arrange: Create client and mock search results
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        # Mock search_svs to return topics and variables
+        mock_search_results = {
+            "test query": [
+                {"SV": "dc/topic/Health", "CosineScore": 0.9},
+                {"SV": "dc/topic/Economy", "CosineScore": 0.8},
+                {"SV": "dc/variable/Count_Person", "CosineScore": 0.7},
+                {"SV": "dc/variable/Count_Household", "CosineScore": 0.6},
+            ]
+        }
+        
+        # Mock the search_svs method
+        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+        
+        # Mock topic store
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.get_name.side_effect = lambda dcid: {
+            "dc/topic/Health": "Health",
+            "dc/topic/Economy": "Economy",
+            "dc/variable/Count_Person": "Count of Persons",
+            "dc/variable/Count_Household": "Count of Households",
+        }.get(dcid, dcid)
+
+        # Act: Call the method
+        result = await client_under_test.fetch_topics_and_variables("test query")
+
+        # Assert: Verify the response structure
+        assert "topics" in result
+        assert "variables" in result
+        assert "lookups" in result
+        
+        # Verify topics
+        assert len(result["topics"]) == 2
+        topic_dcids = [topic["dcid"] for topic in result["topics"]]
+        assert "dc/topic/Health" in topic_dcids
+        assert "dc/topic/Economy" in topic_dcids
+        
+        # Verify variables
+        assert len(result["variables"]) == 2
+        variable_dcids = [var["dcid"] for var in result["variables"]]
+        assert "dc/variable/Count_Person" in variable_dcids
+        assert "dc/variable/Count_Household" in variable_dcids
+        
+        # Verify lookups
+        assert len(result["lookups"]) == 4
+        assert result["lookups"]["dc/topic/Health"] == "Health"
+        assert result["lookups"]["dc/variable/Count_Person"] == "Count of Persons"
+
+    @pytest.mark.asyncio
+    async def test_fetch_topics_and_variables_with_places(self, mocked_datacommons_client):
+        """Test functionality with place filtering."""
+        # Arrange: Create client and mock search results
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        # Mock search_svs to return topics and variables
+        mock_search_results = {
+            "test query": [
+                {"SV": "dc/topic/Health", "CosineScore": 0.9},
+                {"SV": "dc/variable/Count_Person", "CosineScore": 0.7},
+            ]
+        }
+        
+        # Mock the search_svs method
+        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+        
+        # Mock topic store
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.get_name.side_effect = lambda dcid: {
+            "dc/topic/Health": "Health",
+            "dc/variable/Count_Person": "Count of Persons",
+        }.get(dcid, dcid)
+        
+        # Mock topic data
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(
+                member_topics=[],
+                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"]
+            )
+        }
+        
+        # Mock variable cache to simulate data existence
+        client_under_test.variable_cache = Mock()
+        client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
+            "geoId/06": {"dc/variable/Count_Person"},  # California has Count_Person
+            "geoId/36": set(),  # New York has no data
+        }.get(place_dcid, set())
+
+        # Act: Call the method with place filtering
+        result = await client_under_test.fetch_topics_and_variables(
+            "test query", place_dcids=["geoId/06", "geoId/36"]
+        )
+
+        # Assert: Verify that only variables with data are returned
+        assert len(result["variables"]) == 1
+        assert result["variables"][0]["dcid"] == "dc/variable/Count_Person"
+        assert "places_with_data" in result["variables"][0]
+        assert result["variables"][0]["places_with_data"] == ["geoId/06"]
+
+    def test_filter_variables_by_existence(self, mocked_datacommons_client):
+        """Test variable filtering by existence."""
+        # Arrange: Create client and mock variable cache
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.variable_cache = Mock()
+        client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
+            "geoId/06": {"dc/variable/Count_Person", "dc/variable/Count_Household"},
+            "geoId/36": {"dc/variable/Count_Person"},
+        }.get(place_dcid, set())
+
+        # Act: Filter variables
+        variables = ["dc/variable/Count_Person", "dc/variable/Count_Household", "dc/variable/Count_Business"]
+        result = client_under_test._filter_variables_by_existence(
+            variables, ["geoId/06", "geoId/36"]
+        )
+
+        # Assert: Verify filtering results
+        assert len(result) == 2
+        var_dcids = [var["dcid"] for var in result]
+        assert "dc/variable/Count_Person" in var_dcids
+        assert "dc/variable/Count_Household" in var_dcids
+        assert "dc/variable/Count_Business" not in var_dcids
+        
+        # Verify places_with_data
+        count_person = next(var for var in result if var["dcid"] == "dc/variable/Count_Person")
+        assert count_person["places_with_data"] == ["geoId/06", "geoId/36"]
+
+    def test_filter_topics_by_existence(self, mocked_datacommons_client):
+        """Test topic filtering by existence."""
+        # Arrange: Create client and mock topic store
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(
+                member_topics=[],
+                variables=["dc/variable/Count_Person"]
+            )
+        }
+        
+        # Mock variable cache
+        client_under_test.variable_cache = Mock()
+        client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
+            "geoId/06": {"dc/variable/Count_Person"},
+            "geoId/36": set(),
+        }.get(place_dcid, set())
+
+        # Act: Filter topics
+        topics = ["dc/topic/Health", "dc/topic/Economy"]
+        result = client_under_test._filter_topics_by_existence(
+            topics, ["geoId/06", "geoId/36"]
+        )
+
+        # Assert: Verify filtering results
+        assert len(result) == 1
+        assert result[0]["dcid"] == "dc/topic/Health"
+        assert result[0]["places_with_data"] == ["geoId/06"]
+
+    def test_get_topics_members_with_existence(self, mocked_datacommons_client):
+        """Test member retrieval with existence filtering."""
+        # Arrange: Create client and mock topic store
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(
+                member_topics=["dc/topic/HealthCare"],
+                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"]
+            )
+        }
+        
+        # Mock variable cache
+        client_under_test.variable_cache = Mock()
+        client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
+            "geoId/06": {"dc/variable/Count_Person"},
+            "geoId/36": set(),
+        }.get(place_dcid, set())
+
+        # Act: Get members with existence filtering
+        topics = [{"dcid": "dc/topic/Health"}]
+        result = client_under_test._get_topics_members_with_existence(
+            topics, ["geoId/06", "geoId/36"]
+        )
+
+        # Assert: Verify member filtering
+        assert "dc/topic/Health" in result
+        health_topic = result["dc/topic/Health"]
+        assert health_topic["member_variables"] == ["dc/variable/Count_Person"]
+        assert health_topic["member_topics"] == []
 
 
 class TestDCClientIntegrateObservationResponse:
