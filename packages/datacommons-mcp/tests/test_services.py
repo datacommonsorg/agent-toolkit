@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from datacommons_mcp.data_models.observations import ObservationPeriod
 from datacommons_mcp.exceptions import NoDataFoundError
-from datacommons_mcp.services import _build_observation_request
+from datacommons_mcp.services import _build_observation_request, get_observations
 
 
 @pytest.mark.asyncio
@@ -25,7 +25,7 @@ class TestBuildObservationRequest:
     @pytest.fixture
     def mock_client(self):
         client = Mock()
-        client.base_dc.search_places = AsyncMock()
+        client.search_places = AsyncMock()
         return client
 
     async def test_validation_errors(self, mock_client):
@@ -56,10 +56,10 @@ class TestBuildObservationRequest:
         assert request.variable_dcid == "var1"
         assert request.place_dcid == "country/USA"
         assert request.observation_period == ObservationPeriod.LATEST
-        mock_client.base_dc.search_places.assert_not_called()
+        mock_client.search_places.assert_not_called()
 
     async def test_with_resolution_success(self, mock_client):
-        mock_client.base_dc.search_places.return_value = {"USA": "country/USA"}
+        mock_client.search_places.return_value = {"USA": "country/USA"}
 
         request = await _build_observation_request(
             mock_client,
@@ -69,7 +69,7 @@ class TestBuildObservationRequest:
             end_date="2023",
         )
 
-        mock_client.base_dc.search_places.assert_awaited_once_with(["USA"])
+        mock_client.search_places.assert_awaited_once_with(["USA"])
         assert request.variable_dcid == "Count_Person"
         assert request.place_dcid == "country/USA"
         assert request.observation_period == ObservationPeriod.ALL
@@ -77,8 +77,73 @@ class TestBuildObservationRequest:
         assert request.date_filter.end_date == "2023-12-31"
 
     async def test_resolution_failure(self, mock_client):
-        mock_client.base_dc.search_places.return_value = {}  # No place found
+        mock_client.search_places.return_value = {}  # No place found
         with pytest.raises(NoDataFoundError, match="NoDataFoundError: No place found"):
             await _build_observation_request(
                 mock_client, variable_dcid="var1", place_name="invalid"
             )
+
+
+@pytest.mark.asyncio
+class TestGetObservations:
+    @pytest.fixture
+    def mock_client(self):
+        client = Mock()
+        client.search_places = AsyncMock()
+        client.fetch_obs = AsyncMock()
+        return client
+
+    async def test_get_observations_success(self, mock_client):
+        """Test successful observation retrieval."""
+        # Setup mocks
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_response = Mock()
+        mock_client.fetch_obs.return_value = mock_response
+
+        # Call the function
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="Count_Person",
+            place_name="USA",
+            period="latest"
+        )
+
+        # Verify the result
+        assert result == mock_response
+        
+        # Verify search_places was called
+        mock_client.search_places.assert_awaited_once_with(["USA"])
+        
+        # Verify fetch_obs was called with the correct request
+        mock_client.fetch_obs.assert_awaited_once()
+        call_args = mock_client.fetch_obs.call_args[0][0]
+        assert call_args.variable_dcid == "Count_Person"
+        assert call_args.place_dcid == "country/USA"
+        assert call_args.observation_period == ObservationPeriod.LATEST
+
+    async def test_get_observations_with_dcid(self, mock_client):
+        """Test observation retrieval with direct DCID."""
+        # Setup mocks
+        mock_response = Mock()
+        mock_client.fetch_obs.return_value = mock_response
+
+        # Call the function
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="Count_Person",
+            place_dcid="country/USA",
+            period="latest"
+        )
+
+        # Verify the result
+        assert result == mock_response
+        
+        # Verify search_places was NOT called (since we provided DCID)
+        mock_client.search_places.assert_not_called()
+        
+        # Verify fetch_obs was called with the correct request
+        mock_client.fetch_obs.assert_awaited_once()
+        call_args = mock_client.fetch_obs.call_args[0][0]
+        assert call_args.variable_dcid == "Count_Person"
+        assert call_args.place_dcid == "country/USA"
+        assert call_args.observation_period == ObservationPeriod.LATEST

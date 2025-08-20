@@ -14,7 +14,7 @@
 
 import asyncio
 
-from datacommons_mcp.clients import MultiDCClient
+from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationPeriod,
@@ -25,7 +25,7 @@ from datacommons_mcp.exceptions import NoDataFoundError
 
 
 async def _build_observation_request(
-    client: MultiDCClient,
+    client: DCClient,
     variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
@@ -63,7 +63,7 @@ async def _build_observation_request(
 
     # 3. Resolve place DCID
     if not place_dcid:
-        results = await client.base_dc.search_places([place_name])
+        results = await client.search_places([place_name])
         place_dcid = results.get(place_name)
     if not place_dcid:
         raise NoDataFoundError(f"No place found matching '{place_name}'.")
@@ -80,7 +80,7 @@ async def _build_observation_request(
 
 
 async def get_observations(
-    client: MultiDCClient,
+    client: DCClient,
     variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
