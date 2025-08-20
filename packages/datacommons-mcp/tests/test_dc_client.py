@@ -22,10 +22,14 @@ without making actual network calls.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from unittest.mock import Mock as MockType
 
 import pytest
 from datacommons_client.client import DataCommonsClient
-from datacommons_mcp.clients import DCClient
+from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.constants import SearchScope
 from datacommons_mcp.data_models.observations import (
     DateRange,
@@ -716,3 +720,205 @@ class TestDCClientIntegrateObservationResponse:
         # Only the observation for "2023" should have been selected
         assert len(var_series.observations) == 1
         assert var_series.observations[0].value == 2
+
+
+class TestCreateDCClient:
+    """Tests for the create_dc_client factory function."""
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients.read_topic_cache")
+    def test_create_dc_client_base_dc(self, mock_read_cache: Mock, mock_dc_client: Mock):
+        """Test base DC creation with defaults."""
+        # Arrange
+        config = {
+            "dc_type": "base",
+            "api_key": "test_api_key"
+        }
+        mock_dc_instance = Mock()
+        mock_dc_client.return_value = mock_dc_instance
+        mock_read_cache.return_value = Mock()
+
+        # Act
+        result = create_dc_client(config)
+
+        # Assert
+        assert isinstance(result, DCClient)
+        assert result.dc == mock_dc_instance
+        assert result.search_scope == SearchScope.BASE_ONLY
+        assert result.base_index == "base_uae_mem"
+        assert result.custom_index is None
+        mock_dc_client.assert_called_once_with(api_key="test_api_key")
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients.read_topic_cache")
+    def test_create_dc_client_base_dc_with_overrides(self, mock_read_cache: Mock, mock_dc_client: Mock):
+        """Test base DC creation with custom values."""
+        # Arrange
+        config = {
+            "dc_type": "base",
+            "api_key": "test_api_key",
+            "sv_search_base_url": "https://custom.dev.datacommons.org",
+            "base_index": "custom_base_index",
+            "topic_cache_path": "/path/to/cache.json"
+        }
+        mock_dc_instance = Mock()
+        mock_dc_client.return_value = mock_dc_instance
+        mock_topic_store = Mock()
+        mock_read_cache.return_value = mock_topic_store
+
+        # Act
+        result = create_dc_client(config)
+
+        # Assert
+        assert isinstance(result, DCClient)
+        assert result.dc == mock_dc_instance
+        assert result.search_scope == SearchScope.BASE_ONLY
+        assert result.base_index == "custom_base_index"
+        assert result.custom_index is None
+        assert result.sv_search_base_url == "https://custom.dev.datacommons.org"
+        assert result.topic_store == mock_topic_store
+        mock_dc_client.assert_called_once_with(api_key="test_api_key")
+        mock_read_cache.assert_called_once_with("/path/to/cache.json")
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients.create_topic_store")
+    def test_create_dc_client_custom_dc(self, mock_create_store: Mock, mock_dc_client: Mock):
+        """Test custom DC creation with defaults."""
+        # Arrange
+        config = {
+            "dc_type": "custom",
+            "base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
+        }
+        mock_dc_instance = Mock()
+        mock_dc_client.return_value = mock_dc_instance
+        mock_topic_store = Mock()
+        mock_create_store.return_value = mock_topic_store
+
+        # Act
+        result = create_dc_client(config)
+
+        # Assert
+        assert isinstance(result, DCClient)
+        assert result.dc == mock_dc_instance
+        assert result.search_scope == SearchScope.BASE_AND_CUSTOM
+        assert result.base_index == "medium_ft"
+        assert result.custom_index == "user_all_minilm_mem"
+        assert result.sv_search_base_url == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
+        # Should have called DataCommonsClient with computed api_base_url
+        expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
+        mock_dc_client.assert_called_with(url=expected_api_url)
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients.create_topic_store")
+    def test_create_dc_client_custom_dc_with_overrides(self, mock_create_store, mock_dc_client):
+        """Test custom DC creation with custom values."""
+        # Arrange
+        config = {
+            "dc_type": "custom",
+            "base_url": "https://custom.example.com",
+            "api_base_url": "https://custom.example.com/api/v2/",
+            "search_scope": "custom_only",
+            "base_index": "custom_base_index",
+            "custom_index": "custom_index",
+            "root_topic_dcids": ["dc/topic/Health", "dc/topic/Economy"]
+        }
+        mock_dc_instance = Mock()
+        mock_dc_client.return_value = mock_dc_instance
+        mock_topic_store = Mock()
+        mock_create_store.return_value = mock_topic_store
+
+        # Act
+        result = create_dc_client(config)
+
+        # Assert
+        assert isinstance(result, DCClient)
+        assert result.dc == mock_dc_instance
+        assert result.search_scope == SearchScope.CUSTOM_ONLY
+        assert result.base_index == "custom_base_index"
+        assert result.custom_index == "custom_index"
+        assert result.sv_search_base_url == "https://custom.example.com"
+        assert result.topic_store == mock_topic_store
+        # Should have called DataCommonsClient with provided api_base_url
+        mock_dc_client.assert_called_with(url="https://custom.example.com/api/v2/")
+        # Should have created topic store with root_topic_dcids
+        mock_create_store.assert_called_once_with(
+            ["dc/topic/Health", "dc/topic/Economy"], 
+            mock_dc_instance
+        )
+
+    def test_create_dc_client_validation_missing_dc_type(self):
+        """Test validation when dc_type is missing."""
+        config = {"api_key": "test_key"}
+        
+        with pytest.raises(ValueError, match="'dc_type' field is required"):
+            create_dc_client(config)
+
+    def test_create_dc_client_validation_invalid_dc_type(self):
+        """Test validation when dc_type is invalid."""
+        config = {"dc_type": "invalid"}
+        
+        with pytest.raises(ValueError, match="Invalid dc_type: invalid"):
+            create_dc_client(config)
+
+    def test_create_dc_client_validation_base_missing_api_key(self):
+        """Test validation when base DC is missing api_key."""
+        config = {"dc_type": "base"}
+        
+        with pytest.raises(ValueError, match="'api_key' is required for base DC"):
+            create_dc_client(config)
+
+    def test_create_dc_client_validation_custom_missing_base_url(self):
+        """Test validation when custom DC is missing base_url."""
+        config = {"dc_type": "custom"}
+        
+        with pytest.raises(ValueError, match="'base_url' is required for custom DC"):
+            create_dc_client(config)
+
+    def test_create_dc_client_validation_invalid_search_scope(self):
+        """Test validation when search_scope is invalid."""
+        config = {
+            "dc_type": "custom",
+            "base_url": "https://example.com",
+            "search_scope": "INVALID_SCOPE"
+        }
+        
+        with pytest.raises(ValueError, match="Invalid search_scope"):
+            create_dc_client(config)
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    def test_create_dc_client_url_computation(self, mock_dc_client):
+        """Test URL computation for custom DC."""
+        # Arrange
+        config = {
+            "dc_type": "custom",
+            "base_url": "https://example.com"  # No trailing slash
+        }
+        mock_dc_instance = Mock()
+        mock_dc_client.return_value = mock_dc_instance
+
+        # Act
+        result = create_dc_client(config)
+
+        # Assert
+        # Should compute api_base_url by adding /core/api/v2/
+        expected_api_url = "https://example.com/core/api/v2/"
+        mock_dc_client.assert_called_with(url=expected_api_url)
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    def test_create_dc_client_url_computation_with_trailing_slash(self, mock_dc_client):
+        """Test URL computation for custom DC with trailing slash."""
+        # Arrange
+        config = {
+            "dc_type": "custom",
+            "base_url": "https://example.com/"  # With trailing slash
+        }
+        mock_dc_instance = Mock()
+        mock_dc_client.return_value = mock_dc_instance
+
+        # Act
+        result = create_dc_client(config)
+
+        # Assert
+        # Should compute api_base_url by adding /core/api/v2/ (trailing slash removed)
+        expected_api_url = "https://example.com/core/api/v2/"
+        mock_dc_client.assert_called_with(url=expected_api_url)
