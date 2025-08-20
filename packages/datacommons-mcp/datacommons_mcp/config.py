@@ -29,27 +29,14 @@ if not DC_API_KEY:
     raise ValueError("DC_API_KEY environment variable is required")
 
 BASE_DC_CONFIG = {
-    "base": {
-        "api_key": DC_API_KEY,
-        "sv_search_base_url": "https://dev.datacommons.org",
-        "idx": "base_uae_mem",
-    },
-    "custom_dc": None,
+    "dc_type": "base",
+    "api_key": DC_API_KEY,
 }
 
 CUSTOM_DC_CONFIG = {
-    "base": {
-        "api_key": DC_API_KEY,
-        "sv_search_base_url": "https://dev.datacommons.org",
-        "idx": "base_uae_mem",
-    },
-    "custom_dc": {
-        "name": "ONE Data Commons",
-        "base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/",
-        "sv_search_base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
-        "idx": "user_all_minilm_mem",
-        "root_topic_dcids": [
-            "ONE/topic/BasicHealth",
-        ],
-    },
+    "dc_type": "custom",
+    "base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
+    "root_topic_dcids": [
+        "ONE/topic/BasicHealth",
+    ],
 }

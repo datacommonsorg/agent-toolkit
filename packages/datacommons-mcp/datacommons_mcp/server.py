@@ -24,7 +24,7 @@ from fastmcp import FastMCP
 from pydantic import ValidationError
 
 import datacommons_mcp.config as config
-from datacommons_mcp.clients import create_clients
+from datacommons_mcp.clients import create_dc_client
 from datacommons_mcp.data_models.charts import (
     CHART_CONFIG_MAP,
     DataCommonsChartConfig,
@@ -38,8 +38,8 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.services import get_observations as get_observations_service
 
-# Create clients based on config
-multi_dc_client = create_clients(config.CUSTOM_DC_CONFIG)
+# Create client based on config
+dc_client = create_dc_client(config.CUSTOM_DC_CONFIG)
 
 mcp = FastMCP("DC MCP Server")
 
@@ -109,7 +109,7 @@ async def get_observations(
       3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
     return await get_observations_service(
-        client=multi_dc_client,
+        client=dc_client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
         place_name=place_name,
@@ -166,13 +166,13 @@ async def validate_child_place_types(
     Returns:
         A dictionary mapping child place types to a boolean indicating whether they are valid for the parent place.
     """
-    places = await multi_dc_client.base_dc.search_places([parent_place_name])
+    places = await dc_client.search_places([parent_place_name])
     place_dcid = places.get(parent_place_name, "")
     if not place_dcid:
         return dict.fromkeys(child_place_types, False)
 
     tasks = [
-        multi_dc_client.base_dc.child_place_type_exists(
+        dc_client.child_place_type_exists(
             place_dcid,
             child_place_type,
         )
@@ -239,7 +239,7 @@ async def get_available_variables(
 
         Most importantly, for category queries, categorize the variables as mentioned above when displaying them to the user.
     """
-    places = await multi_dc_client.base_dc.search_places([place_name])
+    places = await dc_client.search_places([place_name])
     place_dcid = places.get(place_name)
 
     if not place_dcid:
@@ -248,7 +248,7 @@ async def get_available_variables(
             "message": f"Could not find a place named '{place_name}'.",
         }
 
-    dc = multi_dc_client.base_dc
+    dc = dc_client
     variable_data = await dc.fetch_topic_variables(
         place_dcid, topic_query=indicator_desc
     )
@@ -500,7 +500,7 @@ async def _search_topics_and_variables_impl(
 
     if place_names:
         try:
-            place_dcids_map = await multi_dc_client.base_dc.search_places(place_names)
+            place_dcids_map = await dc_client.search_places(place_names)
         except Exception as e:
             logging.error(f"Error resolving place names: {e}")
             pass
@@ -535,7 +535,7 @@ async def _search_topics_and_variables_impl(
     # Execute parallel searches
     tasks = []
     for search_query, place_dcids in search_tasks:
-        task = multi_dc_client.fetch_topics_and_variables(
+        task = dc_client.fetch_topics_and_variables(
             search_query, place_dcids=place_dcids, max_results=10
         )
         tasks.append(task)
@@ -595,7 +595,7 @@ async def _fetch_and_update_lookups(dcids: list[str]) -> dict:
         return {}
 
     try:
-        result = multi_dc_client.fetch_entity_names(dcids)
+        result = dc_client.fetch_entity_names(dcids)
         return result
     except Exception:
         # If fetching fails, return empty dict (not an error)
