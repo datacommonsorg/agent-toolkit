@@ -457,6 +457,18 @@ class TestDCClientFetchTopicsAndVariables:
             "dc/variable/Count_Person": "Count of Persons",
             "dc/variable/Count_Household": "Count of Households",
         }.get(dcid, dcid)
+        
+        # Mock topic data
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(
+                member_topics=[],
+                variables=["dc/variable/Count_Person"]
+            ),
+            "dc/topic/Economy": Mock(
+                member_topics=[],
+                variables=["dc/variable/Count_Household"]
+            )
+        }
 
         # Act: Call the method
         result = await client_under_test.fetch_topics_and_variables("test query")
@@ -620,6 +632,84 @@ class TestDCClientFetchTopicsAndVariables:
         health_topic = result["dc/topic/Health"]
         assert health_topic["member_variables"] == ["dc/variable/Count_Person"]
         assert health_topic["member_topics"] == []
+
+    @pytest.mark.asyncio
+    async def test_search_entities_filters_invalid_topics(self, mocked_datacommons_client):
+        """Test that _search_entities filters out topics that don't exist in the topic store."""
+        # Arrange: Create client and mock search results
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        # Mock search_svs to return topics (some valid, some invalid) and variables
+        mock_search_results = {
+            "test query": [
+                {"SV": "dc/topic/Health", "CosineScore": 0.9},  # Valid topic
+                {"SV": "dc/topic/InvalidTopic", "CosineScore": 0.8},  # Invalid topic (not in store)
+                {"SV": "dc/topic/Economy", "CosineScore": 0.7},  # Valid topic
+                {"SV": "dc/variable/Count_Person", "CosineScore": 0.6},  # Variable
+            ]
+        }
+        
+        # Mock the search_svs method
+        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+        
+        # Mock topic store to only contain some topics
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(),
+            "dc/topic/Economy": Mock(),
+            # Note: "dc/topic/InvalidTopic" is NOT in the topic store
+        }
+
+        # Act: Call the method
+        result = await client_under_test._search_entities("test query")
+
+        # Assert: Verify that only valid topics are returned
+        assert "topics" in result
+        assert "variables" in result
+        
+        # Verify topics - should only include topics that exist in the topic store
+        assert len(result["topics"]) == 2
+        assert "dc/topic/Health" in result["topics"]
+        assert "dc/topic/Economy" in result["topics"]
+        assert "dc/topic/InvalidTopic" not in result["topics"]  # Invalid topic should be filtered out
+        
+        # Verify variables - should include all variables
+        assert len(result["variables"]) == 1
+        assert "dc/variable/Count_Person" in result["variables"]
+
+    @pytest.mark.asyncio
+    async def test_search_entities_with_no_topic_store(self, mocked_datacommons_client):
+        """Test that _search_entities handles case when topic store is None."""
+        # Arrange: Create client and mock search results
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        # Mock search_svs to return topics and variables
+        mock_search_results = {
+            "test query": [
+                {"SV": "dc/topic/Health", "CosineScore": 0.9},
+                {"SV": "dc/variable/Count_Person", "CosineScore": 0.6},
+            ]
+        }
+        
+        # Mock the search_svs method
+        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+        
+        # Set topic store to None
+        client_under_test.topic_store = None
+
+        # Act: Call the method
+        result = await client_under_test._search_entities("test query")
+
+        # Assert: Verify that no topics are returned when topic store is None
+        assert "topics" in result
+        assert "variables" in result
+        
+        # Verify topics - should be empty when topic store is None
+        assert len(result["topics"]) == 0
+        
+        # Verify variables - should include all variables
+        assert len(result["variables"]) == 1
+        assert "dc/variable/Count_Person" in result["variables"]
 
 
 class TestDCClientIntegrateObservationResponse:

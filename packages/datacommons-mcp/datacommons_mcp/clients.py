@@ -517,7 +517,9 @@ class DCClient:
 
             # Check if it's a topic (contains "/topic/")
             if "/topic/" in sv_dcid:
-                topics.append(sv_dcid)
+                # Only include topics that exist in the topic store
+                if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
+                    topics.append(sv_dcid)
             else:
                 variables.append(sv_dcid)
 
@@ -622,7 +624,8 @@ class DCClient:
         for place_dcid in place_dcids:
             place_variables = self.variable_cache.get(place_dcid)
             if place_variables is not None:
-                if any(var in place_variables for var in topic_data.variables):
+                matching_vars = [var for var in topic_data.variables if var in place_variables]
+                if matching_vars:
                     places_with_data.append(place_dcid)
 
         # Check member topics recursively
@@ -1008,7 +1011,8 @@ def create_clients(config: dict) -> MultiDCClient:
 
     return MultiDCClient(base_dc, custom_dc)
 
-
+# TODO(keyurva): For custom dc client, load both custom and base dc topic stores and merge them.
+# Since this is not the case currently, base topics are not returned for custom dc (in base_only and base_and_custom modes).
 def create_dc_client(config: dict) -> DCClient:
     """
     Factory function to create a single DCClient based on configuration.
