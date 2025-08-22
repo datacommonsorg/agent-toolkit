@@ -209,6 +209,38 @@ class TestDCClientSearch:
         call_args = mock_post.call_args
         assert "skip_topics=true" in call_args[0][0]
 
+    @pytest.mark.asyncio
+    @patch('datacommons_mcp.clients.requests.post')
+    async def test_search_svs_max_results_limit(self, mock_post, mocked_datacommons_client):
+        """
+        Test that search_svs respects the max_results parameter.
+        """
+        # Arrange: Create client and mock response with more results than limit
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "queryResults": {
+                "test query": {
+                    "SV": ["var1", "var2", "var3", "var4", "var5"],
+                    "CosineScore": [0.9, 0.8, 0.7, 0.6, 0.5]
+                }
+            }
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Act: Call search_svs with max_results=3
+        result = await client_under_test.search_svs(["test query"], max_results=3)
+
+        # Assert: Verify only 3 results are returned (limited by max_results)
+        assert len(result["test query"]) == 3
+        assert result["test query"] == [
+            {"SV": "var1", "CosineScore": 0.9},
+            {"SV": "var2", "CosineScore": 0.8},
+            {"SV": "var3", "CosineScore": 0.7}
+        ]
+
 
 class TestDCClientObservations:
     """Tests for the observation-fetching methods of DCClient."""
@@ -710,6 +742,34 @@ class TestDCClientFetchTopicsAndVariables:
         # Verify variables - should include all variables
         assert len(result["variables"]) == 1
         assert "dc/variable/Count_Person" in result["variables"]
+
+    @pytest.mark.asyncio
+    async def test_search_entities_with_per_search_limit(self, mocked_datacommons_client):
+        """Test _search_entities with per_search_limit parameter."""
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        
+        # Mock search_svs to return results
+        mock_search_results = {
+            "test query": [
+                {"SV": "Count_Person", "CosineScore": 0.8},
+                {"SV": "Count_Household", "CosineScore": 0.7},
+            ]
+        }
+        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+
+        result = await client_under_test._search_entities("test query", max_results=2)
+
+        # Verify that search_svs was called with max_results=2
+        client_under_test.search_svs.assert_called_once_with(
+            ["test query"], skip_topics=False, max_results=2
+        )
+
+        # Should return variables (no topics since topic_store is None by default)
+        assert "topics" in result
+        assert "variables" in result
+        assert len(result["variables"]) == 2  # Both variables should be included
+        assert "Count_Person" in result["variables"]
+        assert "Count_Household" in result["variables"]
 
 
 class TestDCClientIntegrateObservationResponse:

@@ -115,6 +115,7 @@ async def search_topics_and_variables(
     query: str,
     place1_name: str | None = None,
     place2_name: str | None = None,
+    per_search_limit: int = 10,
 ) -> dict:
     """Search for topics and variables matching a query, optionally filtered by place existence.
 
@@ -123,10 +124,15 @@ async def search_topics_and_variables(
         query: The search query for indicators
         place1_name: First place name for filtering and existence checks
         place2_name: Second place name for filtering and existence checks
+        per_search_limit: Maximum results per search (default 10, max 100)
 
     Returns:
         dict: Dictionary with topics, variables, and lookups
     """
+    # Validate per_search_limit parameter
+    if not 1 <= per_search_limit <= 100:
+        raise ValueError("per_search_limit must be between 1 and 100")
+    
     # Resolve all place names to DCIDs in a single call
     place_names = [name for name in [place1_name, place2_name] if name]
     place_dcids_map = {}
@@ -169,7 +175,7 @@ async def search_topics_and_variables(
     tasks = []
     for search_query, place_dcids in search_tasks:
         task = client.fetch_topics_and_variables(
-            query=search_query, place_dcids=place_dcids, max_results=10
+            query=search_query, place_dcids=place_dcids, max_results=per_search_limit
         )
         tasks.append(task)
 

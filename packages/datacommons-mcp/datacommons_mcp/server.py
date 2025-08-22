@@ -428,6 +428,7 @@ async def search_topics_and_variables(
     query: str,
     place1_name: str | None = None,
     place2_name: str | None = None,
+    per_search_limit: int = 10,
 ) -> dict:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
@@ -458,6 +459,7 @@ async def search_topics_and_variables(
             Examples: "France", "United States", "California"
         place2_name (str, optional): Second place name for filtering and existence checks.
             Examples: "Albania", "Germany", "New York"
+        per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
         dict: A dictionary containing candidate indicators with the following structure:
@@ -486,7 +488,7 @@ async def search_topics_and_variables(
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
     """
-    return await search_topics_and_variables_service(dc_client, query, place1_name, place2_name)
+    return await search_topics_and_variables_service(dc_client, query, place1_name, place2_name, per_search_limit)
 
 
 

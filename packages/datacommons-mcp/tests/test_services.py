@@ -250,3 +250,71 @@ class TestSearchTopicsAndVariables:
         assert len(result["variables"]) == 2  # Both unique variables included (duplicate removed)
         assert "TradeExports_FRA" in [v["dcid"] for v in result["variables"]]
         assert "TradeImports_FRA" in [v["dcid"] for v in result["variables"]]
+
+    @pytest.mark.asyncio
+    async def test_search_topics_and_variables_with_custom_per_search_limit(self):
+        """Test search with custom per_search_limit parameter."""
+        mock_client = Mock()
+        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
+            "topics": [{"dcid": "topic/health"}],
+            "variables": [{"dcid": "Count_Person"}],
+            "lookups": {"topic/health": "Health", "Count_Person": "Population"}
+        })
+
+        result = await search_topics_and_variables(
+            client=mock_client,
+            query="health",
+            per_search_limit=5
+        )
+
+        assert "topics" in result
+        assert "variables" in result
+        assert "lookups" in result
+        # Verify per_search_limit was passed to client
+        mock_client.fetch_topics_and_variables.assert_called_once_with(
+            query="health", place_dcids=[], max_results=5
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_topics_and_variables_per_search_limit_validation(self):
+        """Test per_search_limit parameter validation."""
+        mock_client = Mock()
+
+        # Test invalid per_search_limit values
+        with pytest.raises(ValueError, match="per_search_limit must be between 1 and 100"):
+            await search_topics_and_variables(
+                client=mock_client,
+                query="health",
+                per_search_limit=0
+            )
+
+        with pytest.raises(ValueError, match="per_search_limit must be between 1 and 100"):
+            await search_topics_and_variables(
+                client=mock_client,
+                query="health",
+                per_search_limit=101
+            )
+
+        # Test valid per_search_limit values
+        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
+            "topics": [], "variables": [], "lookups": {}
+        })
+
+        # Should not raise for valid values
+        await search_topics_and_variables(client=mock_client, query="health", per_search_limit=1)
+        await search_topics_and_variables(client=mock_client, query="health", per_search_limit=100)
+
+    @pytest.mark.asyncio
+    async def test_search_topics_and_variables_default_per_search_limit(self):
+        """Test that default per_search_limit=10 is used when not specified."""
+        mock_client = Mock()
+        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
+            "topics": [], "variables": [], "lookups": {}
+        })
+
+        await search_topics_and_variables(client=mock_client, query="health")
+
+        # Verify default per_search_limit=10 was used
+        mock_client.fetch_topics_and_variables.assert_called_once_with(
+            query="health", place_dcids=[], max_results=10
+        )
