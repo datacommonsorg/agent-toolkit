@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from datacommons_mcp.data_models.observations import ObservationPeriod
 from datacommons_mcp.exceptions import NoDataFoundError
-from datacommons_mcp.services import _build_observation_request, get_observations
+from datacommons_mcp.services import _build_observation_request, get_observations, search_topics_and_variables
 
 
 @pytest.mark.asyncio
@@ -147,3 +147,106 @@ class TestGetObservations:
         assert call_args.variable_dcid == "Count_Person"
         assert call_args.place_dcid == "country/USA"
         assert call_args.observation_period == ObservationPeriod.LATEST
+
+
+@pytest.mark.asyncio
+class TestSearchTopicsAndVariables:
+    """Tests for the search_topics_and_variables service function."""
+
+    @pytest.mark.asyncio
+    async def test_search_topics_and_variables_basic(self):
+        """Test basic search without place filtering."""
+        mock_client = Mock()
+        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
+            "topics": [{"dcid": "topic/health"}],
+            "variables": [{"dcid": "Count_Person"}],
+            "lookups": {"topic/health": "Health", "Count_Person": "Population"}
+        })
+
+        result = await search_topics_and_variables(
+            client=mock_client,
+            query="health"
+        )
+
+        assert "topics" in result
+        assert "variables" in result
+        assert "lookups" in result
+        mock_client.fetch_topics_and_variables.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_search_topics_and_variables_with_places(self):
+        """Test search with place filtering."""
+        mock_client = Mock()
+        mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
+        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
+            "topics": [{"dcid": "topic/trade"}],
+            "variables": [{"dcid": "TradeExports_FRA"}],
+            "lookups": {"topic/trade": "Trade", "TradeExports_FRA": "Exports to France"}
+        })
+
+        result = await search_topics_and_variables(
+            client=mock_client,
+            query="trade exports",
+            place1_name="France"
+        )
+
+        assert "topics" in result
+        assert "variables" in result
+        assert "lookups" in result
+        mock_client.search_places.assert_called_once_with(["France"])
+        # Should be called twice: once for the base query and once for the base + place1_name query
+        assert mock_client.fetch_topics_and_variables.call_count == 2
+
+        # Assert the actual queries fetch_topics_and_variables was called with
+        calls = mock_client.fetch_topics_and_variables.call_args_list
+        # The first call should be just the base query
+        assert calls[0].kwargs["query"] == "trade exports"
+        assert calls[0].kwargs["place_dcids"] == ["country/FRA"]
+        # The second call should be with the place name appended to query
+        assert calls[1].kwargs["query"] == "trade exports France"
+        assert calls[1].kwargs["place_dcids"] == []  
+
+    @pytest.mark.asyncio
+    async def test_search_topics_and_variables_merge_results(self):
+        """Test that results from multiple searches are properly merged."""
+        mock_client = Mock()
+        mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
+        mock_client.fetch_topics_and_variables = AsyncMock(side_effect=[
+            {
+                "topics": [{"dcid": "topic/trade"}],
+                "variables": [{"dcid": "TradeExports_FRA"}],
+                "lookups": {
+                    "topic/trade": "Trade", 
+                    "TradeExports_FRA": "Exports to France"
+                }
+            },
+            {
+                "topics": [{"dcid": "topic/trade"}],  # Duplicate topic
+                "variables": [
+                    {"dcid": "TradeImports_FRA"},  # New variable
+                    {"dcid": "TradeExports_FRA"}   # Duplicate variable
+                ],
+                "lookups": {
+                    "topic/trade": "Trade", 
+                    "TradeImports_FRA": "Imports from France", 
+                    "TradeExports_FRA": "Exports to France"
+                }
+            }
+        ])
+        mock_client.fetch_entity_names = Mock(return_value={
+            "topic/trade": "Trade",
+            "TradeExports_FRA": "Exports to France",
+            "TradeImports_FRA": "Imports from France"
+        })
+
+        result = await search_topics_and_variables(
+            client=mock_client,
+            query="trade",
+            place1_name="France"
+        )
+
+        # Should have deduplicated topics and variables
+        assert len(result["topics"]) == 1  # Deduplicated
+        assert len(result["variables"]) == 2  # Both unique variables included (duplicate removed)
+        assert "TradeExports_FRA" in [v["dcid"] for v in result["variables"]]
+        assert "TradeImports_FRA" in [v["dcid"] for v in result["variables"]]

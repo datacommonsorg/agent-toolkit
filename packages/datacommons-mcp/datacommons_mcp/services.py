@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
@@ -105,4 +106,167 @@ async def get_observations(
         start_date=start_date,
         end_date=end_date,
     )
+
     return await client.fetch_obs(observation_request)
+
+
+async def search_topics_and_variables(
+    client: DCClient,
+    query: str,
+    place1_name: str | None = None,
+    place2_name: str | None = None,
+) -> dict:
+    """Search for topics and variables matching a query, optionally filtered by place existence.
+
+    Args:
+        client: DCClient instance to use for data operations
+        query: The search query for indicators
+        place1_name: First place name for filtering and existence checks
+        place2_name: Second place name for filtering and existence checks
+
+    Returns:
+        dict: Dictionary with topics, variables, and lookups
+    """
+    # Resolve all place names to DCIDs in a single call
+    place_names = [name for name in [place1_name, place2_name] if name]
+    place_dcids_map = {}
+
+    if place_names:
+        try:
+            place_dcids_map = await client.search_places(place_names)
+        except Exception as e:
+            logging.error(f"Error resolving place names: {e}")
+            pass
+
+    place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
+    place2_dcid = place_dcids_map.get(place2_name) if place2_name else None
+
+    # Construct search queries with their corresponding place DCIDs for filtering
+    search_tasks = []
+
+    # Base query: search for the original query, filter by all available places
+    base_place_dcids = []
+    if place1_dcid:
+        base_place_dcids.append(place1_dcid)
+    if place2_dcid:
+        base_place_dcids.append(place2_dcid)
+
+    search_tasks.append((query, base_place_dcids))
+
+    # The following queries are not needed for bilateral relationships where we append the place name(s) to the query.
+
+    # Place1 query: search for query + place1_name, filter by place2_dcid
+    if place1_dcid:
+        place1_place_dcids = [place2_dcid] if place2_dcid else []
+        search_tasks.append((f"{query} {place1_name}", place1_place_dcids))
+
+    # Place2 query: search for query + place2_name, filter by place1_dcid
+    if place2_dcid:
+        place2_place_dcids = [place1_dcid] if place1_dcid else []
+        search_tasks.append((f"{query} {place2_name}", place2_place_dcids))
+
+    # Execute parallel searches
+    tasks = []
+    for search_query, place_dcids in search_tasks:
+        task = client.fetch_topics_and_variables(
+            query=search_query, place_dcids=place_dcids, max_results=10
+        )
+        tasks.append(task)
+
+    # Wait for all searches to complete
+    results = await asyncio.gather(*tasks)
+
+    # Merge and deduplicate results
+    # Filter out None place DCIDs
+    valid_place_dcids = [
+        dcid for dcid in [place1_dcid, place2_dcid] if dcid is not None
+    ]
+    merged_result = await _merge_search_results(results, valid_place_dcids, client)
+
+    return merged_result
+
+
+def _collect_all_dcids(
+    topics: list[dict], variables: list[str], place_dcids: list[str] = None
+) -> list[str]:
+    """Collect all DCIDs from topics, variables, and places."""
+    all_dcids = set()
+
+    # Collect topic DCIDs and their member DCIDs
+    for topic in topics:
+        all_dcids.add(topic["dcid"])
+        # Handle member_topics - could be strings or dicts
+        member_topics = topic.get("member_topics", [])
+        for member in member_topics:
+            if isinstance(member, dict):
+                all_dcids.add(member["dcid"])
+            else:
+                all_dcids.add(member)
+        # Handle member_variables - could be strings or dicts
+        member_variables = topic.get("member_variables", [])
+        for member in member_variables:
+            if isinstance(member, dict):
+                all_dcids.add(member["dcid"])
+            else:
+                all_dcids.add(member)
+
+    # Collect variable DCIDs
+    all_dcids.update(variables)
+
+    # Collect place DCIDs if provided
+    if place_dcids:
+        all_dcids.update(place_dcids)
+
+    # Filter out None values and empty strings
+    result = [dcid for dcid in all_dcids if dcid is not None and dcid.strip()]
+    return result
+
+
+async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
+    """Fetch names for all DCIDs and return as lookups dictionary."""
+    if not dcids:
+        return {}
+
+    try:
+        result = client.fetch_entity_names(dcids)
+        return result
+    except Exception:
+        # If fetching fails, return empty dict (not an error)
+        return {}
+
+
+async def _merge_search_results(
+    results: list[dict], place_dcids: list[str] = None, client: DCClient = None
+) -> dict:
+    """Union results from multiple search calls."""
+
+    # Collect all topics and variables
+    all_topics = {}
+    all_variables = {}
+
+    for result in results:
+        # Union topics
+        for topic in result.get("topics", []):
+            topic_dcid = topic["dcid"]
+            if topic_dcid not in all_topics:
+                all_topics[topic_dcid] = topic
+
+        # Union variables
+        for variable in result.get("variables", []):
+            var_dcid = variable["dcid"]
+            if var_dcid not in all_variables:
+                all_variables[var_dcid] = variable
+
+    # Collect all DCIDs and fetch their names
+    all_dcids = _collect_all_dcids(
+        list(all_topics.values()), list(all_variables.keys()), place_dcids
+    )
+
+    # Fetch names for all DCIDs and use as lookups
+    lookups = await _fetch_and_update_lookups(client, all_dcids)
+
+    return {
+        "topics": list(all_topics.values()),
+        "variables": list(all_variables.values()),
+        "lookups": lookups,
+    }
