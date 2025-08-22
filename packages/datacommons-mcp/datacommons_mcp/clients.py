@@ -366,7 +366,8 @@ class DCClient:
         self, 
         queries: list[str], 
         *, 
-        skip_topics: bool = True
+        skip_topics: bool = True,
+        max_results: int = 10
     ) -> dict:
         results_map = {}
         skip_topics_param = "&skip_topics=true" if skip_topics else ""
@@ -403,8 +404,7 @@ class DCClient:
                         {"SV": sv_list[i], "CosineScore": score_list[i]}
                         for i in range(len(sv_list))
                     ]
-                    # TODO(b/440430338): paramaterize max results
-                    results_map[query] = all_results[:5]  # Limit to top 5 results
+                    results_map[query] = all_results[:max_results]  # Limit to max_results
                 else:
                     results_map[query] = []
 
@@ -437,7 +437,7 @@ class DCClient:
             Dictionary with topics, variables, and lookups
         """
         # Search for entities (both topics and variables)
-        search_results = await self._search_entities(query)
+        search_results = await self._search_entities(query, max_results)
 
         # Separate topics and variables
         topics = search_results.get("topics", [])
@@ -501,10 +501,10 @@ class DCClient:
         }
         return response
 
-    async def _search_entities(self, query: str) -> dict:
+    async def _search_entities(self, query: str, max_results: int = 10) -> dict:
         """Search for topics and variables using search_svs."""
         # Search with topics included
-        search_results = await self.search_svs([query], skip_topics=False)
+        search_results = await self.search_svs([query], skip_topics=False, max_results=max_results)
         results = search_results.get(query, [])
 
         topics = []
