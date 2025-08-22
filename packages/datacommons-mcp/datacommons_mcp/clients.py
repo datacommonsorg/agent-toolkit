@@ -16,16 +16,14 @@ Clients module for interacting with Data Commons instances.
 Provides classes for managing connections to both base and custom Data Commons instances.
 """
 
-import asyncio
 import json
 import re
-from typing import Optional
 
 import requests
 from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
-from datacommons_mcp.constants import BASE_DC_ID, CUSTOM_DC_ID, SearchScope
+from datacommons_mcp.constants import SearchScope
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
@@ -46,9 +44,9 @@ class DCClient:
         dc: DataCommonsClient,
         search_scope: SearchScope = SearchScope.BASE_ONLY,
         base_index: str = "base_uae_mem",
-        custom_index: Optional[str] = None,
-        sv_search_base_url: str = "https://dev.datacommons.org",
-        topic_store: Optional[TopicStore] = None,
+        custom_index: str | None = None,
+        sv_search_base_url: str = "https://datacommons.org",
+        topic_store: TopicStore | None = None,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -147,6 +145,7 @@ class DCClient:
         for place_dcid, name in names.items():
             obs_response.place_data[place_dcid].place_name = name
 
+    # TODO(b/440436967): Simplify this method.
     @staticmethod
     def _integrate_observation_response(
         final_response: ObservationToolResponse,
@@ -404,6 +403,7 @@ class DCClient:
                         {"SV": sv_list[i], "CosineScore": score_list[i]}
                         for i in range(len(sv_list))
                     ]
+                    # TODO(b/440430338): paramaterize max results
                     results_map[query] = all_results[:5]  # Limit to top 5 results
                 else:
                     results_map[query] = []
