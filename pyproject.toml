@@ -1,9 +1,9 @@
 [project]
 name = "datacommons-agent-toolkit"
 version = "0.0.1"
-description = 'Data Commons tools and sample agents using the Model Context Protocol (MCP).'
+description = 'Data Commons tools and test agents using the Model Context Protocol (MCP).'
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 keywords = []
@@ -16,7 +16,10 @@ classifiers = [
 
 dependencies = [
   "datacommons-mcp",
+  "datacommons-test-agents",
   "ruff>=0.12.5",
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.1.0",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +30,7 @@ test = [
 
 [tool.uv.sources]
 datacommons-mcp = { workspace = true }
+datacommons-test-agents = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]

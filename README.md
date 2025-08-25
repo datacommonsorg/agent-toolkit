@@ -10,3 +10,8 @@ This is an experimental MCP server for fetching public information from [Data Co
 * PyPI: https://pypi.org/project/datacommons-mcp
 
 [Developer docs](packages/datacommons-mcp/docs/dev.md)
+
+
+## Test Agents
+
+[Data Commons Test Agent](packages/datacommons-test-agents/)

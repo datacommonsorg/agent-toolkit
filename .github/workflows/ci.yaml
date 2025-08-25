@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  ci-checks:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -23,17 +23,39 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-    #   TODO(clincoln8): Uncomment when pre-commit hooks are ready and repo is in healthy state.
-    #   - name: Check formatting with Ruff
-    #     # Run from the package directory
-    #     working-directory: packages/datacommons-mcp
-    #     # The --check flag will fail if the code is not formatted correctly
-    #     run: uv run ruff format --check
-    
-    #   - name: Lint with Ruff
-    #     working-directory: packages/datacommons-mcp
-    #     run: uv run ruff check
+      #   TODO(clincoln8): Uncomment when pre-commit hooks are ready and repo is in healthy state.
+      #   - name: Check formatting with Ruff
+      #     # Run from the package directory
+      #     working-directory: packages/datacommons-mcp
+      #     # The --check flag will fail if the code is not formatted correctly
+      #     run: uv run ruff format --check
 
+      #   - name: Lint with Ruff
+      #     working-directory: packages/datacommons-mcp
+      #     run: uv run ruff check
 
-      - name: Run tests with pytest
-        run: uv run --extra test pytest
+      - name: Run unit tests with pytest
+        run: uv run --extra test pytest -k "not eval"
+
+  # Runs eval tests. Requires DC_API_KEY secret to be set in the repository.
+  agent-evals:
+    runs-on: ubuntu-latest
+    # This keyword links the job to the protected environment, requiring manual approval.
+    environment: evals-and-secrets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Run agent evals with pytest
+        run: uv run --extra test pytest -k "eval"
+        env:
+          DC_API_KEY: ${{ secrets.DC_API_KEY }}
