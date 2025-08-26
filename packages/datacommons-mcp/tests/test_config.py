@@ -177,3 +177,12 @@ class TestGetDCConfig:
             config = get_dc_config()
             assert config.topic_cache_path == '/path/to/cache.json'
 
+    def test_get_dc_config_default_dc_type(self):
+        """Test that DC_TYPE defaults to 'base' when not provided."""
+        with patch.dict(os.environ, {
+            'DC_API_KEY': 'test_key'
+        }):
+            config = get_dc_config()
+            assert config.dc_type == 'base'
+            assert isinstance(config, BaseDCConfig)
+

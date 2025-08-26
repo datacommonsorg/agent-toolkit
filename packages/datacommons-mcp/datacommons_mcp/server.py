@@ -40,6 +40,7 @@ from datacommons_mcp.services import get_observations as get_observations_servic
 
 # Create client based on config
 try:
+    config.load_env_file()
     dc_config = config.get_dc_config()
     dc_client = create_dc_client(dc_config)
 except ValueError as e:

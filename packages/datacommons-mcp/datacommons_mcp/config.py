@@ -33,7 +33,7 @@ DC_SV_SEARCH_BASE_URL_ENV = "DC_SV_SEARCH_BASE_URL"
 DC_TOPIC_CACHE_PATH_ENV = "DC_TOPIC_CACHE_PATH"
 
 
-def _load_env_file() -> None:
+def load_env_file() -> None:
     """Load .env file if present in the current directory."""
     load_dotenv()
 
@@ -64,23 +64,22 @@ def get_dc_config() -> DCConfig:
     """
     Get Data Commons configuration from environment variables.
     
+    Note: This function reads from the current environment variables.
+    Use load_env_file() before calling this function if you want to load from a .env file.
+    
     Returns:
         DCConfig object containing the configuration
         
     Raises:
         ValueError: If required configuration is missing or invalid
     """
-    # Load .env file if present
-    _load_env_file()
     
     # Get required configuration
     api_key = os.getenv(DC_API_KEY_ENV)
     if not api_key:
         raise ValueError(f"{DC_API_KEY_ENV} environment variable is required")
     
-    dc_type = os.getenv(DC_TYPE_ENV)
-    if not dc_type:
-        raise ValueError(f"{DC_TYPE_ENV} environment variable is required")
+    dc_type = os.getenv(DC_TYPE_ENV, "base")
     
     # Get optional configuration
     base_url = os.getenv(DC_BASE_URL_ENV)
