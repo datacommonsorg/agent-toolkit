@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Enums for data modeling.
+Contains enums used for modeling data constraints and types.
+"""
 
-# constants.py
 from enum import Enum
-
-BASE_DC_ID = "base"
-CUSTOM_DC_ID = "custom"
 
 
 class SearchScope(Enum):

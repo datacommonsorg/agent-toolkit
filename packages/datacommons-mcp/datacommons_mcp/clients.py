@@ -23,7 +23,8 @@ import requests
 from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
-from datacommons_mcp.constants import SearchScope
+from datacommons_mcp.data_models.enums import SearchScope
+from datacommons_mcp.data_models.config import DCConfig, BaseDCConfig, CustomDCConfig
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
@@ -694,120 +695,67 @@ class DCClient:
 
 # TODO(keyurva): For custom dc client, load both custom and base dc topic stores and merge them.
 # Since this is not the case currently, base topics are not returned for custom dc (in base_only and base_and_custom modes).
-def create_dc_client(config: dict) -> DCClient:
+def create_dc_client(config: DCConfig) -> DCClient:
     """
     Factory function to create a single DCClient based on configuration.
     
     Args:
-        config: Dictionary containing client configuration
-            Expected format:
-            
-            # For Base DC
-            {
-                "dc_type": "base",
-                "api_key": "your_api_key",  # required
-                "sv_search_base_url": "https://datacommons.org",  # optional, has default
-                "base_index": "base_uae_mem",  # optional, default
-                "topic_cache_path": "path/to/topic_cache.json"  # optional
-            }
-            
-            # For Custom DC  
-            {
-                "dc_type": "custom", 
-                "base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",  # required
-                "api_base_url": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/",  # optional, computed
-                "search_scope": "base_and_custom",  # optional, default
-                "base_index": "medium_ft",  # optional, default
-                "custom_index": "user_all_minilm_mem",  # optional, default
-                "root_topic_dcids": ["dc/topic/Health"]  # optional
-            }
-    
+        config: DCConfig object containing client configuration
+        
     Returns:
         DCClient instance configured according to the provided config
         
     Raises:
         ValueError: If required fields are missing or config is invalid
     """
-    dc_type = config.get("dc_type")
-    if not dc_type:
-        raise ValueError("'dc_type' field is required in config")
-    
-    if dc_type == "base":
+    if isinstance(config, BaseDCConfig):
         return _create_base_dc_client(config)
-    elif dc_type == "custom":
+    elif isinstance(config, CustomDCConfig):
         return _create_custom_dc_client(config)
     else:
-        raise ValueError(f"Invalid dc_type: {dc_type}. Must be 'base' or 'custom'")
+        raise ValueError(f"Invalid config type: {type(config)}. Must be BaseDCConfig or CustomDCConfig")
 
 
-def _create_base_dc_client(config: dict) -> DCClient:
+def _create_base_dc_client(config: BaseDCConfig) -> DCClient:
     """Create a base DC client from config."""
-    # Validate required fields
-    api_key = config.get("api_key")
-    if not api_key:
-        raise ValueError("'api_key' is required for base DC")
-    
-    # Get optional fields with defaults
-    sv_search_base_url = config.get("sv_search_base_url", "https://datacommons.org")
-    base_index = config.get("base_index", "base_uae_mem")
-    topic_cache_path = config.get("topic_cache_path")
-    
     # Create topic store if path provided
     topic_store = None
-    if topic_cache_path:
-        topic_store = read_topic_cache(topic_cache_path)
+    if config.topic_cache_path:
+        topic_store = read_topic_cache(config.topic_cache_path)
     
     # Create DataCommonsClient
-    dc = DataCommonsClient(api_key=api_key)
+    dc = DataCommonsClient(api_key=config.api_key)
     
     # Create DCClient
     return DCClient(
         dc=dc,
         search_scope=SearchScope.BASE_ONLY,
-        base_index=base_index,
+        base_index=config.base_index,
         custom_index=None,
-        sv_search_base_url=sv_search_base_url,
+        sv_search_base_url=config.sv_search_base_url,
         topic_store=topic_store,
     )
 
 
-def _create_custom_dc_client(config: dict) -> DCClient:
+def _create_custom_dc_client(config: CustomDCConfig) -> DCClient:
     """Create a custom DC client from config."""
-    # Validate required fields
-    base_url: str = config.get("base_url")
-    if not base_url:
-        raise ValueError("'base_url' is required for custom DC")
-    
-    # Get optional fields with defaults
-    api_base_url = config.get("api_base_url")
-    if not api_base_url:
-        # Compute api_base_url from base_url
-        api_base_url = base_url.rstrip("/") + "/core/api/v2/"
-    
-    search_scope_str = config.get("search_scope", "base_and_custom")
-    try:
-        search_scope = SearchScope(search_scope_str)
-    except ValueError:
-        raise ValueError(f"Invalid search_scope: {search_scope_str}. Must be one of: {[s.value for s in SearchScope]}")
-    
-    base_index = config.get("base_index", "medium_ft")
-    custom_index = config.get("custom_index", "user_all_minilm_mem")
-    root_topic_dcids = config.get("root_topic_dcids")
+    # Use search scope directly (it's already an enum)
+    search_scope = config.search_scope
     
     # Create DataCommonsClient
-    dc = DataCommonsClient(url=api_base_url)
+    dc = DataCommonsClient(url=config.api_base_url)
     
     # Create topic store if root_topic_dcids provided
     topic_store = None
-    if root_topic_dcids:
-        topic_store = create_topic_store(root_topic_dcids, dc)
+    if config.root_topic_dcids:
+        topic_store = create_topic_store(config.root_topic_dcids, dc)
     
     # Create DCClient
     return DCClient(
         dc=dc,
         search_scope=search_scope,
-        base_index=base_index,
-        custom_index=custom_index,
-        sv_search_base_url=base_url,  # Use base_url as sv_search_base_url
+        base_index=config.base_index,
+        custom_index=config.custom_index,
+        sv_search_base_url=config.base_url,  # Use base_url as sv_search_base_url
         topic_store=topic_store,
     )

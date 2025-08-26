@@ -11,6 +11,7 @@ dependencies = [
     "requests",
     "datacommons-client",
     "pydantic>=2.11.7",
+    "python-dotenv",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 
