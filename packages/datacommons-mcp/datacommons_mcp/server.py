@@ -39,7 +39,15 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.services import get_observations as get_observations_service, search_topics_and_variables as search_topics_and_variables_service
 
 # Create client based on config
-dc_client = create_dc_client(config.CUSTOM_DC_CONFIG)
+try:
+    dc_config = config.get_dc_config()
+    dc_client = create_dc_client(dc_config)
+except ValueError as e:
+    logging.error(f"Configuration error: {e}")
+    raise
+except Exception as e:
+    logging.error(f"Failed to create DC client: {e}")
+    raise
 
 mcp = FastMCP("DC MCP Server")
 
