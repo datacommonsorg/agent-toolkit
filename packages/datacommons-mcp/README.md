@@ -9,40 +9,41 @@ This is an experimental MCP server for fetching public information from [Data Co
 1.  A Data Commons API key. You can get one from [apikeys.datacommons.org](https://apikeys.datacommons.org/).
 2.  `uv`. You can find installation instructions at [https://astral.sh/uv](https://astral.sh/uv).
 
+## Configuration
+
+The server can be configured using environment variables. For local development, you can copy `.env.sample` to `.env` and edit the values:
+
+```bash
+cp .env.sample .env
+# Edit .env with your configuration
+```
+
+The `.env.sample` file contains all available configuration options with detailed documentation. Only `DC_API_KEY` is required; `DC_TYPE` defaults to "base" if not specified.
+
 ## Getting Started
 
-Run the server with `uvx`:
+Run the server with `uvx`. You can set the API key via environment variable or use a `.env` file:
 
 **stdio**
 
 ```bash
+# Using environment variable
 DC_API_KEY=<your-key> uvx datacommons-mcp serve stdio
+
+# Or using .env file (copy .env.sample to .env first)
+uvx datacommons-mcp serve stdio
 ```
 
-**http**
-
-This will run the server with Streamable HTTP on port 8080. You can access it at `http://localhost:8080/mcp`.
-
-```bash
-DC_API_KEY=<your-key> uvx datacommons-mcp serve http
-```
 **Streamable http**
 
 This will run the server with Streamable HTTP on port 8080. You can access it at `http://localhost:8080/mcp`.
-Since SSE is deprecated by the MCP standard, this option is now recommended.
 
 ```bash
-DC_API_KEY=<your-key> uvx datacommons-mcp serve streamable_http
-```
+# Using environment variable
+DC_API_KEY=<your-key> uvx datacommons-mcp serve http
 
-**sse**
-
-This will run the server with SSE on port 8080. You can access it at `http://localhost:8080/sse`.
-SSE is deprecated by the MCP standard, but is available for backwards compatibility.
-You should use `http` (Streamable HTTP) instead. 
-
-```bash
-DC_API_KEY=<your-key> uvx datacommons-mcp serve sse
+# Or using .env file
+uvx datacommons-mcp serve http
 ```
 
 **Debugging**
@@ -50,7 +51,11 @@ DC_API_KEY=<your-key> uvx datacommons-mcp serve sse
 You can start the MCP inspector on port 6277. Look at the output for the pre-filled proxy auth token URL.
 
 ```bash
+# Using environment variable
 DC_API_KEY=<your-key> npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
+
+# Or using .env file
+npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
 ```
 
 > IMPORTANT: Open the inspector via the **pre-filled session token url** which is printed to terminal on server startup.
