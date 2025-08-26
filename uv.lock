@@ -321,6 +321,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
@@ -331,6 +332,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "python-dotenv" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
