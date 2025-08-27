@@ -11,7 +11,8 @@ This is an experimental MCP server for fetching public information from [Data Co
 
 ## Configuration
 
-The server can be configured using environment variables. For local development, you can copy `.env.sample` to `.env` and edit the values:
+The server can be configured using environment variables. For local development, you can copy [`.env.sample`](.env.sample) to `.env` and edit the values.
+Note that the `.env` file should be in your current working directory:
 
 ```bash
 cp .env.sample .env

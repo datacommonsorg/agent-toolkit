@@ -21,6 +21,7 @@ to ensure that our wrapper logic calls the correct methods on the underlying cli
 without making actual network calls.
 """
 
+import os
 from unittest.mock import AsyncMock, Mock, patch
 from typing import TYPE_CHECKING
 
@@ -31,7 +32,7 @@ import pytest
 from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
-from datacommons_mcp.data_models.config import BaseDCConfig, CustomDCConfig
+from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
@@ -881,70 +882,73 @@ class TestCreateDCClient:
     def test_create_dc_client_base_dc(self, mock_read_cache: Mock, mock_dc_client: Mock):
         """Test base DC creation with defaults."""
         # Arrange
-        config = BaseDCConfig(
-            dc_type="base",
-            api_key="test_api_key"
-        )
-        mock_dc_instance = Mock()
-        mock_dc_client.return_value = mock_dc_instance
-        mock_read_cache.return_value = Mock()
+        with patch.dict(os.environ, {
+            'DC_API_KEY': 'test_api_key',
+            'DC_TYPE': 'base'
+        }):
+            settings = BaseDCSettings()
+            mock_dc_instance = Mock()
+            mock_dc_client.return_value = mock_dc_instance
+            mock_read_cache.return_value = Mock()
 
-        # Act
-        result = create_dc_client(config)
+            # Act
+            result = create_dc_client(settings)
 
-        # Assert
-        assert isinstance(result, DCClient)
-        assert result.dc == mock_dc_instance
-        assert result.search_scope == SearchScope.BASE_ONLY
-        assert result.base_index == "base_uae_mem"
-        assert result.custom_index is None
-        mock_dc_client.assert_called_once_with(api_key="test_api_key")
+            # Assert
+            assert isinstance(result, DCClient)
+            assert result.dc == mock_dc_instance
+            assert result.search_scope == SearchScope.BASE_ONLY
+            assert result.base_index == "base_uae_mem"
+            assert result.custom_index is None
+            mock_dc_client.assert_called_once_with(api_key="test_api_key")
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
     def test_create_dc_client_custom_dc(self, mock_create_store: Mock, mock_dc_client: Mock):
         """Test custom DC creation with defaults."""
         # Arrange
-        config = CustomDCConfig(
-            dc_type="custom",
-            api_key="test_api_key",
-            base_url="https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
-        )
-        mock_dc_instance = Mock()
-        mock_dc_client.return_value = mock_dc_instance
-        mock_topic_store = Mock()
-        mock_create_store.return_value = mock_topic_store
+        with patch.dict(os.environ, {
+            'DC_API_KEY': 'test_api_key',
+            'DC_TYPE': 'custom',
+            'DC_BASE_URL': 'https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app'
+        }):
+            settings = CustomDCSettings()
+            mock_dc_instance = Mock()
+            mock_dc_client.return_value = mock_dc_instance
+            mock_topic_store = Mock()
+            mock_create_store.return_value = mock_topic_store
 
-        # Act
-        result = create_dc_client(config)
+            # Act
+            result = create_dc_client(settings)
 
-        # Assert
-        assert isinstance(result, DCClient)
-        assert result.dc == mock_dc_instance
-        assert result.search_scope == SearchScope.BASE_AND_CUSTOM
-        assert result.base_index == "medium_ft"
-        assert result.custom_index == "user_all_minilm_mem"
-        assert result.sv_search_base_url == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
-        # Should have called DataCommonsClient with computed api_base_url
-        expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
-        mock_dc_client.assert_called_with(url=expected_api_url)
+            # Assert
+            assert isinstance(result, DCClient)
+            assert result.dc == mock_dc_instance
+            assert result.search_scope == SearchScope.BASE_AND_CUSTOM
+            assert result.base_index == "medium_ft"
+            assert result.custom_index == "user_all_minilm_mem"
+            assert result.sv_search_base_url == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
+            # Should have called DataCommonsClient with computed api_base_url
+            expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
+            mock_dc_client.assert_called_with(url=expected_api_url)
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     def test_create_dc_client_url_computation(self, mock_dc_client):
         """Test URL computation for custom DC."""
         # Arrange
-        config = CustomDCConfig(
-            dc_type="custom",
-            api_key="test_api_key",
-            base_url="https://example.com"  # No trailing slash
-        )
-        mock_dc_instance = Mock()
-        mock_dc_client.return_value = mock_dc_instance
+        with patch.dict(os.environ, {
+            'DC_API_KEY': 'test_api_key',
+            'DC_TYPE': 'custom',
+            'DC_BASE_URL': 'https://example.com'  # No trailing slash
+        }):
+            settings = CustomDCSettings()
+            mock_dc_instance = Mock()
+            mock_dc_client.return_value = mock_dc_instance
 
-        # Act
-        result = create_dc_client(config)
+            # Act
+            result = create_dc_client(settings)
 
-        # Assert
-        # Should compute api_base_url by adding /core/api/v2/
-        expected_api_url = "https://example.com/core/api/v2/"
-        mock_dc_client.assert_called_with(url=expected_api_url)
+            # Assert
+            # Should compute api_base_url by adding /core/api/v2/
+            expected_api_url = "https://example.com/core/api/v2/"
+            mock_dc_client.assert_called_with(url=expected_api_url)

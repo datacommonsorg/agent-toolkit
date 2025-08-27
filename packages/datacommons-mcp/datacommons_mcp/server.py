@@ -23,7 +23,7 @@ from typing import Union, get_args, get_origin
 from fastmcp import FastMCP
 from pydantic import ValidationError
 
-import datacommons_mcp.config as config
+import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
 from datacommons_mcp.data_models.charts import (
     CHART_CONFIG_MAP,
@@ -38,13 +38,17 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.services import get_observations as get_observations_service, search_topics_and_variables as search_topics_and_variables_service
 
-# Create client based on config
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+# Create client based on settings
 try:
-    config.load_env_file()
-    dc_config = config.get_dc_config()
-    dc_client = create_dc_client(dc_config)
+    dc_settings = settings.get_dc_settings()
+    logging.info(f"Loaded DC settings:\n{dc_settings.model_dump_json(indent=2)}")
+    dc_client = create_dc_client(dc_settings)
 except ValueError as e:
-    logging.error(f"Configuration error: {e}")
+    logging.error(f"Settings error: {e}")
     raise
 except Exception as e:
     logging.error(f"Failed to create DC client: {e}")

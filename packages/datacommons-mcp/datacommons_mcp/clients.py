@@ -24,7 +24,7 @@ from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
-from datacommons_mcp.data_models.config import DCConfig, BaseDCConfig, CustomDCConfig
+from datacommons_mcp.data_models.settings import DCSettings, BaseDCSettings, CustomDCSettings
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
@@ -695,67 +695,69 @@ class DCClient:
 
 # TODO(keyurva): For custom dc client, load both custom and base dc topic stores and merge them.
 # Since this is not the case currently, base topics are not returned for custom dc (in base_only and base_and_custom modes).
-def create_dc_client(config: DCConfig) -> DCClient:
+def create_dc_client(settings: DCSettings) -> DCClient:
     """
-    Factory function to create a single DCClient based on configuration.
+    Factory function to create a single DCClient based on settings.
     
     Args:
-        config: DCConfig object containing client configuration
+        settings: DCSettings object containing client settings
         
     Returns:
-        DCClient instance configured according to the provided config
+        DCClient instance configured according to the provided settings
         
     Raises:
-        ValueError: If required fields are missing or config is invalid
+        ValueError: If required fields are missing or settings is invalid
     """
-    if isinstance(config, BaseDCConfig):
-        return _create_base_dc_client(config)
-    elif isinstance(config, CustomDCConfig):
-        return _create_custom_dc_client(config)
+    if isinstance(settings, BaseDCSettings):
+        return _create_base_dc_client(settings)
+    elif isinstance(settings, CustomDCSettings):
+        return _create_custom_dc_client(settings)
     else:
-        raise ValueError(f"Invalid config type: {type(config)}. Must be BaseDCConfig or CustomDCConfig")
+        raise ValueError(f"Invalid settings type: {type(settings)}. Must be BaseDCSettings or CustomDCSettings")
 
 
-def _create_base_dc_client(config: BaseDCConfig) -> DCClient:
-    """Create a base DC client from config."""
-    # Create topic store if path provided
+def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
+    """Create a base DC client from settings."""
+    # Create topic store from path if provided else use default topic cache
     topic_store = None
-    if config.topic_cache_path:
-        topic_store = read_topic_cache(config.topic_cache_path)
+    if settings.topic_cache_path:
+        topic_store = read_topic_cache(settings.topic_cache_path)
+    else:
+        topic_store = read_topic_cache()
     
     # Create DataCommonsClient
-    dc = DataCommonsClient(api_key=config.api_key)
+    dc = DataCommonsClient(api_key=settings.api_key)
     
     # Create DCClient
     return DCClient(
         dc=dc,
         search_scope=SearchScope.BASE_ONLY,
-        base_index=config.base_index,
+        base_index=settings.base_index,
         custom_index=None,
-        sv_search_base_url=config.sv_search_base_url,
+        sv_search_base_url=settings.sv_search_base_url,
         topic_store=topic_store,
     )
 
 
-def _create_custom_dc_client(config: CustomDCConfig) -> DCClient:
-    """Create a custom DC client from config."""
+def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
+    """Create a custom DC client from settings."""
     # Use search scope directly (it's already an enum)
-    search_scope = config.search_scope
+    search_scope = settings.search_scope
     
     # Create DataCommonsClient
-    dc = DataCommonsClient(url=config.api_base_url)
+    dc = DataCommonsClient(url=settings.api_base_url)
     
     # Create topic store if root_topic_dcids provided
     topic_store = None
-    if config.root_topic_dcids:
-        topic_store = create_topic_store(config.root_topic_dcids, dc)
+    if settings.root_topic_dcids:
+        topic_store = create_topic_store(settings.root_topic_dcids, dc)
     
     # Create DCClient
     return DCClient(
         dc=dc,
         search_scope=search_scope,
-        base_index=config.base_index,
-        custom_index=config.custom_index,
-        sv_search_base_url=config.base_url,  # Use base_url as sv_search_base_url
+        base_index=settings.base_index,
+        custom_index=settings.custom_index,
+        sv_search_base_url=settings.base_url,  # Use base_url as sv_search_base_url
         topic_store=topic_store,
     )
