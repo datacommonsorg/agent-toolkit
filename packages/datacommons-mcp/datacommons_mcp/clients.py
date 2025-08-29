@@ -758,6 +758,6 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         search_scope=search_scope,
         base_index=settings.base_index,
         custom_index=settings.custom_index,
-        sv_search_base_url=settings.base_url,  # Use base_url as sv_search_base_url
+        sv_search_base_url=settings.custom_dc_url,  # Use custom_dc_url as sv_search_base_url
         topic_store=topic_store,
     )

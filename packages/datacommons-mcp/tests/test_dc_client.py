@@ -910,7 +910,7 @@ class TestCreateDCClient:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_api_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app'
+            'CUSTOM_DC_URL': 'https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app'
         }):
             settings = CustomDCSettings()
             mock_dc_instance = Mock()
@@ -939,7 +939,7 @@ class TestCreateDCClient:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_api_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://example.com'  # No trailing slash
+            'CUSTOM_DC_URL': 'https://example.com'  # No trailing slash
         }):
             settings = CustomDCSettings()
             mock_dc_instance = Mock()

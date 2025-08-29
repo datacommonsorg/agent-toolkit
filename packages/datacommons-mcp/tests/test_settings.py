@@ -47,14 +47,14 @@ class TestGetDCSettings:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com'
+            'CUSTOM_DC_URL': 'https://test.com'
         }):
             settings = get_dc_settings()
             
             assert isinstance(settings, CustomDCSettings)
             assert settings.dc_type == 'custom'
             assert settings.api_key == 'test_key'
-            assert settings.base_url == 'https://test.com'
+            assert settings.custom_dc_url == 'https://test.com'
             assert settings.api_base_url == 'https://test.com/core/api/v2/'
             assert settings.search_scope == SearchScope.BASE_AND_CUSTOM
             assert settings.base_index == 'medium_ft'
@@ -67,13 +67,13 @@ class TestGetDCSettings:
             with pytest.raises(ValueError, match="DC_API_KEY"):
                 get_dc_settings()
 
-    def test_get_dc_settings_missing_base_url(self):
-        """Test missing base URL for custom DC raises error."""
+    def test_get_dc_settings_missing_custom_dc_url(self):
+        """Test missing custom DC URL for custom DC raises error."""
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom'
         }):
-            with pytest.raises(ValueError, match="DC_BASE_URL"):
+            with pytest.raises(ValueError, match="CUSTOM_DC_URL"):
                 get_dc_settings()
 
     def test_get_dc_settings_invalid_type(self):
@@ -100,7 +100,7 @@ class TestGetDCSettings:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com'
+            'CUSTOM_DC_URL': 'https://test.com'
         }):
             settings = get_dc_settings()
             
@@ -125,7 +125,7 @@ class TestGetDCSettings:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com',
+            'CUSTOM_DC_URL': 'https://test.com',
             'DC_SEARCH_SCOPE': 'base_only',
             'DC_BASE_INDEX': 'custom_base_index',
             'DC_CUSTOM_INDEX': 'custom_custom_index'
@@ -141,7 +141,7 @@ class TestGetDCSettings:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com',
+            'CUSTOM_DC_URL': 'https://test.com',
             'DC_SEARCH_SCOPE': 'custom_only'
         }):
             settings = get_dc_settings()
@@ -150,7 +150,7 @@ class TestGetDCSettings:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com',
+            'CUSTOM_DC_URL': 'https://test.com',
             'DC_SEARCH_SCOPE': 'base_only'
         }):
             settings = get_dc_settings()
@@ -161,7 +161,7 @@ class TestGetDCSettings:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com',
+            'CUSTOM_DC_URL': 'https://test.com',
             'DC_ROOT_TOPIC_DCIDS': 'topic1,topic2,topic3'
         }):
             settings = get_dc_settings()
@@ -208,13 +208,13 @@ class TestSettingsClasses:
         with patch.dict(os.environ, {
             'DC_API_KEY': 'test_key',
             'DC_TYPE': 'custom',
-            'DC_BASE_URL': 'https://test.com'
+            'CUSTOM_DC_URL': 'https://test.com'
         }):
             settings = CustomDCSettings()
             
             assert settings.dc_type == 'custom'
             assert settings.api_key == 'test_key'
-            assert settings.base_url == 'https://test.com'
+            assert settings.custom_dc_url == 'https://test.com'
             assert settings.api_base_url == 'https://test.com/core/api/v2/'
 
     def test_settings_field_aliases(self):

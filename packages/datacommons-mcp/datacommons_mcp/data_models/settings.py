@@ -91,8 +91,8 @@ class CustomDCSettings(BaseSettings):
         alias="DC_API_KEY",
         description="API key for Data Commons"
     )
-    base_url: str = Field(
-        alias="DC_BASE_URL",
+    custom_dc_url: str = Field(
+        alias="CUSTOM_DC_URL",
         description="Base URL for custom Data Commons instance"
     )
     api_base_url: str | None = Field(
@@ -136,9 +136,9 @@ class CustomDCSettings(BaseSettings):
     
     @model_validator(mode='after')
     def compute_api_base_url(self) -> 'CustomDCSettings':
-        """Compute api_base_url from base_url if not provided."""
+        """Compute api_base_url from custom_dc_url if not provided."""
         if self.api_base_url is None:
-            self.api_base_url = self.base_url.rstrip("/") + "/core/api/v2/"
+            self.api_base_url = self.custom_dc_url.rstrip("/") + "/core/api/v2/"
         return self
 
 
