@@ -23,31 +23,6 @@ def serve() -> None:
 @click.option("--host", default="localhost", help="Host to bind.")
 @click.option("--port", default=8080, help="Port to bind.", type=int)
 @click.option("--reload", is_flag=True, help="Enable auto-reload on code changes.")
-def sse(host: str, port: int, reload: bool) -> None:
-    """Start the MCP server in HTTP/SSE mode."""
-    try:
-        from datacommons_mcp.server import mcp
-
-        click.echo("Starting DataCommons MCP server in HTTP mode (SSE transport)")
-        click.echo(
-            "NOTE: This mode is deprecated and will be removed in a future release. "
-            "Please use the 'http' command instead (Streamable HTTP)."
-        )
-        click.echo(f"Server URL: http://{host}:{port}")
-        click.echo(f"SSE endpoint: http://{host}:{port}/sse")
-        click.echo("Press CTRL+C to stop")
-
-        mcp.run(host=host, port=port, transport="sse")
-
-    except ImportError as e:
-        click.echo(f"Error importing server: {e}", err=True)
-        sys.exit(1)
-
-
-@serve.command()
-@click.option("--host", default="localhost", help="Host to bind.")
-@click.option("--port", default=8080, help="Port to bind.", type=int)
-@click.option("--reload", is_flag=True, help="Enable auto-reload on code changes.")
 def http(host: str, port: int, reload: bool) -> None:
     """Start the MCP server in Streamable HTTP mode."""
     try:
@@ -55,7 +30,7 @@ def http(host: str, port: int, reload: bool) -> None:
 
         click.echo("Starting DataCommons MCP server in Streamable HTTP mode")
         click.echo(f"Server URL: http://{host}:{port}")
-        click.echo(f"SSE endpoint: http://{host}:{port}/mcp")
+        click.echo(f"Streamable HTTP endpoint: http://{host}:{port}/mcp")
         click.echo("Press CTRL+C to stop")
 
         mcp.run(host=host, port=port, transport="streamable-http")
