@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import click
@@ -6,6 +7,7 @@ import click
 @click.group()
 def cli() -> None:
     """DataCommons MCP CLI - Model Context Protocol server for Data Commons."""
+    logging.basicConfig(level=logging.INFO)
 
 
 @cli.command()

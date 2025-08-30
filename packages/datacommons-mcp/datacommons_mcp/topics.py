@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Set
 
 from datacommons_client.client import DataCommonsClient
+
+logger = logging.getLogger(__name__)
 
 # Constants
 _SOURCE_DIR = Path(__file__).resolve().parent
@@ -58,19 +60,11 @@ class TopicNodeData:
 
     def get_variables(self) -> list[str]:
         """Extract variable DCIDs from relevant_variables."""
-        variables = []
-        for var in self.relevant_variables:
-            if not _is_topic_dcid(var):
-                variables.append(var)
-        return variables
+        return [var for var in self.relevant_variables  if not _is_topic_dcid(var)]
 
     def get_member_topics(self) -> list[str]:
         """Extract topic DCIDs from relevant_variables."""
-        topics = []
-        for var in self.relevant_variables:
-            if _is_topic_dcid(var):
-                topics.append(var)
-        return topics
+        return [var for var in self.relevant_variables if _is_topic_dcid(var)]
 
     def get_variable_names(self) -> dict[str, str]:
         """Get the mapping of variable DCIDs to their names."""
@@ -204,8 +198,8 @@ def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
 
 
 def _fetch_node_data(
-    topic_dcids: List[str], dc_client: DataCommonsClient
-) -> Dict[str, TopicNodeData]:
+    topic_dcids: list[str], dc_client: DataCommonsClient
+) -> dict[str, TopicNodeData]:
     """
     Fetch node data for the given topic DCIDs using DataCommonsClient.
 
@@ -252,7 +246,7 @@ def _fetch_node_data(
 
         return nodes_by_dcid
     except Exception as e:
-        print(f"Error fetching node data: {e}")
+        logger.error("Error fetching node data: %s", e)
         return {}
 
 
@@ -323,11 +317,14 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
 
     # Note: Cached data now only contains direct variables
     # Descendant variables are computed on-demand during existence checks
-    print(f"Loaded topic store from cache with {len(topics_by_dcid)} topics")
+    logger.info("Loaded topic store from cache with %s topics", len(topics_by_dcid))
     for topic_dcid in topics_by_dcid:
         topic_data = topics_by_dcid[topic_dcid]
-        print(
-            f"  Topic {topic_dcid}: {len(topic_data.variables)} direct variables, {len(topic_data.member_topics)} member topics"
+        logger.info(
+            "  Topic %s: %s direct variables, %s member topics",
+            topic_dcid,
+            len(topic_data.variables),
+            len(topic_data.member_topics),
         )
 
     return TopicStore(
@@ -338,7 +335,7 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
 
 
 def create_topic_store(
-    root_topic_dcids: List[str],
+    root_topic_dcids: list[str],
     dc_client: DataCommonsClient,
     cache_file_path: Path | None = None,
 ) -> TopicStore:
@@ -357,18 +354,18 @@ def create_topic_store(
     # Try to load from cache first
     if cache_file_path and cache_file_path.exists():
         try:
-            print(f"Loading topic store from cache: {cache_file_path}")
+            logger.info("Loading topic store from cache: %s", cache_file_path)
             return _load_topic_store_from_cache(cache_file_path)
         except Exception as e:
-            print(f"Failed to load from cache: {e}")
-            print("Falling back to API fetch...")
+            logger.warning("Failed to load from cache: %s", e)
+            logger.warning("Falling back to API fetch...")
 
     # Fetch from API
-    topics_by_dcid: Dict[str, TopicVariables] = {}
-    all_variables: Set[str] = set()
-    dcid_to_name: Dict[str, str] = {}
-    visited_topics: Set[str] = set()
-    topics_to_fetch: Set[str] = set(root_topic_dcids)
+    topics_by_dcid: dict[str, TopicVariables] = {}
+    all_variables: set[str] = set()
+    dcid_to_name: dict[str, str] = {}
+    visited_topics: set[str] = set()
+    topics_to_fetch: set[str] = set(root_topic_dcids)
 
     while topics_to_fetch:
         # Fetch data for current batch of topics
@@ -420,11 +417,14 @@ def create_topic_store(
 
     # Note: We now only store direct variables in TopicVariables.variables
     # Descendant variables are computed on-demand during existence checks
-    print(f"Created topic store with {len(topics_by_dcid)} topics")
+    logger.info("Created topic store with %s topics", len(topics_by_dcid))
     for topic_dcid in topics_by_dcid:
         topic_data = topics_by_dcid[topic_dcid]
-        print(
-            f"  Topic {topic_dcid}: {len(topic_data.variables)} direct variables, {len(topic_data.member_topics)} member topics"
+        logger.info(
+            "  Topic %s: %s direct variables, %s member topics",
+            topic_dcid,
+            len(topic_data.variables),
+            len(topic_data.member_topics),
         )
 
     topic_store = TopicStore(
@@ -436,9 +436,9 @@ def create_topic_store(
     # Cache the result if a cache file path is provided
     if cache_file_path:
         try:
-            print(f"Caching topic store to: {cache_file_path}")
+            logger.info("Caching topic store to: %s", cache_file_path)
             _save_topic_store_to_cache(topic_store, cache_file_path)
         except Exception as e:
-            print(f"Failed to cache topic store: {e}")
+            logger.error("Failed to cache topic store: %s", e)
 
     return topic_store

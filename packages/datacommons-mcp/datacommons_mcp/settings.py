@@ -15,28 +15,31 @@
 Settings module for Data Commons clients.
 """
 
-from .data_models.settings import BaseDCSettings, CustomDCSettings, DCSettings, DCSettingsSelector
+from .data_models.settings import (
+    BaseDCSettings,
+    CustomDCSettings,
+    DCSettings,
+    DCSettingsSelector,
+)
 
 
 def get_dc_settings() -> DCSettings:
     """
     Get Data Commons settings from environment variables.
-    
+
     Automatically loads from .env file if present.
-    
+
     Returns:
         DCSettings object containing the configuration
-        
+
     Raises:
         ValueError: If required configuration is missing or invalid
     """
 
-    
     # First, determine the DC type using the settings selector
     settings_selector = DCSettingsSelector()
-    
+
     # Create the appropriate settings class based on the type
     if settings_selector.dc_type == "custom":
         return CustomDCSettings()
-    else:
-        return BaseDCSettings()
+    return BaseDCSettings()
