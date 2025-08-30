@@ -143,7 +143,7 @@ class SeriesMetadata(BaseModel):
     latest_date: str | None = None
     observation_count: int | None = Field(
         default=None,
-        description="The total number of observations available from this source, before any date filtering is applied.",
+        description="The number of observations available from this source, after any date filtering has been applied.",
     )
 
 

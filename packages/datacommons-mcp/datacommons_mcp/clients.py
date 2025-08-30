@@ -27,7 +27,6 @@ from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
-    ObservationToolResponse,
     ResolvedObservationRequest,
 )
 from datacommons_mcp.data_models.settings import (
@@ -37,6 +36,7 @@ from datacommons_mcp.data_models.settings import (
 )
 from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
 
+logger = logging.getLogger(__name__)
 
 class DCClient:
     def __init__(
@@ -125,22 +125,6 @@ class DCClient:
             for dcid in response.get_properties()
         }
 
-    def add_place_metadata_to_obs(self, obs_response: ObservationToolResponse) -> None:
-        all_place_dcids = [obs.place.dcid for obs in obs_response.observations_by_place]
-        if not all_place_dcids:
-            return
-
-        names = self.fetch_entity_names(all_place_dcids)
-        types = self.fetch_entity_types(all_place_dcids)
-
-        for obs in obs_response.observations_by_place:
-            place_dcid = obs.place.dcid
-            obs.place.name = names.get(place_dcid, "")
-            # Get the first type, if available.
-            place_types = types.get(place_dcid)
-            if place_types:
-                obs.place.place_type = place_types[0]
-
     async def fetch_topic_variables(
         self, place_dcid: str, topic_query: str = "statistics"
     ) -> dict:
@@ -164,12 +148,10 @@ class DCClient:
             # We should find a better way to do this or fix the schema so they have names.
             # TODO(keyurva): Since we're only supporting topic variables now, should we only keep those that are in the topic store?
             all_variables = {
-            all_variables = {
                 var
                 for var in unfiltered_variables
                 if self.topic_store.has_variable(var)
                 or not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
-            }
             }
             # Store the full filtered list in the cache
             self.variable_cache.put(place_dcid, all_variables)
@@ -235,7 +217,6 @@ class DCClient:
 
     async def search_svs(
         self, queries: list[str], *, skip_topics: bool = True, max_results: int = 10
-        self, queries: list[str], *, skip_topics: bool = True, max_results: int = 10
     ) -> dict:
         results_map = {}
         skip_topics_param = "&skip_topics=true" if skip_topics else ""
@@ -277,9 +258,6 @@ class DCClient:
                     results_map[query] = all_results[
                         :max_results
                     ]  # Limit to max_results
-                    results_map[query] = all_results[
-                        :max_results
-                    ]  # Limit to max_results
                 else:
                     results_map[query] = []
 
@@ -300,7 +278,6 @@ class DCClient:
         return len(response.get(parent_place_dcid, [])) > 0
 
     async def fetch_topics_and_variables(
-        self, query: str, place_dcids: list[str] = None, max_results: int = 10
         self, query: str, place_dcids: list[str] = None, max_results: int = 10
     ) -> dict:
         """
@@ -344,7 +321,6 @@ class DCClient:
 
         # Build response structure
         return {
-        return {
             "topics": [
                 {
                     "dcid": topic_info["dcid"],
@@ -385,9 +361,6 @@ class DCClient:
         search_results = await self.search_svs(
             [query], skip_topics=False, max_results=max_results
         )
-        search_results = await self.search_svs(
-            [query], skip_topics=False, max_results=max_results
-        )
         results = search_results.get(query, [])
 
         topics = []
@@ -418,13 +391,12 @@ class DCClient:
             unfiltered_variables = response.get(place_dcid, [])
             # Filter out internal variables
             all_variables = {
-            all_variables = {
                 var
                 for var in unfiltered_variables
                 if self.topic_store.has_variable(var)
                 or not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
             }
-            }
+
             self.variable_cache.put(place_dcid, all_variables)
 
     def _filter_variables_by_existence(
@@ -485,10 +457,6 @@ class DCClient:
                 var in place_variables for var in topic_data.variables
             ):
                 return True
-            if place_variables and any(
-                var in place_variables for var in topic_data.variables
-            ):
-                return True
 
         # Recursively check member topics
         for member_topic in topic_data.member_topics:
@@ -514,9 +482,6 @@ class DCClient:
         for place_dcid in place_dcids:
             place_variables = self.variable_cache.get(place_dcid)
             if place_variables is not None:
-                matching_vars = [
-                    var for var in topic_data.variables if var in place_variables
-                ]
                 matching_vars = [
                     var for var in topic_data.variables if var in place_variables
                 ]
@@ -607,7 +572,6 @@ def create_dc_client(settings: DCSettings) -> DCClient:
     """
     if isinstance(settings, BaseDCSettings):
         return _create_base_dc_client(settings)
-    if isinstance(settings, CustomDCSettings):
     if isinstance(settings, CustomDCSettings):
         return _create_custom_dc_client(settings)
 

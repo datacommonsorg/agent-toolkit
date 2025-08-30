@@ -508,6 +508,3 @@ async def search_topics_and_variables(
     return await search_topics_and_variables_service(
         dc_client, query, place1_name, place2_name, per_search_limit
     )
-    return await search_topics_and_variables_service(
-        dc_client, query, place1_name, place2_name, per_search_limit
-    )
