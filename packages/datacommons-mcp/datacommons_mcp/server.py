@@ -43,8 +43,8 @@ from datacommons_mcp.services import (
     search_topics_and_variables as search_topics_and_variables_service,
 )
 
+# Configure logging
 logger = logging.getLogger(__name__)
-
 
 # Create client based on settings
 try:
@@ -505,6 +505,9 @@ async def search_topics_and_variables(
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
     """
+    return await search_topics_and_variables_service(
+        dc_client, query, place1_name, place2_name, per_search_limit
+    )
     return await search_topics_and_variables_service(
         dc_client, query, place1_name, place2_name, per_search_limit
     )
