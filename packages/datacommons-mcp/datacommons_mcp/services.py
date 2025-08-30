@@ -24,6 +24,8 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.exceptions import NoDataFoundError
 
+logger = logging.getLogger(__name__)
+
 
 async def _build_observation_request(
     client: DCClient,
@@ -132,7 +134,7 @@ async def search_topics_and_variables(
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
         raise ValueError("per_search_limit must be between 1 and 100")
-    
+
     # Resolve all place names to DCIDs in a single call
     place_names = [name for name in [place1_name, place2_name] if name]
     place_dcids_map = {}
@@ -141,8 +143,8 @@ async def search_topics_and_variables(
         try:
             place_dcids_map = await client.search_places(place_names)
         except Exception as e:
-            logging.error(f"Error resolving place names: {e}")
-            pass
+            logger.error("Error resolving place names: %s", e)
+            raise e
 
     place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
     place2_dcid = place_dcids_map.get(place2_name) if place2_name else None
@@ -187,9 +189,8 @@ async def search_topics_and_variables(
     valid_place_dcids = [
         dcid for dcid in [place1_dcid, place2_dcid] if dcid is not None
     ]
-    merged_result = await _merge_search_results(results, valid_place_dcids, client)
+    return await _merge_search_results(results, valid_place_dcids, client)
 
-    return merged_result
 
 
 def _collect_all_dcids(
@@ -224,8 +225,7 @@ def _collect_all_dcids(
         all_dcids.update(place_dcids)
 
     # Filter out None values and empty strings
-    result = [dcid for dcid in all_dcids if dcid is not None and dcid.strip()]
-    return result
+    return [dcid for dcid in all_dcids if dcid is not None and dcid.strip()]
 
 
 async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
@@ -234,8 +234,7 @@ async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
         return {}
 
     try:
-        result = client.fetch_entity_names(dcids)
-        return result
+        return client.fetch_entity_names(dcids)
     except Exception:
         # If fetching fails, return empty dict (not an error)
         return {}

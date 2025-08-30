@@ -21,6 +21,7 @@ from enum import Enum
 
 class SearchScope(Enum):
     """Enum for controlling search scope in Data Commons queries."""
+
     CUSTOM_ONLY = "custom_only"
     BASE_ONLY = "base_only"
     BASE_AND_CUSTOM = "base_and_custom"

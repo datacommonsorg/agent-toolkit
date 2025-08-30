@@ -36,22 +36,26 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.services import get_observations as get_observations_service, search_topics_and_variables as search_topics_and_variables_service
+from datacommons_mcp.services import (
+    get_observations as get_observations_service,
+)
+from datacommons_mcp.services import (
+    search_topics_and_variables as search_topics_and_variables_service,
+)
 
+logger = logging.getLogger(__name__)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 
 # Create client based on settings
 try:
     dc_settings = settings.get_dc_settings()
-    logging.info(f"Loaded DC settings:\n{dc_settings.model_dump_json(indent=2)}")
+    logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
     dc_client = create_dc_client(dc_settings)
 except ValueError as e:
-    logging.error(f"Settings error: {e}")
+    logger.error("Settings error: %s", e)
     raise
 except Exception as e:
-    logging.error(f"Failed to create DC client: {e}")
+    logger.error("Failed to create DC client: %s", e)
     raise
 
 mcp = FastMCP("DC MCP Server")
@@ -501,7 +505,6 @@ async def search_topics_and_variables(
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
     """
-    return await search_topics_and_variables_service(dc_client, query, place1_name, place2_name, per_search_limit)
-
-
-
+    return await search_topics_and_variables_service(
+        dc_client, query, place1_name, place2_name, per_search_limit
+    )
