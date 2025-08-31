@@ -282,6 +282,7 @@ class DCClient:
         The variables are filtered to be the intersection
         of the topic variables and the variables available for the place.
         """
+        print(f"[DEBUG] Fetching topic variables for {place_dcid} and {topic_query}")
         all_variables = self.variable_cache.get(place_dcid)
 
         if all_variables is None:
