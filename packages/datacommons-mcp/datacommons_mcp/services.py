@@ -25,6 +25,9 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.data_models.search import (
     SearchTask,
     SearchResponse,
+    SearchVariable,
+    SearchTopic,
+    SearchResult,
 )
 from datacommons_mcp.exceptions import NoDataFoundError
 
@@ -181,22 +184,42 @@ async def search_indicators(
 
     if mode == "lookup":
         # For lookup mode, use simplified logic with query rewriting
-        result = await _search_indicators_lookup_mode(
+        search_result = await _search_indicators_lookup_mode(
             client, search_tasks, per_search_limit
         )
     else:
         # For browse mode, use the existing search_topics_and_variables logic
-        result = await _search_indicators_browse_mode(
+        search_result = await _search_indicators_browse_mode(
             client, search_tasks, per_search_limit
         )
     
+    # Collect all DCIDs for lookups
+    all_dcids = set()
+    
+    # Add topic DCIDs and their members
+    for topic in search_result.topics.values():
+        all_dcids.add(topic.dcid)
+        all_dcids.update(topic.member_topics)
+        all_dcids.update(topic.member_variables)
+    
+    # Add variable DCIDs
+    all_dcids.update(search_result.variables.keys())
+    
+    # Add place DCIDs
+    all_place_dcids = set()
+    for search_task in search_tasks:
+        all_place_dcids.update(search_task.place_dcids)
+    all_dcids.update(all_place_dcids)
+    
+    # Fetch lookups
+    lookups = await _fetch_and_update_lookups(client, list(all_dcids))
+    
     # Create unified response - keeping it minimal for LLM context
     return SearchResponse(
-        mode=mode,
-        status=result.get("status", "SUCCESS"),
-        lookups=result.get("lookups", {}),
-        topics=result.get("topics") if mode == "browse" else None,
-        variables=result.get("variables"),
+        status="SUCCESS",
+        lookups=lookups,
+        topics=list(search_result.topics.values()) if mode == "browse" else None,
+        variables=list(search_result.variables.values()),
     )
 
 
@@ -204,16 +227,16 @@ async def _search_indicators_browse_mode(
     client: DCClient,
     search_tasks: list[SearchTask],
     per_search_limit: int = 10,
-) -> dict:
+) -> SearchResult:
     """Search for topics and variables matching a query, optionally filtered by place existence.
 
     Args:
         client: DCClient instance to use for data operations
-        search_tasks: List of (query, place_dcids) tuples for parallel searches
+        search_tasks: List of SearchTask objects for parallel searches
         per_search_limit: Maximum results per search (default 10, max 100)
 
     Returns:
-        dict: Dictionary with topics, variables, and lookups
+        SearchResult: Typed result with topics and variables dictionaries
     """
     # Execute parallel searches
     tasks = []
@@ -238,40 +261,7 @@ async def _search_indicators_browse_mode(
     return merged_result
 
 
-def _collect_all_dcids(
-    topics: list[dict], variables: list[str], place_dcids: list[str] = None
-) -> list[str]:
-    """Collect all DCIDs from topics, variables, and places."""
-    all_dcids = set()
 
-    # Collect topic DCIDs and their member DCIDs
-    for topic in topics:
-        all_dcids.add(topic["dcid"])
-        # Handle member_topics - could be strings or dicts
-        member_topics = topic.get("member_topics", [])
-        for member in member_topics:
-            if isinstance(member, dict):
-                all_dcids.add(member["dcid"])
-            else:
-                all_dcids.add(member)
-        # Handle member_variables - could be strings or dicts
-        member_variables = topic.get("member_variables", [])
-        for member in member_variables:
-            if isinstance(member, dict):
-                all_dcids.add(member["dcid"])
-            else:
-                all_dcids.add(member)
-
-    # Collect variable DCIDs
-    all_dcids.update(variables)
-
-    # Collect place DCIDs if provided
-    if place_dcids:
-        all_dcids.update(place_dcids)
-
-    # Filter out None values and empty strings
-    result = [dcid for dcid in all_dcids if dcid is not None and dcid.strip()]
-    return result
 
 
 async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
@@ -289,46 +279,45 @@ async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
 
 async def _merge_search_results(
     results: list[dict], place_dcids: list[str] = None, client: DCClient = None
-) -> dict:
+) -> SearchResult:
     """Union results from multiple search calls."""
 
     # Collect all topics and variables
-    all_topics = {}
-    all_variables = {}
+    all_topics: dict[str, SearchTopic] = {}
+    all_variables: dict[str, SearchVariable] = {}
 
     for result in results:
         # Union topics
         for topic in result.get("topics", []):
             topic_dcid = topic["dcid"]
             if topic_dcid not in all_topics:
-                all_topics[topic_dcid] = topic
+                all_topics[topic_dcid] = SearchTopic(
+                    dcid=topic["dcid"],
+                    member_topics=topic.get("member_topics", []),
+                    member_variables=topic.get("member_variables", []),
+                    places_with_data=topic.get("places_with_data")
+                )
 
         # Union variables
         for variable in result.get("variables", []):
             var_dcid = variable["dcid"]
             if var_dcid not in all_variables:
-                all_variables[var_dcid] = variable
+                all_variables[var_dcid] = SearchVariable(
+                    dcid=variable["dcid"],
+                    places_with_data=variable.get("places_with_data", [])
+                )
 
-    # Collect all DCIDs and fetch their names
-    all_dcids = _collect_all_dcids(
-        list(all_topics.values()), list(all_variables.keys()), place_dcids
+    return SearchResult(
+        topics=all_topics,
+        variables=all_variables
     )
-
-    # Fetch names for all DCIDs and use as lookups
-    lookups = await _fetch_and_update_lookups(client, all_dcids)
-
-    return {
-        "topics": list(all_topics.values()),
-        "variables": list(all_variables.values()),
-        "lookups": lookups,
-    }
 
 
 async def _search_indicators_lookup_mode(
     client: DCClient,
     search_tasks: list[SearchTask],
     per_search_limit: int = 10,
-) -> dict:
+) -> SearchResult:
     """Search for variables only in lookup mode with query rewriting.
     
     Args:
@@ -337,14 +326,12 @@ async def _search_indicators_lookup_mode(
         per_search_limit: Maximum results per search (default 10, max 100)
     
     Returns:
-        dict: Dictionary with variables and lookups only
+        SearchResult: Typed result with variables dictionary only
     """
     # Execute parallel searches for each query/place combination
-    all_variable_dcids = set()
+    all_variables: dict[str, SearchVariable] = {}  # Map of variable_dcid -> SearchVariable
     all_place_dcids = set()
 
-    print(f"[DEBUG] Searching for variables in lookup mode with search tasks: {search_tasks}")
-    
     for search_task in search_tasks:
         all_place_dcids.update(search_task.place_dcids)
         
@@ -355,29 +342,34 @@ async def _search_indicators_lookup_mode(
                     place_dcid, topic_query=search_task.query
                 )
                 
-                # Extract variable DCIDs
+                # Extract variable DCIDs and track which place found each variable
                 variable_dcids = variable_data.get("topic_variable_ids", [])
-                all_variable_dcids.update(variable_dcids)
+                for var_dcid in variable_dcids:
+                    if var_dcid not in all_variables:
+                        all_variables[var_dcid] = SearchVariable(
+                            dcid=var_dcid,
+                            places_with_data=[]
+                        )
+                    all_variables[var_dcid].places_with_data.append(place_dcid)
                 
             except Exception as e:
                 logging.error(f"Error fetching variables for place {place_dcid}: {e}")
                 continue
     
-    # Convert to list and limit results if needed
-    variable_dcids_list = list(all_variable_dcids)
-    if per_search_limit and len(variable_dcids_list) > per_search_limit:
-        variable_dcids_list = variable_dcids_list[:per_search_limit]
-    
-    # Fetch names for variables and places
-    dcids_to_lookup = list(all_place_dcids) + variable_dcids_list
-    lookups = client.fetch_entity_names(dcids_to_lookup)
-    
-    return {
-        "variables": variable_dcids_list,
-        "lookups": lookups,
-        "place_dcids": list(all_place_dcids),
-        "status": "SUCCESS"
-    }
+    # Limit results if needed
+    if per_search_limit and len(all_variables) > per_search_limit:
+        # Convert to list, limit, then back to dict
+        limited_variables = {}
+        for i, (var_dcid, var_obj) in enumerate(all_variables.items()):
+            if i >= per_search_limit:
+                break
+            limited_variables[var_dcid] = var_obj
+        all_variables = limited_variables
+
+    return SearchResult(
+        topics={},  # No topics in lookup mode
+        variables=all_variables
+    )
 
 
 async def search_topics_and_variables(
@@ -457,6 +449,28 @@ async def search_topics_and_variables(
     valid_place_dcids = [
         dcid for dcid in [place1_dcid, place2_dcid] if dcid is not None
     ]
-    merged_result = await _merge_search_results(results, valid_place_dcids, client)
+    search_result = await _merge_search_results(results, valid_place_dcids, client)
 
-    return merged_result
+    # Collect all DCIDs for lookups
+    all_dcids = set()
+    
+    # Add topic DCIDs and their members
+    for topic in search_result.topics.values():
+        all_dcids.add(topic.dcid)
+        all_dcids.update(topic.member_topics)
+        all_dcids.update(topic.member_variables)
+    
+    # Add variable DCIDs
+    all_dcids.update(search_result.variables.keys())
+    
+    # Add place DCIDs
+    all_dcids.update(valid_place_dcids)
+    
+    # Fetch lookups
+    lookups = await _fetch_and_update_lookups(client, list(all_dcids))
+
+    return {
+        "topics": list(search_result.topics.values()),
+        "variables": list(search_result.variables.values()),
+        "lookups": lookups,
+    }

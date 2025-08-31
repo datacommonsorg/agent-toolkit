@@ -248,8 +248,8 @@ class TestSearchTopicsAndVariables:
         # Should have deduplicated topics and variables
         assert len(result["topics"]) == 1  # Deduplicated
         assert len(result["variables"]) == 2  # Both unique variables included (duplicate removed)
-        assert "TradeExports_FRA" in [v["dcid"] for v in result["variables"]]
-        assert "TradeImports_FRA" in [v["dcid"] for v in result["variables"]]
+        assert "TradeExports_FRA" in [v.dcid for v in result["variables"]]
+        assert "TradeImports_FRA" in [v.dcid for v in result["variables"]]
 
     @pytest.mark.asyncio
     async def test_search_topics_and_variables_with_custom_per_search_limit(self):
