@@ -226,7 +226,7 @@ async def search_indicators(
     # Fetch lookups
     lookups = await _fetch_and_update_lookups(client, list(all_dcids))
     
-    # Create unified response - keeping it minimal for LLM context
+    # Create unified response
     return SearchResponse(
         status="SUCCESS",
         lookups=lookups,
