@@ -37,6 +37,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
 from datacommons_mcp.services import get_observations as get_observations_service, search_topics_and_variables as search_topics_and_variables_service, search_indicators as search_indicators_service
+from datacommons_mcp.data_models.search import SearchMode, SearchModeType
 
 
 # Configure logging
@@ -507,32 +508,40 @@ async def search_topics_and_variables(
 @mcp.tool()
 async def search_indicators(
     query: str,
-    mode: str = "browse",
+    mode: SearchModeType | None = SearchMode.BROWSE.value,
     place1_name: str | None = None,
     place2_name: str | None = None,
     per_search_limit: int = 10,
 ) -> dict:
-    """Search for topics and variables (collectively called "indicators") across Data Commons with two distinct modes.
+    """Search for topics and variables (collectively called "indicators") across Data Commons.
 
-    This unified tool provides two different search modes to help you find the most relevant indicators:
+    This tool returns candidate indicators that match your query. You should treat these as
+    candidates and filter them based on the user's query and context to surface the most
+    relevant results.
+
+    **Mode Selection Guidelines:**
+
+    **Primary Rule**: If the user has explicitly specified a mode, use it as requested.
 
     **Mode: "browse" (default)**
     - **Purpose**: Explore topic hierarchy and find related variables
     - **Use when**: You want to understand the structure of data categories and discover related variables
     - **Returns**: Both topics (categories) and variables with hierarchical structure
     - **Example use cases**:
+        - "what basic health data do you have"
         - "Show me health data categories and what variables are available"
         - "What economic indicators are available and how are they organized?"
-        - "Explore environmental data structure"
 
     **Mode: "lookup"**
     - **Purpose**: Direct variable search for specific data needs
-    - **Use when**: You know what type of data you're looking for and want focused results
+    - **Use when**: You have a specific query AND at least one place - otherwise use browse mode
     - **Returns**: Variables only (no topic hierarchy)
     - **Example use cases**:
-        - "Find unemployment rate variables"
-        - "Get population data variables"
-        - "Search for carbon emission variables"
+        - "Find unemployment rate variables for United States"
+        - "Get population data variables for India"
+        - "Search for carbon emission variables in NYC"
+
+    **Important**: If no places are provided, the tool automatically uses browse mode regardless of the mode parameter.
 
     **How to Use This Tool:**
 
@@ -543,20 +552,22 @@ async def search_indicators(
     * **For bilateral place-constrained queries** like "trade exports from USA to France":
         - Call with `query="trade exports"`, `mode="lookup"`, `place1_name="USA"`, and `place2_name="France"`
         - The tool will match indicators and perform existence checks for both places
+        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA") is where we have observations
+        - Use `places_with_data` to identify which place has observations.
 
-    * **For exploratory queries** like "what health data do you have":
-        - Call with `query="health"` and `mode="browse"`
+    * **For exploratory queries** like "what basic health data do you have":
+        - Call with `query="health"` and `mode="browse"` (or omit mode parameter)
         - The tool will return organized topic categories and variables
 
-    * **For specific variable searches** like "unemployment rate":
-        - Call with `query="unemployment rate"` and `mode="lookup"`
-        - The tool will return focused variable results
+    * **For non-place-constrained queries** like "what basic health data do you have":
+        - Call with just the `query` parameter (automatically uses browse mode)
+        - No place existence checks are performed
 
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
         mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
-            Default: "browse"
+            Default: "browse" (if not specified). Note: If no places are provided, browse mode is used regardless.
         place1_name (str, optional): First place name for filtering and existence checks.
             Examples: "France", "United States", "California"
         place2_name (str, optional): Second place name for filtering and existence checks.
@@ -564,53 +575,42 @@ async def search_indicators(
         per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
-        dict: A dictionary containing indicators with the following structure:
+        dict: A dictionary containing candidate indicators with the following structure:
+            {
+                "topics": [
+                    {
+                        "dcid": str,  # Topic DCID (browse mode only)
+                        "member_topics": list[str],  # Direct member topic DCIDs
+                        "member_variables": list[str],  # Direct member variable DCIDs
+                        "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
+                    }
+                ],
+                "variables": [
+                    {
+                        "dcid": str,  # Variable DCID
+                        "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
+                    }
+                ],
+                "lookups": dict[str, str],  # DCID to name mappings
+                "status": str  # Status of the search operation
+            }
 
-        **Browse Mode Response:**
-        {
-            "mode": "browse",
-            "status": "SUCCESS",
-            "topics": [
-                {
-                    "dcid": str,  # Topic DCID
-                    "member_topics": list[str],  # Direct member topic DCIDs
-                    "member_variables": list[str],  # Direct member variable DCIDs
-                    "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
-                }
-            ],
-            "variables": [
-                {
-                    "dcid": str,  # Variable DCID
-                    "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
-                }
-            ],
-            "lookups": dict[str, str]  # DCID to name mappings
-        }
-
-        **Lookup Mode Response:**
-        {
-            "mode": "lookup",
-            "status": "SUCCESS",
-            "variables": list[str],  # List of variable DCIDs
-            "lookups": dict[str, str]  # DCID to name mappings
-        }
+        **Browse Mode**: Returns both topics and variables with hierarchical structure
+        **Lookup Mode**: Returns only variables (topics field is None)
 
     **Processing the Response:**
-    * **Browse Mode**: 
-        - **Topics**: Collections of variables and sub-topics. Use the lookups to get readable names.
-        - **Variables**: Individual data indicators. Use the lookups to get readable names.
-        - **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
-    * **Lookup Mode**:
-        - **Variables**: Direct list of variable DCIDs that match your query.
-        - **lookups**: DCID to name mappings for all variables and places.
+    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the lookups to get readable names.
+    * **Variables**: Individual data indicators. Use the lookups to get readable names.
+    * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
-    * **Data availability**: Use `places_with_data` (browse mode) to understand which places have data for each indicator.
+    * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
 
-    **Mode Selection Guidelines:**
+    **Best Practices:**
     - Use **"browse"** when you want to understand data organization and discover related variables
-    - Use **"lookup"** when you have a specific data need and want focused results
+    - Use **"lookup"** only when you have a specific query AND at least one place
+    - If no places are provided, the tool automatically uses browse mode for better results
     - Both modes support place filtering and bilateral queries
-    - Both modes use the same sophisticated query rewriting logic for optimal results
+    - Both modes use sophisticated query rewriting logic for optimal results
     """
     return await search_indicators_service(dc_client, query, mode, place1_name, place2_name, per_search_limit)
 

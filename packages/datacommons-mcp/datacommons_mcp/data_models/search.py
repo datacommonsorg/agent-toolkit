@@ -5,7 +5,20 @@ This module defines Pydantic models for search operations including search tasks
 and results used in the search_indicators functionality.
 """
 
+from enum import Enum
+from typing import Literal
 from pydantic import BaseModel, Field
+
+
+class SearchMode(str, Enum):
+    """Enumeration of search modes for the search_indicators tool."""
+    
+    BROWSE = "browse"
+    LOOKUP = "lookup"
+
+
+# Type alias for use in function signatures and validation
+SearchModeType = Literal["browse", "lookup"]
 
 
 class SearchTask(BaseModel):

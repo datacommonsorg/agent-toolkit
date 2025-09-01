@@ -28,6 +28,8 @@ from datacommons_mcp.data_models.search import (
     SearchVariable,
     SearchTopic,
     SearchResult,
+    SearchMode,
+    SearchModeType,
 )
 from datacommons_mcp.exceptions import NoDataFoundError
 
@@ -120,7 +122,7 @@ async def get_observations(
 async def search_indicators(
     client: DCClient,
     query: str,
-    mode: str = "browse",
+    mode: SearchModeType | None = None,
     place1_name: str | None = None,
     place2_name: str | None = None,
     per_search_limit: int = 10,
@@ -138,9 +140,14 @@ async def search_indicators(
     Returns:
         dict: Dictionary with topics, variables, and lookups (browse mode) or variables only (lookup mode)
     """
-    # Validate mode parameter
-    if mode not in ["browse", "lookup"]:
-        raise ValueError("mode must be either 'browse' or 'lookup'")
+    # Convert string mode to enum for validation and comparison, defaulting to browse if not specified
+    if not mode:
+        search_mode = SearchMode.BROWSE
+    else:
+        try:
+            search_mode = SearchMode(mode)
+        except ValueError:
+            raise ValueError(f"mode must be either '{SearchMode.BROWSE.value}' or '{SearchMode.LOOKUP.value}'")
     
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
@@ -159,6 +166,11 @@ async def search_indicators(
 
     place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
     place2_dcid = place_dcids_map.get(place2_name) if place2_name else None
+
+    # Automatic fallback to browse mode if lookup mode is requested but no places are provided
+    if search_mode == SearchMode.LOOKUP and not place_names:
+        search_mode = SearchMode.BROWSE
+        logging.info(f"Lookup mode requested but no places provided. Automatically switching to browse mode for query: {query}")
 
     # Construct search queries with their corresponding place DCIDs for filtering
     search_tasks = []
@@ -182,7 +194,7 @@ async def search_indicators(
         place2_place_dcids = [place1_dcid] if place1_dcid else []
         search_tasks.append(SearchTask(query=f"{query} {place2_name}", place_dcids=place2_place_dcids))
 
-    if mode == "lookup":
+    if search_mode == SearchMode.LOOKUP:
         # For lookup mode, use simplified logic with query rewriting
         search_result = await _search_indicators_lookup_mode(
             client, search_tasks, per_search_limit
@@ -218,7 +230,7 @@ async def search_indicators(
     return SearchResponse(
         status="SUCCESS",
         lookups=lookups,
-        topics=list(search_result.topics.values()) if mode == "browse" else None,
+        topics=list(search_result.topics.values()) if search_mode == SearchMode.BROWSE else None,
         variables=list(search_result.variables.values()),
     )
 
