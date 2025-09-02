@@ -192,7 +192,6 @@ async def search_topics_and_variables(
     return await _merge_search_results(results, valid_place_dcids, client)
 
 
-
 def _collect_all_dcids(
     topics: list[dict], variables: list[str], place_dcids: list[str] = None
 ) -> list[str]:

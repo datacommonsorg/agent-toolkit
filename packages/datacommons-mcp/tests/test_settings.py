@@ -63,18 +63,27 @@ class TestGetDCSettings:
 
     def test_get_dc_settings_missing_api_key(self):
         """Test missing required API key raises error."""
-        with patch.dict(os.environ, {}, clear=True), pytest.raises(ValueError, match="DC_API_KEY"):
-                get_dc_settings()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(ValueError, match="DC_API_KEY"),
+        ):
+            get_dc_settings()
 
     def test_get_dc_settings_missing_custom_dc_url(self):
         """Test missing custom DC URL for custom DC raises error."""
-        with patch.dict(os.environ, {"DC_API_KEY": "test_key", "DC_TYPE": "custom"}), pytest.raises(ValueError, match="CUSTOM_DC_URL"):
-                get_dc_settings()
+        with (
+            patch.dict(os.environ, {"DC_API_KEY": "test_key", "DC_TYPE": "custom"}),
+            pytest.raises(ValueError, match="CUSTOM_DC_URL"),
+        ):
+            get_dc_settings()
 
     def test_get_dc_settings_invalid_type(self):
         """Test invalid DC type raises error."""
-        with patch.dict(os.environ, {"DC_API_KEY": "test_key", "DC_TYPE": "invalid"}), pytest.raises(ValueError, match="Input should be 'base'"):
-                get_dc_settings()
+        with (
+            patch.dict(os.environ, {"DC_API_KEY": "test_key", "DC_TYPE": "invalid"}),
+            pytest.raises(ValueError, match="Input should be 'base'"),
+        ):
+            get_dc_settings()
 
     def test_get_dc_settings_defaults(self):
         """Test that defaults are applied correctly."""
