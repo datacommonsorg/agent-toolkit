@@ -22,7 +22,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationToolRequest,
     ObservationToolResponse,
 )
-from datacommons_mcp.exceptions import NoDataFoundError
+from datacommons_mcp.exceptions import DataLookupError
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def _build_observation_request(
         results = await client.search_places([place_name])
         place_dcid = results.get(place_name)
     if not place_dcid:
-        raise NoDataFoundError(f"No place found matching '{place_name}'.")
+        raise DataLookupError(f"No place found matching '{place_name}'.")
 
     # 3. Return an instance of the class
     return ObservationToolRequest(
@@ -143,8 +143,9 @@ async def search_topics_and_variables(
         try:
             place_dcids_map = await client.search_places(place_names)
         except Exception as e:
-            logger.error("Error resolving place names: %s", e)
-            raise e
+            msg = "Error resolving place names"
+            logger.error("%s: %s", msg, e)
+            raise DataLookupError(msg) from e
 
     place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
     place2_dcid = place_dcids_map.get(place2_name) if place2_name else None

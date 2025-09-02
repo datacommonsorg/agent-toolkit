@@ -15,8 +15,9 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import ObservationPeriod
-from datacommons_mcp.exceptions import NoDataFoundError
+from datacommons_mcp.exceptions import DataLookupError
 from datacommons_mcp.services import (
     _build_observation_request,
     get_observations,
@@ -28,7 +29,7 @@ from datacommons_mcp.services import (
 class TestBuildObservationRequest:
     @pytest.fixture
     def mock_client(self):
-        client = Mock()
+        client = Mock(spec=DCClient)
         client.search_places = AsyncMock()
         return client
 
@@ -82,7 +83,7 @@ class TestBuildObservationRequest:
 
     async def test_resolution_failure(self, mock_client):
         mock_client.search_places.return_value = {}  # No place found
-        with pytest.raises(NoDataFoundError, match="NoDataFoundError: No place found"):
+        with pytest.raises(DataLookupError, match="DataLookupError: No place found"):
             await _build_observation_request(
                 mock_client, variable_dcid="var1", place_name="invalid"
             )
