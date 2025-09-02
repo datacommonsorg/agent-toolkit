@@ -27,6 +27,9 @@ from pydantic import BaseModel, Field, model_validator
 # Wrapper to rename datacommons_client object to avoid confusion.
 ObservationPeriod = ObservationDate
 
+# Wrapper to rename datacommons_client ObservationResponse to avoid confusion.
+ObservationApiResponse = ObservationResponse
+
 
 class DateRange(BaseModel):
     "Accepted formats: YYYY or YYYY-MM or YYYY-MM-DD"
@@ -152,10 +155,6 @@ class PlaceData(BaseModel):
     variable_series: dict[str, VariableSeries] = Field(default_factory=dict)
     contained_in: list["PlaceData"] = Field(default_factory=list)
     place_types: list[str] = Field(default_factory=list)
-
-
-class ObservationApiResponse(ObservationResponse):
-    """Wrapper to rename DC Client ObservationResponse to avoid confusion."""
 
 
 class ObservationToolResponse(BaseModel):
