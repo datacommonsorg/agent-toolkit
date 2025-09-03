@@ -24,7 +24,11 @@ from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
-from datacommons_mcp.data_models.settings import DCSettings, BaseDCSettings, CustomDCSettings
+from datacommons_mcp.data_models.settings import (
+    DCSettings,
+    BaseDCSettings,
+    CustomDCSettings,
+)
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationApiResponse,
@@ -364,11 +368,7 @@ class DCClient:
         return svs_before_topic
 
     async def search_svs(
-        self, 
-        queries: list[str], 
-        *, 
-        skip_topics: bool = True,
-        max_results: int = 10
+        self, queries: list[str], *, skip_topics: bool = True, max_results: int = 10
     ) -> dict:
         results_map = {}
         skip_topics_param = "&skip_topics=true" if skip_topics else ""
@@ -383,7 +383,7 @@ class DCClient:
             indices_param = ",".join(indices)
             api_endpoint = f"{endpoint_url}?idx={indices_param}{skip_topics_param}"
             payload = {"queries": [query]}
-            
+
             try:
                 response = requests.post(  # noqa: S113
                     api_endpoint, data=json.dumps(payload), headers=headers
@@ -399,13 +399,15 @@ class DCClient:
                 ):
                     sv_list = results[query]["SV"]
                     score_list = results[query]["CosineScore"]
-                    
+
                     # Return results in API order (no ranking)
                     all_results = [
                         {"SV": sv_list[i], "CosineScore": score_list[i]}
                         for i in range(len(sv_list))
                     ]
-                    results_map[query] = all_results[:max_results]  # Limit to max_results
+                    results_map[query] = all_results[
+                        :max_results
+                    ]  # Limit to max_results
                 else:
                     results_map[query] = []
 
@@ -505,7 +507,9 @@ class DCClient:
     async def _search_entities(self, query: str, max_results: int = 10) -> dict:
         """Search for topics and variables using search_svs."""
         # Search with topics included
-        search_results = await self.search_svs([query], skip_topics=False, max_results=max_results)
+        search_results = await self.search_svs(
+            [query], skip_topics=False, max_results=max_results
+        )
         results = search_results.get(query, [])
 
         topics = []
@@ -625,7 +629,9 @@ class DCClient:
         for place_dcid in place_dcids:
             place_variables = self.variable_cache.get(place_dcid)
             if place_variables is not None:
-                matching_vars = [var for var in topic_data.variables if var in place_variables]
+                matching_vars = [
+                    var for var in topic_data.variables if var in place_variables
+                ]
                 if matching_vars:
                     places_with_data.append(place_dcid)
 
@@ -698,13 +704,13 @@ class DCClient:
 def create_dc_client(settings: DCSettings) -> DCClient:
     """
     Factory function to create a single DCClient based on settings.
-    
+
     Args:
         settings: DCSettings object containing client settings
-        
+
     Returns:
         DCClient instance configured according to the provided settings
-        
+
     Raises:
         ValueError: If required fields are missing or settings is invalid
     """
@@ -713,7 +719,9 @@ def create_dc_client(settings: DCSettings) -> DCClient:
     elif isinstance(settings, CustomDCSettings):
         return _create_custom_dc_client(settings)
     else:
-        raise ValueError(f"Invalid settings type: {type(settings)}. Must be BaseDCSettings or CustomDCSettings")
+        raise ValueError(
+            f"Invalid settings type: {type(settings)}. Must be BaseDCSettings or CustomDCSettings"
+        )
 
 
 def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
@@ -724,10 +732,10 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         topic_store = read_topic_cache(settings.topic_cache_path)
     else:
         topic_store = read_topic_cache()
-    
+
     # Create DataCommonsClient
     dc = DataCommonsClient(api_key=settings.api_key)
-    
+
     # Create DCClient
     return DCClient(
         dc=dc,
@@ -743,15 +751,15 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     """Create a custom DC client from settings."""
     # Use search scope directly (it's already an enum)
     search_scope = settings.search_scope
-    
+
     # Create DataCommonsClient
     dc = DataCommonsClient(url=settings.api_base_url)
-    
+
     # Create topic store if root_topic_dcids provided
     topic_store = None
     if settings.root_topic_dcids:
         topic_store = create_topic_store(settings.root_topic_dcids, dc)
-    
+
     # Create DCClient
     return DCClient(
         dc=dc,

@@ -36,7 +36,10 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.services import get_observations as get_observations_service, search_indicators as search_indicators_service
+from datacommons_mcp.services import (
+    get_observations as get_observations_service,
+    search_indicators as search_indicators_service,
+)
 from datacommons_mcp.data_models.search import SearchMode, SearchModeType
 
 
@@ -198,9 +201,6 @@ async def validate_child_place_types(
     return dict(zip(child_place_types, results, strict=False))
 
 
-
-
-
 @mcp.tool()
 async def get_datacommons_chart_config(
     chart_type: str,
@@ -354,9 +354,6 @@ async def get_datacommons_chart_config(
         raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
 
 
-
-
-
 @mcp.tool()
 async def search_indicators(
     query: str,
@@ -464,7 +461,6 @@ async def search_indicators(
     - Both modes support place filtering and bilateral queries
     - Both modes use sophisticated query rewriting logic for optimal results
     """
-    return await search_indicators_service(dc_client, query, mode, place1_name, place2_name, per_search_limit)
-
-
-
+    return await search_indicators_service(
+        dc_client, query, mode, place1_name, place2_name, per_search_limit
+    )

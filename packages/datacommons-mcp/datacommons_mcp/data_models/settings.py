@@ -22,106 +22,94 @@ from pydantic_settings import BaseSettings
 
 from .enums import SearchScope
 
-_MODEL_CONFIG = {
-    "env_file": ".env",
-    "extra": "ignore"
-}
+_MODEL_CONFIG = {"env_file": ".env", "extra": "ignore"}
 
 
 class DCSettingsSelector(BaseSettings):
     """Settings selector to determine DC type from environment."""
-    
+
     model_config = _MODEL_CONFIG
-    
+
     dc_type: Literal["base", "custom"] = Field(
-        default="base",
-        alias="DC_TYPE",
-        description="Type of Data Commons"
+        default="base", alias="DC_TYPE", description="Type of Data Commons"
     )
 
 
 class BaseDCSettings(BaseSettings):
     """Settings for base Data Commons instance."""
-    
+
     model_config = _MODEL_CONFIG
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    
+
     dc_type: Literal["base"] = Field(
         default="base",
         alias="DC_TYPE",
-        description="Type of Data Commons (must be 'base')"
+        description="Type of Data Commons (must be 'base')",
     )
-    api_key: str = Field(
-        alias="DC_API_KEY",
-        description="API key for Data Commons"
-    )
+    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
     sv_search_base_url: str = Field(
         default="https://datacommons.org",
         alias="DC_SV_SEARCH_BASE_URL",
-        description="Search base URL for base DC"
+        description="Search base URL for base DC",
     )
     base_index: str = Field(
         default="base_uae_mem",
         alias="DC_BASE_INDEX",
-        description="Search index for base DC"
+        description="Search index for base DC",
     )
     topic_cache_path: str | None = Field(
         default=None,
         alias="DC_TOPIC_CACHE_PATH",
-        description="Path to topic cache file"
+        description="Path to topic cache file",
     )
 
 
 class CustomDCSettings(BaseSettings):
     """Settings for custom Data Commons instance."""
-    
+
     model_config = _MODEL_CONFIG
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    
+
     dc_type: Literal["custom"] = Field(
         default="custom",
         alias="DC_TYPE",
-        description="Type of Data Commons (must be 'custom')"
+        description="Type of Data Commons (must be 'custom')",
     )
-    api_key: str = Field(
-        alias="DC_API_KEY",
-        description="API key for Data Commons"
-    )
+    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
     custom_dc_url: str = Field(
-        alias="CUSTOM_DC_URL",
-        description="Base URL for custom Data Commons instance"
+        alias="CUSTOM_DC_URL", description="Base URL for custom Data Commons instance"
     )
     api_base_url: str | None = Field(
         default=None,
         alias="DC_API_BASE_URL",
-        description="API base URL (computed from base_url if not provided)"
+        description="API base URL (computed from base_url if not provided)",
     )
     search_scope: SearchScope = Field(
         default=SearchScope.BASE_AND_CUSTOM,
         alias="DC_SEARCH_SCOPE",
-        description="Search scope for queries"
+        description="Search scope for queries",
     )
     base_index: str = Field(
         default="medium_ft",
         alias="DC_BASE_INDEX",
-        description="Search index for base DC"
+        description="Search index for base DC",
     )
     custom_index: str = Field(
         default="user_all_minilm_mem",
         alias="DC_CUSTOM_INDEX",
-        description="Search index for custom DC"
+        description="Search index for custom DC",
     )
     root_topic_dcids: list[str] | None = Field(
         default=None,
         alias="DC_ROOT_TOPIC_DCIDS",
-        description="List of root topic DCIDs"
+        description="List of root topic DCIDs",
     )
-    
-    @field_validator('root_topic_dcids', mode='before')
+
+    @field_validator("root_topic_dcids", mode="before")
     @classmethod
     def parse_root_topic_dcids(cls, v):
         """Parse comma-separated string into list of strings."""
@@ -133,9 +121,9 @@ class CustomDCSettings(BaseSettings):
             # Filter out empty items
             return [item for item in items if item]
         return v
-    
-    @model_validator(mode='after')
-    def compute_api_base_url(self) -> 'CustomDCSettings':
+
+    @model_validator(mode="after")
+    def compute_api_base_url(self) -> "CustomDCSettings":
         """Compute api_base_url from custom_dc_url if not provided."""
         if self.api_base_url is None:
             self.api_base_url = self.custom_dc_url.rstrip("/") + "/core/api/v2/"

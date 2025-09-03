@@ -91,7 +91,7 @@ class TestDCClientConstructor:
             dc=mocked_datacommons_client,
             search_scope=SearchScope.CUSTOM_ONLY,
             base_index="medium_ft",
-            custom_index="user_all_minilm_mem"
+            custom_index="user_all_minilm_mem",
         )
 
         # Assert: Verify the client is configured correctly
@@ -110,35 +110,45 @@ class TestDCClientConstructor:
             dc=mocked_datacommons_client,
             search_scope=SearchScope.BASE_AND_CUSTOM,
             base_index="medium_ft",
-            custom_index="user_all_minilm_mem"
+            custom_index="user_all_minilm_mem",
         )
 
         # Assert: Verify the client is configured correctly
         assert client_under_test.search_scope == SearchScope.BASE_AND_CUSTOM
         assert client_under_test.search_indices == ["user_all_minilm_mem", "medium_ft"]
 
-    def test_compute_search_indices_validation_custom_only_without_index(self, mocked_datacommons_client):
+    def test_compute_search_indices_validation_custom_only_without_index(
+        self, mocked_datacommons_client
+    ):
         """
         Test that CUSTOM_ONLY search scope without custom_index raises ValueError.
         """
         # Arrange & Act & Assert: Creating client with invalid configuration should raise ValueError
-        with pytest.raises(ValueError, match="Custom index not configured but CUSTOM_ONLY search scope requested"):
+        with pytest.raises(
+            ValueError,
+            match="Custom index not configured but CUSTOM_ONLY search scope requested",
+        ):
             DCClient(
                 dc=mocked_datacommons_client,
                 search_scope=SearchScope.CUSTOM_ONLY,
-                custom_index=None
+                custom_index=None,
             )
 
-    def test_compute_search_indices_validation_custom_only_with_empty_index(self, mocked_datacommons_client):
+    def test_compute_search_indices_validation_custom_only_with_empty_index(
+        self, mocked_datacommons_client
+    ):
         """
         Test that CUSTOM_ONLY search scope with empty custom_index raises ValueError.
         """
         # Arrange & Act & Assert: Creating client with invalid configuration should raise ValueError
-        with pytest.raises(ValueError, match="Custom index not configured but CUSTOM_ONLY search scope requested"):
+        with pytest.raises(
+            ValueError,
+            match="Custom index not configured but CUSTOM_ONLY search scope requested",
+        ):
             DCClient(
                 dc=mocked_datacommons_client,
                 search_scope=SearchScope.CUSTOM_ONLY,
-                custom_index=""
+                custom_index="",
             )
 
 
@@ -146,8 +156,10 @@ class TestDCClientSearch:
     """Tests for the search_svs method of DCClient."""
 
     @pytest.mark.asyncio
-    @patch('datacommons_mcp.clients.requests.post')
-    async def test_search_svs_single_api_call(self, mock_post, mocked_datacommons_client):
+    @patch("datacommons_mcp.clients.requests.post")
+    async def test_search_svs_single_api_call(
+        self, mock_post, mocked_datacommons_client
+    ):
         """
         Test that search_svs makes a single API call with comma-separated indices.
         """
@@ -156,16 +168,13 @@ class TestDCClientSearch:
             dc=mocked_datacommons_client,
             search_scope=SearchScope.BASE_AND_CUSTOM,
             base_index="medium_ft",
-            custom_index="user_all_minilm_mem"
+            custom_index="user_all_minilm_mem",
         )
-        
+
         mock_response = Mock()
         mock_response.json.return_value = {
             "queryResults": {
-                "test query": {
-                    "SV": ["var1", "var2"],
-                    "CosineScore": [0.8, 0.6]
-                }
+                "test query": {"SV": ["var1", "var2"], "CosineScore": [0.8, 0.6]}
             }
         }
         mock_response.raise_for_status.return_value = None
@@ -180,26 +189,21 @@ class TestDCClientSearch:
         assert "idx=user_all_minilm_mem,medium_ft" in call_args[0][0]
         assert result["test query"] == [
             {"SV": "var1", "CosineScore": 0.8},
-            {"SV": "var2", "CosineScore": 0.6}
+            {"SV": "var2", "CosineScore": 0.6},
         ]
 
     @pytest.mark.asyncio
-    @patch('datacommons_mcp.clients.requests.post')
+    @patch("datacommons_mcp.clients.requests.post")
     async def test_search_svs_skip_topics(self, mock_post, mocked_datacommons_client):
         """
         Test that search_svs respects the skip_topics parameter.
         """
         # Arrange: Create client and mock response
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         mock_response = Mock()
         mock_response.json.return_value = {
-            "queryResults": {
-                "test query": {
-                    "SV": ["var1"],
-                    "CosineScore": [0.8]
-                }
-            }
+            "queryResults": {"test query": {"SV": ["var1"], "CosineScore": [0.8]}}
         }
         mock_response.raise_for_status.return_value = None
         mock_post.return_value = mock_response
@@ -212,20 +216,22 @@ class TestDCClientSearch:
         assert "skip_topics=true" in call_args[0][0]
 
     @pytest.mark.asyncio
-    @patch('datacommons_mcp.clients.requests.post')
-    async def test_search_svs_max_results_limit(self, mock_post, mocked_datacommons_client):
+    @patch("datacommons_mcp.clients.requests.post")
+    async def test_search_svs_max_results_limit(
+        self, mock_post, mocked_datacommons_client
+    ):
         """
         Test that search_svs respects the max_results parameter.
         """
         # Arrange: Create client and mock response with more results than limit
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         mock_response = Mock()
         mock_response.json.return_value = {
             "queryResults": {
                 "test query": {
                     "SV": ["var1", "var2", "var3", "var4", "var5"],
-                    "CosineScore": [0.9, 0.8, 0.7, 0.6, 0.5]
+                    "CosineScore": [0.9, 0.8, 0.7, 0.6, 0.5],
                 }
             }
         }
@@ -240,7 +246,7 @@ class TestDCClientSearch:
         assert result["test query"] == [
             {"SV": "var1", "CosineScore": 0.9},
             {"SV": "var2", "CosineScore": 0.8},
-            {"SV": "var3", "CosineScore": 0.7}
+            {"SV": "var3", "CosineScore": 0.7},
         ]
 
 
@@ -281,20 +287,19 @@ class TestDCClientObservations:
                     }
                 }
             },
-            "facets": {
-                "source1": {"importName": "test_source"}
-            },
+            "facets": {"source1": {"importName": "test_source"}},
         }
         mock_api_response = ObservationApiResponse.model_validate(api_response_data)
         mocked_datacommons_client.observation.fetch.return_value = mock_api_response
 
         # Mock fetch_entity_names to return place names
-        client_under_test.fetch_entity_names = Mock(return_value={"place1": "Test Place"})
+        client_under_test.fetch_entity_names = Mock(
+            return_value={"place1": "Test Place"}
+        )
 
         # Act: Call the method on our wrapper client
         result = await client_under_test.fetch_obs(request)
 
-        
         expected_response = ObservationToolResponse(
             place_data={
                 "place1": PlaceData(
@@ -307,24 +312,21 @@ class TestDCClientObservations:
                                 source_id="source1",
                                 earliest_date="2023-01-01",
                                 latest_date="2023-01-01",
-                                total_observations=1
+                                total_observations=1,
                             ),
                             observations=[{"date": "2023-01-01", "value": 100}],
-                            alternative_sources=[]
+                            alternative_sources=[],
                         )
-                    }
+                    },
                 )
             },
             source_info={
-                "source1": Source(
-                    importName="test_source",
-                    source_id="source1"
-                )
-            }
+                "source1": Source(importName="test_source", source_id="source1")
+            },
         )
-        
+
         assert result == expected_response
-        
+
         # Verify that the API was called correctly
         mocked_datacommons_client.observation.fetch.assert_called_once_with(
             variable_dcids="var1",
@@ -332,7 +334,7 @@ class TestDCClientObservations:
             date=ObservationPeriod.LATEST,
             filter_facet_ids=None,
         )
-        
+
         # Verify that place metadata was added
         client_under_test.fetch_entity_names.assert_called_once_with(["place1"])
 
@@ -380,27 +382,26 @@ class TestDCClientObservations:
                                     ],
                                 }
                             ]
-                        }
+                        },
                     }
                 }
             },
-            "facets": {
-                "source1": {"importName": "test_source"}
-            },
+            "facets": {"source1": {"importName": "test_source"}},
         }
         mock_api_response = ObservationApiResponse.model_validate(api_response_data)
         mocked_datacommons_client.observation.fetch_observations_by_entity_type.return_value = mock_api_response
 
         # Mock fetch_entity_names to return place names
-        client_under_test.fetch_entity_names = Mock(return_value={
-            "child_place1": "Child Place 1",
-            "child_place2": "Child Place 2"
-        })
+        client_under_test.fetch_entity_names = Mock(
+            return_value={
+                "child_place1": "Child Place 1",
+                "child_place2": "Child Place 2",
+            }
+        )
 
         # Act: Call the method on our wrapper client
         result = await client_under_test.fetch_obs(request)
 
-        
         expected_response = ObservationToolResponse(
             place_data={
                 "child_place1": PlaceData(
@@ -413,12 +414,12 @@ class TestDCClientObservations:
                                 source_id="source1",
                                 earliest_date="2023-01-01",
                                 latest_date="2023-01-01",
-                                total_observations=1
+                                total_observations=1,
                             ),
                             observations=[{"date": "2023-01-01", "value": 50}],
-                            alternative_sources=[]
+                            alternative_sources=[],
                         )
-                    }
+                    },
                 ),
                 "child_place2": PlaceData(
                     place_dcid="child_place2",
@@ -430,24 +431,21 @@ class TestDCClientObservations:
                                 source_id="source1",
                                 earliest_date="2023-01-01",
                                 latest_date="2023-01-01",
-                                total_observations=1
+                                total_observations=1,
                             ),
                             observations=[{"date": "2023-01-01", "value": 75}],
-                            alternative_sources=[]
+                            alternative_sources=[],
                         )
-                    }
-                )
+                    },
+                ),
             },
             source_info={
-                "source1": Source(
-                    importName="test_source",
-                    source_id="source1"
-                )
-            }
+                "source1": Source(importName="test_source", source_id="source1")
+            },
         )
-        
+
         assert result == expected_response
-        
+
         # Verify that the API was called correctly
         mocked_datacommons_client.observation.fetch_observations_by_entity_type.assert_called_once_with(
             variable_dcids="var1",
@@ -456,9 +454,11 @@ class TestDCClientObservations:
             date=ObservationPeriod.LATEST,
             filter_facet_ids=None,
         )
-        
+
         # Verify that place metadata was added for both child places
-        client_under_test.fetch_entity_names.assert_called_once_with(["child_place1", "child_place2"])
+        client_under_test.fetch_entity_names.assert_called_once_with(
+            ["child_place1", "child_place2"]
+        )
 
 
 class TestDCClientFetchTopicsAndVariables:
@@ -469,7 +469,7 @@ class TestDCClientFetchTopicsAndVariables:
         """Test basic functionality without place filtering."""
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         # Mock search_svs to return topics and variables
         mock_search_results = {
             "test query": [
@@ -479,10 +479,10 @@ class TestDCClientFetchTopicsAndVariables:
                 {"SV": "dc/variable/Count_Household", "CosineScore": 0.6},
             ]
         }
-        
+
         # Mock the search_svs method
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
-        
+
         # Mock topic store
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.get_name.side_effect = lambda dcid: {
@@ -491,17 +491,15 @@ class TestDCClientFetchTopicsAndVariables:
             "dc/variable/Count_Person": "Count of Persons",
             "dc/variable/Count_Household": "Count of Households",
         }.get(dcid, dcid)
-        
+
         # Mock topic data
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
-                member_topics=[],
-                variables=["dc/variable/Count_Person"]
+                member_topics=[], variables=["dc/variable/Count_Person"]
             ),
             "dc/topic/Economy": Mock(
-                member_topics=[],
-                variables=["dc/variable/Count_Household"]
-            )
+                member_topics=[], variables=["dc/variable/Count_Household"]
+            ),
         }
 
         # Act: Call the method
@@ -511,30 +509,32 @@ class TestDCClientFetchTopicsAndVariables:
         assert "topics" in result
         assert "variables" in result
         assert "lookups" in result
-        
+
         # Verify topics
         assert len(result["topics"]) == 2
         topic_dcids = [topic["dcid"] for topic in result["topics"]]
         assert "dc/topic/Health" in topic_dcids
         assert "dc/topic/Economy" in topic_dcids
-        
+
         # Verify variables
         assert len(result["variables"]) == 2
         variable_dcids = [var["dcid"] for var in result["variables"]]
         assert "dc/variable/Count_Person" in variable_dcids
         assert "dc/variable/Count_Household" in variable_dcids
-        
+
         # Verify lookups
         assert len(result["lookups"]) == 4
         assert result["lookups"]["dc/topic/Health"] == "Health"
         assert result["lookups"]["dc/variable/Count_Person"] == "Count of Persons"
 
     @pytest.mark.asyncio
-    async def test_fetch_topics_and_variables_with_places(self, mocked_datacommons_client):
+    async def test_fetch_topics_and_variables_with_places(
+        self, mocked_datacommons_client
+    ):
         """Test functionality with place filtering."""
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         # Mock search_svs to return topics and variables
         mock_search_results = {
             "test query": [
@@ -542,25 +542,25 @@ class TestDCClientFetchTopicsAndVariables:
                 {"SV": "dc/variable/Count_Person", "CosineScore": 0.7},
             ]
         }
-        
+
         # Mock the search_svs method
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
-        
+
         # Mock topic store
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.get_name.side_effect = lambda dcid: {
             "dc/topic/Health": "Health",
             "dc/variable/Count_Person": "Count of Persons",
         }.get(dcid, dcid)
-        
+
         # Mock topic data
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
                 member_topics=[],
-                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"]
+                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"],
             )
         }
-        
+
         # Mock variable cache to simulate data existence
         client_under_test.variable_cache = Mock()
         client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
@@ -590,7 +590,11 @@ class TestDCClientFetchTopicsAndVariables:
         }.get(place_dcid, set())
 
         # Act: Filter variables
-        variables = ["dc/variable/Count_Person", "dc/variable/Count_Household", "dc/variable/Count_Business"]
+        variables = [
+            "dc/variable/Count_Person",
+            "dc/variable/Count_Household",
+            "dc/variable/Count_Business",
+        ]
         result = client_under_test._filter_variables_by_existence(
             variables, ["geoId/06", "geoId/36"]
         )
@@ -601,9 +605,11 @@ class TestDCClientFetchTopicsAndVariables:
         assert "dc/variable/Count_Person" in var_dcids
         assert "dc/variable/Count_Household" in var_dcids
         assert "dc/variable/Count_Business" not in var_dcids
-        
+
         # Verify places_with_data
-        count_person = next(var for var in result if var["dcid"] == "dc/variable/Count_Person")
+        count_person = next(
+            var for var in result if var["dcid"] == "dc/variable/Count_Person"
+        )
         assert count_person["places_with_data"] == ["geoId/06", "geoId/36"]
 
     def test_filter_topics_by_existence(self, mocked_datacommons_client):
@@ -613,11 +619,10 @@ class TestDCClientFetchTopicsAndVariables:
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
-                member_topics=[],
-                variables=["dc/variable/Count_Person"]
+                member_topics=[], variables=["dc/variable/Count_Person"]
             )
         }
-        
+
         # Mock variable cache
         client_under_test.variable_cache = Mock()
         client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
@@ -644,10 +649,10 @@ class TestDCClientFetchTopicsAndVariables:
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
                 member_topics=["dc/topic/HealthCare"],
-                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"]
+                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"],
             )
         }
-        
+
         # Mock variable cache
         client_under_test.variable_cache = Mock()
         client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
@@ -668,24 +673,29 @@ class TestDCClientFetchTopicsAndVariables:
         assert health_topic["member_topics"] == []
 
     @pytest.mark.asyncio
-    async def test_search_entities_filters_invalid_topics(self, mocked_datacommons_client):
+    async def test_search_entities_filters_invalid_topics(
+        self, mocked_datacommons_client
+    ):
         """Test that _search_entities filters out topics that don't exist in the topic store."""
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         # Mock search_svs to return topics (some valid, some invalid) and variables
         mock_search_results = {
             "test query": [
                 {"SV": "dc/topic/Health", "CosineScore": 0.9},  # Valid topic
-                {"SV": "dc/topic/InvalidTopic", "CosineScore": 0.8},  # Invalid topic (not in store)
+                {
+                    "SV": "dc/topic/InvalidTopic",
+                    "CosineScore": 0.8,
+                },  # Invalid topic (not in store)
                 {"SV": "dc/topic/Economy", "CosineScore": 0.7},  # Valid topic
                 {"SV": "dc/variable/Count_Person", "CosineScore": 0.6},  # Variable
             ]
         }
-        
+
         # Mock the search_svs method
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
-        
+
         # Mock topic store to only contain some topics
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
@@ -700,13 +710,15 @@ class TestDCClientFetchTopicsAndVariables:
         # Assert: Verify that only valid topics are returned
         assert "topics" in result
         assert "variables" in result
-        
+
         # Verify topics - should only include topics that exist in the topic store
         assert len(result["topics"]) == 2
         assert "dc/topic/Health" in result["topics"]
         assert "dc/topic/Economy" in result["topics"]
-        assert "dc/topic/InvalidTopic" not in result["topics"]  # Invalid topic should be filtered out
-        
+        assert (
+            "dc/topic/InvalidTopic" not in result["topics"]
+        )  # Invalid topic should be filtered out
+
         # Verify variables - should include all variables
         assert len(result["variables"]) == 1
         assert "dc/variable/Count_Person" in result["variables"]
@@ -716,7 +728,7 @@ class TestDCClientFetchTopicsAndVariables:
         """Test that _search_entities handles case when topic store is None."""
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         # Mock search_svs to return topics and variables
         mock_search_results = {
             "test query": [
@@ -724,10 +736,10 @@ class TestDCClientFetchTopicsAndVariables:
                 {"SV": "dc/variable/Count_Person", "CosineScore": 0.6},
             ]
         }
-        
+
         # Mock the search_svs method
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
-        
+
         # Set topic store to None
         client_under_test.topic_store = None
 
@@ -737,19 +749,21 @@ class TestDCClientFetchTopicsAndVariables:
         # Assert: Verify that no topics are returned when topic store is None
         assert "topics" in result
         assert "variables" in result
-        
+
         # Verify topics - should be empty when topic store is None
         assert len(result["topics"]) == 0
-        
+
         # Verify variables - should include all variables
         assert len(result["variables"]) == 1
         assert "dc/variable/Count_Person" in result["variables"]
 
     @pytest.mark.asyncio
-    async def test_search_entities_with_per_search_limit(self, mocked_datacommons_client):
+    async def test_search_entities_with_per_search_limit(
+        self, mocked_datacommons_client
+    ):
         """Test _search_entities with per_search_limit parameter."""
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        
+
         # Mock search_svs to return results
         mock_search_results = {
             "test query": [
@@ -822,9 +836,7 @@ class TestDCClientIntegrateObservationResponse:
     def test_integrate_observation_initial_data(self, mock_api_response):
         """Test that _integrate_observation_response correctly processes initial data."""
         response = ObservationToolResponse()
-        DCClient._integrate_observation_response(
-            response, mock_api_response
-        )
+        DCClient._integrate_observation_response(response, mock_api_response)
 
         assert "place1" in response.place_data
         place_data = response.place_data["place1"]
@@ -850,9 +862,7 @@ class TestDCClientIntegrateObservationResponse:
         )
         response.place_data["place1"] = Mock(variable_series={"var1": initial_series})
 
-        DCClient._integrate_observation_response(
-            response, mock_api_response
-        )
+        DCClient._integrate_observation_response(response, mock_api_response)
 
         # Check that the new sources were appended
         final_series = response.place_data["place1"].variable_series["var1"]
@@ -879,13 +889,12 @@ class TestCreateDCClient:
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.read_topic_cache")
-    def test_create_dc_client_base_dc(self, mock_read_cache: Mock, mock_dc_client: Mock):
+    def test_create_dc_client_base_dc(
+        self, mock_read_cache: Mock, mock_dc_client: Mock
+    ):
         """Test base DC creation with defaults."""
         # Arrange
-        with patch.dict(os.environ, {
-            'DC_API_KEY': 'test_api_key',
-            'DC_TYPE': 'base'
-        }):
+        with patch.dict(os.environ, {"DC_API_KEY": "test_api_key", "DC_TYPE": "base"}):
             settings = BaseDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
@@ -904,14 +913,19 @@ class TestCreateDCClient:
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
-    def test_create_dc_client_custom_dc(self, mock_create_store: Mock, mock_dc_client: Mock):
+    def test_create_dc_client_custom_dc(
+        self, mock_create_store: Mock, mock_dc_client: Mock
+    ):
         """Test custom DC creation with defaults."""
         # Arrange
-        with patch.dict(os.environ, {
-            'DC_API_KEY': 'test_api_key',
-            'DC_TYPE': 'custom',
-            'CUSTOM_DC_URL': 'https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app'
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "DC_API_KEY": "test_api_key",
+                "DC_TYPE": "custom",
+                "CUSTOM_DC_URL": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
+            },
+        ):
             settings = CustomDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
@@ -927,7 +941,10 @@ class TestCreateDCClient:
             assert result.search_scope == SearchScope.BASE_AND_CUSTOM
             assert result.base_index == "medium_ft"
             assert result.custom_index == "user_all_minilm_mem"
-            assert result.sv_search_base_url == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
+            assert (
+                result.sv_search_base_url
+                == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
+            )
             # Should have called DataCommonsClient with computed api_base_url
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
             mock_dc_client.assert_called_with(url=expected_api_url)
@@ -936,11 +953,14 @@ class TestCreateDCClient:
     def test_create_dc_client_url_computation(self, mock_dc_client):
         """Test URL computation for custom DC."""
         # Arrange
-        with patch.dict(os.environ, {
-            'DC_API_KEY': 'test_api_key',
-            'DC_TYPE': 'custom',
-            'CUSTOM_DC_URL': 'https://example.com'  # No trailing slash
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "DC_API_KEY": "test_api_key",
+                "DC_TYPE": "custom",
+                "CUSTOM_DC_URL": "https://example.com",  # No trailing slash
+            },
+        ):
             settings = CustomDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
