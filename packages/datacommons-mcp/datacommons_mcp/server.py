@@ -45,15 +45,15 @@ logger = logging.getLogger(__name__)
 
 # Create client based on settings
 try:
-    dc_settings = settings.get_dc_settings()
-    logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
-    dc_client = create_dc_client(dc_settings)
+  dc_settings = settings.get_dc_settings()
+  logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
+  dc_client = create_dc_client(dc_settings)
 except ValueError as e:
-    logger.error("Settings error: %s", e)
-    raise
+  logger.error("Settings error: %s", e)
+  raise
 except Exception as e:
-    logger.error("Failed to create DC client: %s", e)
-    raise
+  logger.error("Failed to create DC client: %s", e)
+  raise
 
 mcp = FastMCP("DC MCP Server")
 
@@ -69,7 +69,7 @@ async def get_observations(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> ObservationToolResponse:
-    """Fetches observations for a statistical variable from Data Commons.
+  """Fetches observations for a statistical variable from Data Commons.
 
     This tool can operate in two primary modes:
     1.  **Single Place Mode**: Get data for one specific place (e.g., "Population of California").
@@ -122,24 +122,23 @@ async def get_observations(
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
       3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
-    return await get_observations_service(
-        client=dc_client,
-        variable_dcid=variable_dcid,
-        place_dcid=place_dcid,
-        place_name=place_name,
-        child_place_type=child_place_type,
-        source_id_override=source_id_override,
-        period=period,
-        start_date=start_date,
-        end_date=end_date,
-    )
+  return await get_observations_service(
+      client=dc_client,
+      variable_dcid=variable_dcid,
+      place_dcid=place_dcid,
+      place_name=place_name,
+      child_place_type=child_place_type,
+      source_id_override=source_id_override,
+      period=period,
+      start_date=start_date,
+      end_date=end_date,
+  )
 
 
 @mcp.tool()
 async def validate_child_place_types(
-    parent_place_name: str, child_place_types: list[str]
-) -> dict[str, bool]:
-    """
+    parent_place_name: str, child_place_types: list[str]) -> dict[str, bool]:
+  """
     Checks which of the child place types are valid for the parent place.
 
     Use this tool to validate the child place types before calling get_observations for those places.
@@ -180,22 +179,21 @@ async def validate_child_place_types(
     Returns:
         A dictionary mapping child place types to a boolean indicating whether they are valid for the parent place.
     """
-    places = await dc_client.search_places([parent_place_name])
-    place_dcid = places.get(parent_place_name, "")
-    if not place_dcid:
-        return dict.fromkeys(child_place_types, False)
+  places = await dc_client.search_places([parent_place_name])
+  place_dcid = places.get(parent_place_name, "")
+  if not place_dcid:
+    return dict.fromkeys(child_place_types, False)
 
-    tasks = [
-        dc_client.child_place_type_exists(
-            place_dcid,
-            child_place_type,
-        )
-        for child_place_type in child_place_types
-    ]
+  tasks = [
+      dc_client.child_place_type_exists(
+          place_dcid,
+          child_place_type,
+      ) for child_place_type in child_place_types
+  ]
 
-    results = await asyncio.gather(*tasks)
+  results = await asyncio.gather(*tasks)
 
-    return dict(zip(child_place_types, results, strict=False))
+  return dict(zip(child_place_types, results, strict=False))
 
 
 @mcp.tool()
@@ -207,7 +205,7 @@ async def get_datacommons_chart_config(
     parent_place_dcid: str | None = None,
     child_place_type: str | None = None,
 ) -> DataCommonsChartConfig:
-    """Constructs and validates a DataCommons chart configuration.
+  """Constructs and validates a DataCommons chart configuration.
 
     This unified factory function serves as a robust constructor for creating
     any type of DataCommons chart configuration from primitive inputs. It uses a
@@ -278,77 +276,75 @@ async def get_datacommons_chart_config(
             - If any inputs fail Pydantic's model validation for the target
               chart configuration.
     """
-    # Validate chart_type param
-    chart_config_class = CHART_CONFIG_MAP.get(chart_type)
-    if not chart_config_class:
-        raise ValueError(
-            f"Invalid chart_type: '{chart_type}'. Valid types are: {list(CHART_CONFIG_MAP.keys())}"
-        )
+  # Validate chart_type param
+  chart_config_class = CHART_CONFIG_MAP.get(chart_type)
+  if not chart_config_class:
+    raise ValueError(
+        f"Invalid chart_type: '{chart_type}'. Valid types are: {list(CHART_CONFIG_MAP.keys())}"
+    )
 
-    # Validate provided place params
-    if not place_dcids and not (parent_place_dcid and child_place_type):
-        raise ValueError(
-            "Supply either a list of place_dcids or a single parent_dcid-child_place_type pair."
-        )
-    if place_dcids and (parent_place_dcid or child_place_type):
-        raise ValueError(
-            "Provide either 'place_dcids' or a 'parent_dcid'/'child_place_type' pair, but not both."
-        )
+  # Validate provided place params
+  if not place_dcids and not (parent_place_dcid and child_place_type):
+    raise ValueError(
+        "Supply either a list of place_dcids or a single parent_dcid-child_place_type pair."
+    )
+  if place_dcids and (parent_place_dcid or child_place_type):
+    raise ValueError(
+        "Provide either 'place_dcids' or a 'parent_dcid'/'child_place_type' pair, but not both."
+    )
 
-    # Validate variable params
-    if not variable_dcids:
-        raise ValueError("At least one variable_dcid is required.")
+  # Validate variable params
+  if not variable_dcids:
+    raise ValueError("At least one variable_dcid is required.")
 
-    # 2. Intelligently construct the location object based on the input
-    #    This part makes some assumptions based on the provided signature.
-    #    For single-place charts, we use the first DCID. For multi-place, we use all.
-    try:
-        location_model = chart_config_class.model_fields["location"].annotation
-        location_obj = None
+  # 2. Intelligently construct the location object based on the input
+  #    This part makes some assumptions based on the provided signature.
+  #    For single-place charts, we use the first DCID. For multi-place, we use all.
+  try:
+    location_model = chart_config_class.model_fields["location"].annotation
+    location_obj = None
 
-        # Check if the annotation is a Union (e.g., Union[A, B] or A | B)
-        if get_origin(location_model) in (Union, types.UnionType):
-            # Get the types inside the Union
-            # e.g., (SinglePlaceLocation, MultiPlaceLocation)
-            possible_location_types = get_args(location_model)
-        else:
-            possible_location_types = [location_model]
+    # Check if the annotation is a Union (e.g., Union[A, B] or A | B)
+    if get_origin(location_model) in (Union, types.UnionType):
+      # Get the types inside the Union
+      # e.g., (SinglePlaceLocation, MultiPlaceLocation)
+      possible_location_types = get_args(location_model)
+    else:
+      possible_location_types = [location_model]
 
-        # Now, check if our desired types are possible options
-        if MultiPlaceLocation in possible_location_types and place_dcids:
-            # Prioritize MultiPlaceLocation if multiple places are given
-            location_obj = MultiPlaceLocation(place_dcids=place_dcids)
-        elif SinglePlaceLocation in possible_location_types and place_dcids:
-            # Fall back to SinglePlaceLocation if it's an option
-            location_obj = SinglePlaceLocation(place_dcid=place_dcids[0])
-        elif HierarchyLocation in possible_location_types and (
-            parent_place_dcid and child_place_type
-        ):
-            location_obj = HierarchyLocation(
-                parent_place_dcid=parent_place_dcid, child_place_type=child_place_type
-            )
-        else:
-            # The Union doesn't contain a type we can build
-            raise ValueError(
-                f"Chart type '{chart_type}' requires a location type "
-                f"('{location_model.__name__}') that this function cannot build from "
-                "the provided args."
-            )
+    # Now, check if our desired types are possible options
+    if MultiPlaceLocation in possible_location_types and place_dcids:
+      # Prioritize MultiPlaceLocation if multiple places are given
+      location_obj = MultiPlaceLocation(place_dcids=place_dcids)
+    elif SinglePlaceLocation in possible_location_types and place_dcids:
+      # Fall back to SinglePlaceLocation if it's an option
+      location_obj = SinglePlaceLocation(place_dcid=place_dcids[0])
+    elif HierarchyLocation in possible_location_types and (parent_place_dcid and
+                                                           child_place_type):
+      location_obj = HierarchyLocation(parent_place_dcid=parent_place_dcid,
+                                       child_place_type=child_place_type)
+    else:
+      # The Union doesn't contain a type we can build
+      raise ValueError(
+          f"Chart type '{chart_type}' requires a location type "
+          f"('{location_model.__name__}') that this function cannot build from "
+          "the provided args.")
 
-        if issubclass(chart_config_class, SingleVariableChart):
-            return chart_config_class(
-                header=chart_title,
-                location=location_obj,
-                variable_dcid=variable_dcids[0],
-            )
+    if issubclass(chart_config_class, SingleVariableChart):
+      return chart_config_class(
+          header=chart_title,
+          location=location_obj,
+          variable_dcid=variable_dcids[0],
+      )
 
-        return chart_config_class(
-            header=chart_title, location=location_obj, variable_dcids=variable_dcids
-        )
+    return chart_config_class(header=chart_title,
+                              location=location_obj,
+                              variable_dcids=variable_dcids)
 
-    except ValidationError as e:
-        # Catch Pydantic errors and make them more user-friendly
-        raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
+  except ValidationError as e:
+    # Catch Pydantic errors and make them more user-friendly
+    raise ValueError(
+        f"Validation failed for chart_type '{chart_type}': {e}") from e
 
 
 @mcp.tool()
@@ -359,7 +355,7 @@ async def search_indicators(
     place2_name: str | None = None,
     per_search_limit: int = 10,
 ) -> dict:
-    """Search for topics and variables (collectively called "indicators") across Data Commons.
+  """Search for topics and variables (collectively called "indicators") across Data Commons.
 
     This tool returns candidate indicators that match your query. You should treat these as
     candidates and filter them based on the user's query and context to surface the most
@@ -458,6 +454,5 @@ async def search_indicators(
     - Both modes support place filtering and bilateral queries
     - Both modes use sophisticated query rewriting logic for optimal results
     """
-    return await search_indicators_service(
-        dc_client, query, mode, place1_name, place2_name, per_search_limit
-    )
+  return await search_indicators_service(dc_client, query, mode, place1_name,
+                                         place2_name, per_search_limit)
