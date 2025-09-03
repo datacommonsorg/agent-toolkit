@@ -4,6 +4,12 @@ A MCP server for fetching statistical data from Data Commons instances.
 
 ## Development
 
+### One time setup
+
+```bash
+uv sync && uv run pre-commit install --hook-type pre-push # Configures pre-commit hooks for formatting repo prior to push
+```
+
 ### Start MCP locally
 
 Option 1: Use the datacommons-mcp cli

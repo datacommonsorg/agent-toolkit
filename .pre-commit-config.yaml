@@ -1,0 +1,24 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+        args: []
+        stages: [pre-push]
+      # TODO(clincoln8): Uncomment when repo is in healthy state.
+      # - id: ruff-check
+      #   name: ruff-check
+      #   entry: uv run ruff check
+      #   language: system
+      #   types: [python]
+      #   args: [--fix]
+      #   stages: [pre-push]
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        types: [python]
+        stages: [pre-push]
