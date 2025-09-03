@@ -18,6 +18,7 @@ repos:
       #   stages: [pre-push]
       - id: pytest
         name: pytest
+        env: {DC_API_KEY: "test"}
         entry: uv run pytest packages/datacommons-mcp/
         files: ^packages/datacommons-mcp/
         language: system
