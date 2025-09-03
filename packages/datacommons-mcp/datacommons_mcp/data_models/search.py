@@ -7,6 +7,7 @@ and results used in the search_indicators functionality.
 
 from enum import Enum
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 

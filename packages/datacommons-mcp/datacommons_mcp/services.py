@@ -31,7 +31,7 @@ from datacommons_mcp.data_models.search import (
     SearchTopic,
     SearchVariable,
 )
-from datacommons_mcp.exceptions import DataLookupError, NoDataFoundError
+from datacommons_mcp.exceptions import DataLookupError
 
 logger = logging.getLogger(__name__)
 
@@ -148,10 +148,10 @@ async def search_indicators(
     else:
         try:
             search_mode = SearchMode(mode)
-        except ValueError:
+        except ValueError as e:
             raise ValueError(
                 f"mode must be either '{SearchMode.BROWSE.value}' or '{SearchMode.LOOKUP.value}'"
-            )
+            ) from e
 
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
@@ -175,8 +175,8 @@ async def search_indicators(
     # Automatic fallback to browse mode if lookup mode is requested but no places are provided
     if search_mode == SearchMode.LOOKUP and not place_names:
         search_mode = SearchMode.BROWSE
-        logging.info(
-            f"Lookup mode requested but no places provided. Automatically switching to browse mode for query: {query}"
+        logger.info(
+            "Lookup mode requested but no places provided. Automatically switching to browse mode for query: %s", query
         )
 
     # Construct search queries with their corresponding place DCIDs for filtering
@@ -280,16 +280,7 @@ async def _search_indicators_browse_mode(
     # Wait for all searches to complete
     results = await asyncio.gather(*tasks)
 
-    # Merge and deduplicate results
-    # Extract all place DCIDs from search tasks
-    all_place_dcids = set()
-    for search_task in search_tasks:
-        all_place_dcids.update(search_task.place_dcids)
-    valid_place_dcids = list(all_place_dcids)
-
-    merged_result = await _merge_search_results(results, valid_place_dcids, client)
-
-    return merged_result
+    return await _merge_search_results(results)
 
 
 async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
@@ -299,13 +290,13 @@ async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
 
     try:
         return client.fetch_entity_names(dcids)
-    except Exception:
+    except Exception:  # noqa: BLE001
         # If fetching fails, return empty dict (not an error)
         return {}
 
 
 async def _merge_search_results(
-    results: list[dict], place_dcids: list[str] = None, client: DCClient = None
+    results: list[dict]
 ) -> SearchResult:
     """Union results from multiple search calls."""
 
@@ -377,8 +368,10 @@ async def _search_indicators_lookup_mode(
                         )
                     all_variables[var_dcid].places_with_data.append(place_dcid)
 
-            except Exception as e:
-                logging.error(f"Error fetching variables for place {place_dcid}: {e}")
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "Error fetching variables for place %s: %s", place_dcid, e
+                )
                 continue
 
     # Limit results if needed

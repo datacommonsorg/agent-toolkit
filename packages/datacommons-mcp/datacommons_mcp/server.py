@@ -41,7 +41,7 @@ from datacommons_mcp.services import get_observations as get_observations_servic
 from datacommons_mcp.services import search_indicators as search_indicators_service
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create client based on settings
 try:
