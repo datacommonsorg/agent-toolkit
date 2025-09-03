@@ -67,8 +67,7 @@ async def get_observations(
     source_id_override: str | None = None,
     period: str | None = None,
     start_date: str | None = None,
-    end_date: str | None = None,
-) -> ObservationToolResponse:
+    end_date: str | None = None) -> ObservationToolResponse:
   """Fetches observations for a statistical variable from Data Commons.
 
     This tool can operate in two primary modes:
