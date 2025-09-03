@@ -154,9 +154,6 @@ class TestGetObservations:
         assert call_args.observation_period == ObservationPeriod.LATEST
 
 
-
-
-
 @pytest.mark.asyncio
 class TestSearchIndicators:
     """Tests for the search_indicators service function."""
@@ -165,19 +162,19 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_basic(self):
         """Test basic search in browse mode without place filtering."""
         mock_client = Mock()
-        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
-            "topics": [{"dcid": "topic/health"}],
-            "variables": [{"dcid": "Count_Person"}],
-            "lookups": {"topic/health": "Health", "Count_Person": "Population"}
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "topic/health": "Health", "Count_Person": "Population"
-        })
+        mock_client.fetch_topics_and_variables = AsyncMock(
+            return_value={
+                "topics": [{"dcid": "topic/health"}],
+                "variables": [{"dcid": "Count_Person"}],
+                "lookups": {"topic/health": "Health", "Count_Person": "Population"},
+            }
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={"topic/health": "Health", "Count_Person": "Population"}
+        )
 
         result = await search_indicators(
-            client=mock_client,
-            query="health",
-            mode="browse"
+            client=mock_client, query="health", mode="browse"
         )
 
         assert result.topics is not None
@@ -191,20 +188,29 @@ class TestSearchIndicators:
         """Test search in browse mode with place filtering."""
         mock_client = Mock()
         mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
-        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
-            "topics": [{"dcid": "topic/trade"}],
-            "variables": [{"dcid": "TradeExports_FRA"}],
-            "lookups": {"topic/trade": "Trade", "TradeExports_FRA": "Exports to France"}
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "topic/trade": "Trade", "TradeExports_FRA": "Exports to France", "country/FRA": "France"
-        })
+        mock_client.fetch_topics_and_variables = AsyncMock(
+            return_value={
+                "topics": [{"dcid": "topic/trade"}],
+                "variables": [{"dcid": "TradeExports_FRA"}],
+                "lookups": {
+                    "topic/trade": "Trade",
+                    "TradeExports_FRA": "Exports to France",
+                },
+            }
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={
+                "topic/trade": "Trade",
+                "TradeExports_FRA": "Exports to France",
+                "country/FRA": "France",
+            }
+        )
 
         result = await search_indicators(
             client=mock_client,
             query="trade exports",
             mode="browse",
-            place1_name="France"
+            place1_name="France",
         )
 
         assert result.topics is not None
@@ -263,15 +269,14 @@ class TestSearchIndicators:
         )
 
         result = await search_indicators(
-            client=mock_client,
-            query="trade",
-            mode="browse",
-            place1_name="France"
+            client=mock_client, query="trade", mode="browse", place1_name="France"
         )
 
         # Should have deduplicated topics and variables
         assert len(result.topics) == 1  # Deduplicated
-        assert len(result.variables) == 2  # Both unique variables included (duplicate removed)
+        assert (
+            len(result.variables) == 2
+        )  # Both unique variables included (duplicate removed)
         assert "TradeExports_FRA" in [v.dcid for v in result.variables]
         assert "TradeImports_FRA" in [v.dcid for v in result.variables]
 
@@ -279,20 +284,19 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_with_custom_per_search_limit(self):
         """Test search in browse mode with custom per_search_limit parameter."""
         mock_client = Mock()
-        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
-            "topics": [{"dcid": "topic/health"}],
-            "variables": [{"dcid": "Count_Person"}],
-            "lookups": {"topic/health": "Health", "Count_Person": "Population"}
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "topic/health": "Health", "Count_Person": "Population"
-        })
+        mock_client.fetch_topics_and_variables = AsyncMock(
+            return_value={
+                "topics": [{"dcid": "topic/health"}],
+                "variables": [{"dcid": "Count_Person"}],
+                "lookups": {"topic/health": "Health", "Count_Person": "Population"},
+            }
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={"topic/health": "Health", "Count_Person": "Population"}
+        )
 
         result = await search_indicators(
-            client=mock_client,
-            query="health",
-            mode="browse",
-            per_search_limit=5
+            client=mock_client, query="health", mode="browse", per_search_limit=5
         )
 
         assert result.topics is not None
@@ -310,20 +314,18 @@ class TestSearchIndicators:
         mock_client = Mock()
 
         # Test invalid per_search_limit values
-        with pytest.raises(ValueError, match="per_search_limit must be between 1 and 100"):
+        with pytest.raises(
+            ValueError, match="per_search_limit must be between 1 and 100"
+        ):
             await search_indicators(
-                client=mock_client,
-                query="health",
-                mode="browse",
-                per_search_limit=0
+                client=mock_client, query="health", mode="browse", per_search_limit=0
             )
 
-        with pytest.raises(ValueError, match="per_search_limit must be between 1 and 100"):
+        with pytest.raises(
+            ValueError, match="per_search_limit must be between 1 and 100"
+        ):
             await search_indicators(
-                client=mock_client,
-                query="health",
-                mode="browse",
-                per_search_limit=101
+                client=mock_client, query="health", mode="browse", per_search_limit=101
             )
 
         # Test valid per_search_limit values
@@ -332,8 +334,12 @@ class TestSearchIndicators:
         )
 
         # Should not raise for valid values
-        await search_indicators(client=mock_client, query="health", mode="browse", per_search_limit=1)
-        await search_indicators(client=mock_client, query="health", mode="browse", per_search_limit=100)
+        await search_indicators(
+            client=mock_client, query="health", mode="browse", per_search_limit=1
+        )
+        await search_indicators(
+            client=mock_client, query="health", mode="browse", per_search_limit=100
+        )
 
     @pytest.mark.asyncio
     async def test_search_indicators_browse_mode_default_per_search_limit(self):
@@ -354,19 +360,18 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_default_mode(self):
         """Test that browse mode is the default when mode is not specified."""
         mock_client = Mock()
-        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
-            "topics": [{"dcid": "topic/health"}],
-            "variables": [{"dcid": "Count_Person"}],
-            "lookups": {"topic/health": "Health", "Count_Person": "Population"}
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "topic/health": "Health", "Count_Person": "Population"
-        })
-
-        result = await search_indicators(
-            client=mock_client,
-            query="health"
+        mock_client.fetch_topics_and_variables = AsyncMock(
+            return_value={
+                "topics": [{"dcid": "topic/health"}],
+                "variables": [{"dcid": "Count_Person"}],
+                "lookups": {"topic/health": "Health", "Count_Person": "Population"},
+            }
         )
+        mock_client.fetch_entity_names = Mock(
+            return_value={"topic/health": "Health", "Count_Person": "Population"}
+        )
+
+        result = await search_indicators(client=mock_client, query="health")
 
         assert result.topics is not None
         assert result.variables is not None
@@ -380,22 +385,24 @@ class TestSearchIndicators:
         mock_client = Mock()
 
         # Test invalid mode values
-        with pytest.raises(ValueError, match="mode must be either 'browse' or 'lookup'"):
+        with pytest.raises(
+            ValueError, match="mode must be either 'browse' or 'lookup'"
+        ):
             await search_indicators(
-                client=mock_client,
-                query="health",
-                mode="invalid_mode"
+                client=mock_client, query="health", mode="invalid_mode"
             )
 
         # Test valid mode values
-        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
-            "topics": [], "variables": [], "lookups": {}
-        })
+        mock_client.fetch_topics_and_variables = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
 
         # Should not raise for valid values
         await search_indicators(client=mock_client, query="health", mode="browse")
         await search_indicators(client=mock_client, query="health", mode="lookup")
-        await search_indicators(client=mock_client, query="health", mode=None)  # None should default to browse
+        await search_indicators(
+            client=mock_client, query="health", mode=None
+        )  # None should default to browse
 
     # Phase 2: Lookup Mode Tests
     @pytest.mark.asyncio
@@ -403,18 +410,19 @@ class TestSearchIndicators:
         """Test basic search in lookup mode with a single place."""
         mock_client = Mock()
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
-        mock_client.fetch_topic_variables = AsyncMock(return_value={
-            "topic_variable_ids": ["Count_Person", "Count_Household"]
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "Count_Person": "Population", "Count_Household": "Households", "country/USA": "USA"
-        })
+        mock_client.fetch_topic_variables = AsyncMock(
+            return_value={"topic_variable_ids": ["Count_Person", "Count_Household"]}
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={
+                "Count_Person": "Population",
+                "Count_Household": "Households",
+                "country/USA": "USA",
+            }
+        )
 
         result = await search_indicators(
-            client=mock_client,
-            query="health",
-            mode="lookup",
-            place1_name="USA"
+            client=mock_client, query="health", mode="lookup", place1_name="USA"
         )
 
         assert result.topics is None  # No topics in lookup mode
@@ -431,20 +439,24 @@ class TestSearchIndicators:
         """Test search in lookup mode with place filtering."""
         mock_client = Mock()
         mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
-        mock_client.fetch_topic_variables = AsyncMock(return_value={
-            "topic_variable_ids": ["TradeExports_FRA", "TradeImports_FRA"]
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "TradeExports_FRA": "Exports to France", 
-            "TradeImports_FRA": "Imports from France",
-            "country/FRA": "France"
-        })
+        mock_client.fetch_topic_variables = AsyncMock(
+            return_value={
+                "topic_variable_ids": ["TradeExports_FRA", "TradeImports_FRA"]
+            }
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={
+                "TradeExports_FRA": "Exports to France",
+                "TradeImports_FRA": "Imports from France",
+                "country/FRA": "France",
+            }
+        )
 
         result = await search_indicators(
             client=mock_client,
             query="trade exports",
             mode="lookup",
-            place1_name="France"
+            place1_name="France",
         )
 
         assert result.topics is None  # No topics in lookup mode
@@ -464,29 +476,39 @@ class TestSearchIndicators:
     async def test_search_indicators_lookup_mode_merge_results(self):
         """Test that results from multiple searches are properly merged in lookup mode."""
         mock_client = Mock()
-        mock_client.search_places = AsyncMock(return_value={"France": "country/FRA", "Germany": "country/DEU"})
-        mock_client.fetch_topic_variables = AsyncMock(side_effect=[
-            {"topic_variable_ids": ["TradeExports_FRA"]},  # France results
-            {"topic_variable_ids": ["TradeExports_DEU", "TradeExports_FRA"]}  # Germany results (with duplicate)
-        ])
-        mock_client.fetch_entity_names = Mock(return_value={
-            "TradeExports_FRA": "Exports to France",
-            "TradeExports_DEU": "Exports to Germany",
-            "country/FRA": "France",
-            "country/DEU": "Germany"
-        })
+        mock_client.search_places = AsyncMock(
+            return_value={"France": "country/FRA", "Germany": "country/DEU"}
+        )
+        mock_client.fetch_topic_variables = AsyncMock(
+            side_effect=[
+                {"topic_variable_ids": ["TradeExports_FRA"]},  # France results
+                {
+                    "topic_variable_ids": ["TradeExports_DEU", "TradeExports_FRA"]
+                },  # Germany results (with duplicate)
+            ]
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={
+                "TradeExports_FRA": "Exports to France",
+                "TradeExports_DEU": "Exports to Germany",
+                "country/FRA": "France",
+                "country/DEU": "Germany",
+            }
+        )
 
         result = await search_indicators(
             client=mock_client,
             query="trade",
             mode="lookup",
             place1_name="France",
-            place2_name="Germany"
+            place2_name="Germany",
         )
 
         # Should have deduplicated variables
         assert result.topics is None  # No topics in lookup mode
-        assert len(result.variables) == 2  # Both unique variables included (duplicate removed)
+        assert (
+            len(result.variables) == 2
+        )  # Both unique variables included (duplicate removed)
         assert any(v.dcid == "TradeExports_FRA" for v in result.variables)
         assert any(v.dcid == "TradeExports_DEU" for v in result.variables)
 
@@ -495,22 +517,30 @@ class TestSearchIndicators:
         """Test search in lookup mode with custom per_search_limit parameter."""
         mock_client = Mock()
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
-        mock_client.fetch_topic_variables = AsyncMock(return_value={
-            "topic_variable_ids": ["Count_Person", "Count_Household", "Count_Business"]
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "Count_Person": "Population", 
-            "Count_Household": "Households",
-            "Count_Business": "Businesses",
-            "country/USA": "USA"
-        })
+        mock_client.fetch_topic_variables = AsyncMock(
+            return_value={
+                "topic_variable_ids": [
+                    "Count_Person",
+                    "Count_Household",
+                    "Count_Business",
+                ]
+            }
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={
+                "Count_Person": "Population",
+                "Count_Household": "Households",
+                "Count_Business": "Businesses",
+                "country/USA": "USA",
+            }
+        )
 
         result = await search_indicators(
             client=mock_client,
             query="health",
             mode="lookup",
             place1_name="USA",
-            per_search_limit=2
+            per_search_limit=2,
         )
 
         assert result.topics is None  # No topics in lookup mode
@@ -526,48 +556,56 @@ class TestSearchIndicators:
         mock_client = Mock()
 
         # Test invalid per_search_limit values
-        with pytest.raises(ValueError, match="per_search_limit must be between 1 and 100"):
+        with pytest.raises(
+            ValueError, match="per_search_limit must be between 1 and 100"
+        ):
             await search_indicators(
-                client=mock_client,
-                query="health",
-                mode="lookup",
-                per_search_limit=0
+                client=mock_client, query="health", mode="lookup", per_search_limit=0
             )
 
-        with pytest.raises(ValueError, match="per_search_limit must be between 1 and 100"):
+        with pytest.raises(
+            ValueError, match="per_search_limit must be between 1 and 100"
+        ):
             await search_indicators(
-                client=mock_client,
-                query="health",
-                mode="lookup",
-                per_search_limit=101
+                client=mock_client, query="health", mode="lookup", per_search_limit=101
             )
 
         # Test valid per_search_limit values with place (so lookup mode is actually used)
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
-        mock_client.fetch_topic_variables = AsyncMock(return_value={
-            "topic_variable_ids": []
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "country/USA": "USA"
-        })
+        mock_client.fetch_topic_variables = AsyncMock(
+            return_value={"topic_variable_ids": []}
+        )
+        mock_client.fetch_entity_names = Mock(return_value={"country/USA": "USA"})
 
         # Should not raise for valid values
-        await search_indicators(client=mock_client, query="health", mode="lookup", place1_name="USA", per_search_limit=1)
-        await search_indicators(client=mock_client, query="health", mode="lookup", place1_name="USA", per_search_limit=100)
+        await search_indicators(
+            client=mock_client,
+            query="health",
+            mode="lookup",
+            place1_name="USA",
+            per_search_limit=1,
+        )
+        await search_indicators(
+            client=mock_client,
+            query="health",
+            mode="lookup",
+            place1_name="USA",
+            per_search_limit=100,
+        )
 
     @pytest.mark.asyncio
     async def test_search_indicators_lookup_mode_default_per_search_limit(self):
         """Test that default per_search_limit=10 is used when not specified in lookup mode."""
         mock_client = Mock()
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
-        mock_client.fetch_topic_variables = AsyncMock(return_value={
-            "topic_variable_ids": []
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "country/USA": "USA"
-        })
+        mock_client.fetch_topic_variables = AsyncMock(
+            return_value={"topic_variable_ids": []}
+        )
+        mock_client.fetch_entity_names = Mock(return_value={"country/USA": "USA"})
 
-        await search_indicators(client=mock_client, query="health", mode="lookup", place1_name="USA")
+        await search_indicators(
+            client=mock_client, query="health", mode="lookup", place1_name="USA"
+        )
 
         # Verify default per_search_limit=10 was used (though not directly passed to fetch_topic_variables)
         # The limit is applied after fetching results
@@ -577,20 +615,22 @@ class TestSearchIndicators:
     async def test_search_indicators_automatic_fallback_to_browse_mode(self):
         """Test that lookup mode automatically falls back to browse mode when no places are provided."""
         mock_client = Mock()
-        mock_client.fetch_topics_and_variables = AsyncMock(return_value={
-            "topics": [{"dcid": "topic/health"}],
-            "variables": [{"dcid": "Count_Person"}],
-            "lookups": {"topic/health": "Health", "Count_Person": "Population"}
-        })
-        mock_client.fetch_entity_names = Mock(return_value={
-            "topic/health": "Health", "Count_Person": "Population"
-        })
+        mock_client.fetch_topics_and_variables = AsyncMock(
+            return_value={
+                "topics": [{"dcid": "topic/health"}],
+                "variables": [{"dcid": "Count_Person"}],
+                "lookups": {"topic/health": "Health", "Count_Person": "Population"},
+            }
+        )
+        mock_client.fetch_entity_names = Mock(
+            return_value={"topic/health": "Health", "Count_Person": "Population"}
+        )
 
         # Call with lookup mode but no places - should automatically fall back to browse mode
         result = await search_indicators(
             client=mock_client,
             query="health",
-            mode="lookup"  # No places provided
+            mode="lookup",  # No places provided
         )
 
         # Should return browse mode results (topics populated)

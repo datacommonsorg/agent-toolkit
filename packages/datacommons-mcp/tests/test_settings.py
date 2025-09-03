@@ -28,6 +28,7 @@ from datacommons_mcp.settings import get_dc_settings
 def isolated_env(tmp_path, monkeypatch):
     """A fixture to isolate tests from .env files and existing env vars."""
     monkeypatch.chdir(tmp_path)
+
     # This inner function will be the fixture's return value
     def _patch_env(env_vars):
         return patch.dict(os.environ, env_vars, clear=True)
@@ -136,7 +137,8 @@ class TestSettingsValidation:
     def test_invalid_dc_type_raises_error(self, isolated_env):
         """Tests that a ValueError is raised for an invalid DC_TYPE."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "invalid"}
-        with isolated_env(env_vars), pytest.raises(
-            ValueError, match="Input should be 'base' or 'custom'"
+        with (
+            isolated_env(env_vars),
+            pytest.raises(ValueError, match="Input should be 'base' or 'custom'"),
         ):
             get_dc_settings()
