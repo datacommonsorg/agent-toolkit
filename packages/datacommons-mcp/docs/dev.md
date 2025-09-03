@@ -146,6 +146,17 @@ uv sync && uv run pre-commit install --hook-type pre-push # Configures pre-commi
 ```
 Note, this command must be re-run every time `.pre-commit-config.yaml` is updated.
 
+To get the pre-commit command line tool to run without the presence of `.pre-commit-config.yaml`, run:
+```bash
+export PRE_COMMIT_ALLOW_NO_CONFIG=1
+```
+
+To bypass the pre-push hooks and push to branch, use the --no-verify flag. For example:
+```bash
+git push origin $BRANCH --no-verify
+```
+
+
 ## Publishing a New Version
 
 To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project/datacommons-mcp):
