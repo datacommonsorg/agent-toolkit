@@ -45,7 +45,6 @@ class TestBaseSettings:
         with isolated_env(env_vars):
             settings = get_dc_settings()
 
-
             assert isinstance(settings, BaseDCSettings)
             assert settings.api_key == "test_key"
             assert settings.sv_search_base_url == "https://datacommons.org"
