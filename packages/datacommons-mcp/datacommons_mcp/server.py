@@ -36,15 +36,12 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.services import (
-    get_observations as get_observations_service,
-)
-from datacommons_mcp.services import (
-    search_topics_and_variables as search_topics_and_variables_service,
-)
+from datacommons_mcp.data_models.search import SearchMode, SearchModeType
+from datacommons_mcp.services import get_observations as get_observations_service
+from datacommons_mcp.services import search_indicators as search_indicators_service
 
-logger = logging.getLogger(__name__)
-
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Create client based on settings
 try:
@@ -82,7 +79,7 @@ async def get_observations(
 
     * **Variable Selection**: You **must** provide the `variable_dcid`.
         * Variable DCIDs are unique identifiers for statistical variables in Data Commons and are returned by prior calls to the
-        `get_available_variables` and `search_topics_and_variables` tools.
+        `search_indicators` tool.
 
     * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
         * If `place_dcid` is provided, it takes priority over `place_name`.
@@ -90,7 +87,7 @@ async def get_observations(
         the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France).
         In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
         (e.g., the exporter country, such as 'USA' for exports *from* USA).
-        The `search_topics_and_variables` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
+        The `search_indicators` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
@@ -201,90 +198,7 @@ async def validate_child_place_types(
     return dict(zip(child_place_types, results, strict=False))
 
 
-@mcp.tool()
-async def get_available_variables(
-    place_name: str = "world", indicator_desc: str = "statistics"
-) -> dict:
-    """
-    Gets available variables for a place and indicator (category or variable).
-    If a place is not specified, it returns variables for the world.
-    If indicator_desc is not specified, it returns variables for a generic category called "statistics".
 
-    Use this tool to discover what statistical data is available for a particular geographic area and indicator.
-
-    Args:
-        place_name (str): The name of the place to fetch variables for. e.g. "United States", "India", "NYC", etc.
-        indicator_desc (str): The description of category or variable to fetch.
-        Examples of categories: "Demographics", "Economy", "Health", "Education", "Environment", etc.
-        Examples of variables: "Women With Arthritis by Age", "population", "unemployment rate", "carbon emissions", "health grants", etc.
-
-    Returns:
-        A dictionary containing the status of the request and the data if available.
-
-        The data will have the following format:
-        {
-          "status": "SUCCESS",
-          "data": {
-            "place_dcid": str,
-            "variable_dcids": list[str],
-            "id_name_mappings": dict
-          }
-        }
-
-        In your response, use the id_name_mappings to convert the variable and place dcids to human-readable names.
-
-        You can use the variable_dcids to get the variables in the requested category (or for "statistics" by default) or those that match the indicator_desc.
-
-        If the user asks to see the data for a category and there are a high number of variables, pick those most pertinent to the user's query and context.
-        When showing this info to the user, inform them of the total number of variables available *for this specific place and category* (e.g., 'statistics for the world')
-        and the variables for that combination.
-
-        **Crucially**, categorize the variables into categories as appropriate (e.g. "Demographics", "Economy", "Health", "Education", "Environment", etc.) to make the information easier to digest.
-
-        Typically this tool is called when the user asks to see the data for a specific category or variable for a given place.
-
-        Consider the variables returned by this tool as candidates
-        and filter them based on the user's query and context to surface or use the most
-        relevant results.
-
-        It can also be called for a general "what data do you have".
-        In this case we'll return generic statistics data for the world.
-        For this general case, emphasize that these are variables available for just this combination.
-        The overall collection of variables and datasets is much larger.
-        You can then prompt the user to ask a specific question about the data and
-        possibly suggest a few questions to ask.
-
-        Most importantly, for category queries, categorize the variables as mentioned above when displaying them to the user.
-    """
-    places = await dc_client.search_places([place_name])
-    place_dcid = places.get(place_name)
-
-    if not place_dcid:
-        return {
-            "status": "NOT_FOUND",
-            "message": f"Could not find a place named '{place_name}'.",
-        }
-
-    dc = dc_client
-    variable_data = await dc.fetch_topic_variables(
-        place_dcid, topic_query=indicator_desc
-    )
-
-    dcids_to_lookup = [place_dcid]
-
-    topic_variable_ids = variable_data.get("topic_variable_ids", [])
-    dcids_to_lookup.extend(topic_variable_ids)
-
-    id_name_mappings = dc.fetch_entity_names(dcids_to_lookup)
-
-    return {
-        "status": "SUCCESS",
-        "data": {
-            "place_dcid": place_dcid,
-            "variable_ids": topic_variable_ids,
-            "id_name_mappings": id_name_mappings,
-        },
-    }
 
 
 @mcp.tool()
@@ -440,9 +354,13 @@ async def get_datacommons_chart_config(
         raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
 
 
+
+
+
 @mcp.tool()
-async def search_topics_and_variables(
+async def search_indicators(
     query: str,
+    mode: SearchModeType | None = SearchMode.BROWSE.value,
     place1_name: str | None = None,
     place2_name: str | None = None,
     per_search_limit: int = 10,
@@ -453,25 +371,55 @@ async def search_topics_and_variables(
     candidates and filter them based on the user's query and context to surface the most
     relevant results.
 
+    **Mode Selection Guidelines:**
+
+    **Primary Rule**: If the user has explicitly specified a mode, use it as requested.
+
+    **Mode: "browse" (default)**
+    - **Purpose**: Explore topic hierarchy and find related variables
+    - **Use when**: You want to understand the structure of data categories and discover related variables
+    - **Returns**: Both topics (categories) and variables with hierarchical structure
+    - **Example use cases**:
+        - "what basic health data do you have"
+        - "Show me health data categories and what variables are available"
+        - "What economic indicators are available and how are they organized?"
+
+    **Mode: "lookup"**
+    - **Purpose**: Direct variable search for specific data needs
+    - **Use when**: You have a specific query AND at least one place - otherwise use browse mode
+    - **Returns**: Variables only (no topic hierarchy)
+    - **Example use cases**:
+        - "Find unemployment rate variables for United States"
+        - "Get population data variables for India"
+        - "Search for carbon emission variables in NYC"
+
+    **Important**: If no places are provided, the tool automatically uses browse mode regardless of the mode parameter.
+
     **How to Use This Tool:**
 
     * **For place-constrained queries** like "trade exports to France":
-        - Call with `query="trade exports"` and `place1_name="France"`
+        - Call with `query="trade exports"`, `mode="lookup"`, and `place1_name="France"`
         - The tool will match indicators and perform existence checks for the specified place
 
     * **For bilateral place-constrained queries** like "trade exports from USA to France":
-        - Call with `query="trade exports"`, `place1_name="USA"`, and `place2_name="France"`
+        - Call with `query="trade exports"`, `mode="lookup"`, `place1_name="USA"`, and `place2_name="France"`
         - The tool will match indicators and perform existence checks for both places
         - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA") is where we have observations
         - Use `places_with_data` to identify which place has observations.
 
+    * **For exploratory queries** like "what basic health data do you have":
+        - Call with `query="health"` and `mode="browse"` (or omit mode parameter)
+        - The tool will return organized topic categories and variables
+
     * **For non-place-constrained queries** like "what basic health data do you have":
-        - Call with just the `query` parameter
+        - Call with just the `query` parameter (automatically uses browse mode)
         - No place existence checks are performed
 
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
+        mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
+            Default: "browse" (if not specified). Note: If no places are provided, browse mode is used regardless.
         place1_name (str, optional): First place name for filtering and existence checks.
             Examples: "France", "United States", "California"
         place2_name (str, optional): Second place name for filtering and existence checks.
@@ -483,28 +431,40 @@ async def search_topics_and_variables(
             {
                 "topics": [
                     {
-                        "dcid": str,  # Topic DCID
+                        "dcid": str,  # Topic DCID (browse mode only)
                         "member_topics": list[str],  # Direct member topic DCIDs
                         "member_variables": list[str],  # Direct member variable DCIDs
-                        "places_with_data": list[str]  # Place DCIDs where data exists (only if place filtering was performed)
+                        "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
                     }
                 ],
                 "variables": [
                     {
                         "dcid": str,  # Variable DCID
-                        "places_with_data": list[str]  # Place DCIDs where data exists (only if place filtering was performed)
+                        "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
                     }
                 ],
-                "lookups": dict[str, str]  # DCID to name mappings
+                "lookups": dict[str, str],  # DCID to name mappings
+                "status": str  # Status of the search operation
             }
 
+        **Browse Mode**: Returns both topics and variables with hierarchical structure
+        **Lookup Mode**: Returns only variables (topics field is None)
+
     **Processing the Response:**
-    * **Topics**: Collections of variables and sub-topics. Use the lookups to get readable names.
+    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the lookups to get readable names.
     * **Variables**: Individual data indicators. Use the lookups to get readable names.
     * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
+
+    **Best Practices:**
+    - Use **"browse"** when you want to understand data organization and discover collections of variables (topics) or related variables
+    - Use **"lookup"** only when you have a specific query AND at least one place
+    - If no places are provided, the tool automatically uses browse mode for better results
+    - Both modes support place filtering and bilateral queries
+    - Both modes use sophisticated query rewriting logic for optimal results
     """
-    return await search_topics_and_variables_service(
-        dc_client, query, place1_name, place2_name, per_search_limit
-    )
+    return await search_indicators_service(dc_client, query, mode, place1_name, place2_name, per_search_limit)
+
+
+
