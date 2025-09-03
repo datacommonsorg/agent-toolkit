@@ -139,7 +139,7 @@ uv run ruff check # to check files
 uv run ruff format # to format files
 ```
 
-# Pre Push Hook
+#### Pre Push Hook
 To install a pre push hook for auto formatting and pytesting, run:
 ```bash
 uv sync && uv run pre-commit install --hook-type pre-push # Configures pre-commit hooks for formatting repo prior to push
