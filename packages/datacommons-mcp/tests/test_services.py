@@ -229,7 +229,6 @@ class TestSearchIndicators:
         # The second call should be with the place name appended to query
         assert calls[1].kwargs["query"] == "trade exports France"
         assert calls[1].kwargs["place_dcids"] == []
-        assert calls[1].kwargs["place_dcids"] == []
 
     @pytest.mark.asyncio
     async def test_search_indicators_browse_mode_merge_results(self):
