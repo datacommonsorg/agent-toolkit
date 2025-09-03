@@ -52,7 +52,7 @@ try:
     dc_settings = settings.get_dc_settings()
     logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
     dc_client = create_dc_client(dc_settings)
-except ValueError as e:
+except ValidationError as e:
     logger.error("Settings error: %s", e)
     raise
 except Exception as e:
