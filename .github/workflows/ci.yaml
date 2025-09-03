@@ -23,6 +23,10 @@ jobs:
       - name: Install uv
         run: pip install uv
 
+      - name: Install dependencies
+        # This will install all dependencies from the workspace pyproject.toml
+        run: uv sync
+
       - name: Check formatting with Ruff
         # Run from the package directory
         working-directory: packages/datacommons-mcp
