@@ -121,17 +121,15 @@ async def get_observations(
       2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
       3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
-  return await get_observations_service(
-      client=dc_client,
-      variable_dcid=variable_dcid,
-      place_dcid=place_dcid,
-      place_name=place_name,
-      child_place_type=child_place_type,
-      source_id_override=source_id_override,
-      period=period,
-      start_date=start_date,
-      end_date=end_date,
-  )
+  return await get_observations_service(client=dc_client,
+                                        variable_dcid=variable_dcid,
+                                        place_dcid=place_dcid,
+                                        place_name=place_name,
+                                        child_place_type=child_place_type,
+                                        source_id_override=source_id_override,
+                                        period=period,
+                                        start_date=start_date,
+                                        end_date=end_date)
 
 
 @mcp.tool()
