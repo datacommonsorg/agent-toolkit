@@ -176,7 +176,8 @@ async def search_indicators(
     if search_mode == SearchMode.LOOKUP and not place_names:
         search_mode = SearchMode.BROWSE
         logger.info(
-            "Lookup mode requested but no places provided. Automatically switching to browse mode for query: %s", query
+            "Lookup mode requested but no places provided. Automatically switching to browse mode for query: %s",
+            query,
         )
 
     # Construct search queries with their corresponding place DCIDs for filtering
@@ -295,9 +296,7 @@ async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
         return {}
 
 
-async def _merge_search_results(
-    results: list[dict]
-) -> SearchResult:
+async def _merge_search_results(results: list[dict]) -> SearchResult:
     """Union results from multiple search calls."""
 
     # Collect all topics and variables
@@ -369,9 +368,7 @@ async def _search_indicators_lookup_mode(
                     all_variables[var_dcid].places_with_data.append(place_dcid)
 
             except Exception as e:  # noqa: BLE001
-                logger.error(
-                    "Error fetching variables for place %s: %s", place_dcid, e
-                )
+                logger.error("Error fetching variables for place %s: %s", place_dcid, e)
                 continue
 
     # Limit results if needed
