@@ -458,7 +458,7 @@ async def search_indicators(
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
 
     **Best Practices:**
-    - Use **"browse"** when you want to understand data organization and discover related variables
+    - Use **"browse"** when you want to understand data organization and discover collections of variables (topics) or related variables
     - Use **"lookup"** only when you have a specific query AND at least one place
     - If no places are provided, the tool automatically uses browse mode for better results
     - Both modes support place filtering and bilateral queries

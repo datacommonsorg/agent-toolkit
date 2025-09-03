@@ -186,13 +186,11 @@ async def search_indicators(
 
     # Place1 query: search for query + place1_name, filter by place2_dcid
     if place1_dcid:
-        place1_place_dcids = [place2_dcid] if place2_dcid else []
-        search_tasks.append(SearchTask(query=f"{query} {place1_name}", place_dcids=place1_place_dcids))
+        search_tasks.append(SearchTask(query=f"{query} {place1_name}", place_dcids=[place2_dcid] if place2_dcid else []))
 
     # Place2 query: search for query + place2_name, filter by place1_dcid
     if place2_dcid:
-        place2_place_dcids = [place1_dcid] if place1_dcid else []
-        search_tasks.append(SearchTask(query=f"{query} {place2_name}", place_dcids=place2_place_dcids))
+        search_tasks.append(SearchTask(query=f"{query} {place2_name}", place_dcids=[place1_dcid] if place1_dcid else []))
 
     if search_mode == SearchMode.LOOKUP:
         # For lookup mode, use simplified logic with query rewriting
