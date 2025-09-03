@@ -4,11 +4,6 @@ A MCP server for fetching statistical data from Data Commons instances.
 
 ## Development
 
-### One time setup
-
-```bash
-uv sync && uv run pre-commit install --hook-type pre-push # Configures pre-commit hooks for formatting repo prior to push
-```
 
 ### Start MCP locally
 
@@ -143,6 +138,13 @@ uv run ruff check # to check files
 
 uv run ruff format # to format files
 ```
+
+# Pre Push Hook
+To install a pre push hook for auto formatting and pytesting, run:
+```bash
+uv sync && uv run pre-commit install --hook-type pre-push # Configures pre-commit hooks for formatting repo prior to push
+```
+Note, this command must be re-run every time `.pre-commit-config.yaml` is updated.
 
 ## Publishing a New Version
 
