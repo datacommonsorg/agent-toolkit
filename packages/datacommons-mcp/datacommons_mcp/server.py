@@ -37,8 +37,12 @@ from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
 from datacommons_mcp.data_models.search import SearchMode, SearchModeType
-from datacommons_mcp.services import get_observations as get_observations_service
-from datacommons_mcp.services import search_indicators as search_indicators_service
+from datacommons_mcp.services import (
+    get_observations as get_observations_service,
+)
+from datacommons_mcp.services import (
+    search_indicators as search_indicators_service,
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
