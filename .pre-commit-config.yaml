@@ -19,7 +19,7 @@ repos:
       - id: pytest
         name: pytest
         entry: uv run pytest packages/datacommons-mcp/tests
-        files: ^packages/datacommons-mcp/
+        pass_filenames: False
         language: system
         stages: [pre-push]
 
