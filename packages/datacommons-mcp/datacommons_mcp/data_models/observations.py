@@ -27,6 +27,9 @@ from pydantic import BaseModel, Field, model_validator
 # Wrapper to rename datacommons_client object to avoid confusion.
 ObservationPeriod = ObservationDate
 
+# Wrapper to rename datacommons_client ObservationResponse to avoid confusion.
+ObservationApiResponse = ObservationResponse
+
 
 class DateRange(BaseModel):
     "Accepted formats: YYYY or YYYY-MM or YYYY-MM-DD"

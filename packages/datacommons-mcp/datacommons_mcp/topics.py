@@ -60,7 +60,7 @@ class TopicNodeData:
 
     def get_variables(self) -> list[str]:
         """Extract variable DCIDs from relevant_variables."""
-        return [var for var in self.relevant_variables  if not _is_topic_dcid(var)]
+        return [var for var in self.relevant_variables if not _is_topic_dcid(var)]
 
     def get_member_topics(self) -> list[str]:
         """Extract topic DCIDs from relevant_variables."""

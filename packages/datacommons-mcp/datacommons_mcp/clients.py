@@ -27,12 +27,12 @@ from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
-    ResolvedObservationRequest,
-)
-from datacommons_mcp.data_models.settings import (
-    BaseDCSettings,
-    CustomDCSettings,
-    DCSettings,
+    ObservationToolRequest,
+    ObservationToolResponse,
+    PlaceData,
+    Source,
+    SourceMetadata,
+    VariableSeries,
 )
 from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
 
@@ -231,8 +231,7 @@ class DCClient:
             indices_param = ",".join(indices)
             api_endpoint = f"{endpoint_url}?idx={indices_param}{skip_topics_param}"
             payload = {"queries": [query]}
-
-
+            
             try:
                 response = requests.post(  # noqa: S113
                     api_endpoint, data=json.dumps(payload), headers=headers
@@ -248,8 +247,7 @@ class DCClient:
                 ):
                     sv_list = results[query]["SV"]
                     score_list = results[query]["CosineScore"]
-
-
+                    
                     # Return results in API order (no ranking)
                     all_results = [
                         {"SV": sv_list[i], "CosineScore": score_list[i]}
@@ -396,7 +394,6 @@ class DCClient:
                 if self.topic_store.has_variable(var)
                 or not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
             }
-
             self.variable_cache.put(place_dcid, all_variables)
 
     def _filter_variables_by_existence(
@@ -557,16 +554,13 @@ class DCClient:
 def create_dc_client(settings: DCSettings) -> DCClient:
     """
     Factory function to create a single DCClient based on settings.
-
-
+    
     Args:
         settings: DCSettings object containing client settings
-
-
+        
     Returns:
         DCClient instance configured according to the provided settings
-
-
+        
     Raises:
         ValueError: If required fields are missing or settings is invalid
     """
@@ -588,12 +582,10 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         topic_store = read_topic_cache(settings.topic_cache_path)
     else:
         topic_store = read_topic_cache()
-
-
+    
     # Create DataCommonsClient
     dc = DataCommonsClient(api_key=settings.api_key)
-
-
+    
     # Create DCClient
     return DCClient(
         dc=dc,
@@ -609,18 +601,15 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     """Create a custom DC client from settings."""
     # Use search scope directly (it's already an enum)
     search_scope = settings.search_scope
-
-
+    
     # Create DataCommonsClient
     dc = DataCommonsClient(url=settings.api_base_url)
-
-
+    
     # Create topic store if root_topic_dcids provided
     topic_store = None
     if settings.root_topic_dcids:
         topic_store = create_topic_store(settings.root_topic_dcids, dc)
-
-
+    
     # Create DCClient
     return DCClient(
         dc=dc,
