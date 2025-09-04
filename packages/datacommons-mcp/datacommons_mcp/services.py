@@ -265,7 +265,6 @@ async def search_indicators(
     if not 1 <= per_search_limit <= 100:
         raise ValueError("per_search_limit must be between 1 and 100")
 
-
     # Resolve all place names to DCIDs in a single call
     place_names = [name for name in [place1_name, place2_name] if name]
     place_dcids_map = {}

@@ -23,7 +23,7 @@ from datacommons_mcp.data_models.observations import (
     PlaceObservation,
     SeriesMetadata,
 )
-from datacommons_mcp.exceptions import DataLookupFoundError
+from datacommons_mcp.exceptions import DataLookupError
 from datacommons_mcp.services import (
     _build_observation_request,
     get_observations,
