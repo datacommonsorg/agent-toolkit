@@ -126,10 +126,6 @@ class ResolvedObservationRequest(BaseModel):
     child_place_type: str | None = None
 
 
-class ObservationApiResponse(ObservationResponse):
-    """Wrapper to rename DC Client ObservationResponse to avoid confusion."""
-
-
 class Source(Facet):
     """Represents the static metadata for a data source (facet)."""
 
