@@ -96,6 +96,8 @@ async def get_observations(
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
         * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
+          **CRITICAL:** Before calling `get_observations` with `child_place_type`, you **MUST** first call the `validate_child_place_types` tool to find valid types.
+          Only proceed with `get_observations` if `validate_child_place_types` confirms that the `child_place_type` is valid for the specified parent place.
 
     * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
         * Avoid requesting `'all'` data via the `period` parameter.
@@ -384,14 +386,12 @@ async def search_indicators(
 
     **Mode: "lookup"**
     - **Purpose**: Direct variable search for specific data needs
-    - **Use when**: You have a specific query AND at least one place - otherwise use browse mode
+    - **Use when**: You have a specific query
     - **Returns**: Variables only (no topic hierarchy)
     - **Example use cases**:
         - "Find unemployment rate variables for United States"
         - "Get population data variables for India"
         - "Search for carbon emission variables in NYC"
-
-    **Important**: If no places are provided, the tool automatically uses browse mode regardless of the mode parameter.
 
     **How to Use This Tool:**
 
@@ -417,7 +417,7 @@ async def search_indicators(
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
         mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
-            Default: "browse" (if not specified). Note: If no places are provided, browse mode is used regardless.
+            Default: "browse" (if not specified).
         place1_name (str, optional): First place name for filtering and existence checks.
             Examples: "France", "United States", "California"
         place2_name (str, optional): Second place name for filtering and existence checks.
@@ -458,7 +458,6 @@ async def search_indicators(
     **Best Practices:**
     - Use **"browse"** when you want to understand data organization and discover collections of variables (topics) or related variables
     - Use **"lookup"** only when you have a specific query AND at least one place
-    - If no places are provided, the tool automatically uses browse mode for better results
     - Both modes support place filtering and bilateral queries
     - Both modes use sophisticated query rewriting logic for optimal results
     """

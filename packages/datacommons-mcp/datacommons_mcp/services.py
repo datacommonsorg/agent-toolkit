@@ -172,14 +172,6 @@ async def search_indicators(
     place1_dcid = place_dcids_map.get(place1_name) if place1_name else None
     place2_dcid = place_dcids_map.get(place2_name) if place2_name else None
 
-    # Automatic fallback to browse mode if lookup mode is requested but no places are provided
-    if search_mode == SearchMode.LOOKUP and not place_names:
-        search_mode = SearchMode.BROWSE
-        logger.info(
-            "Lookup mode requested but no places provided. Automatically switching to browse mode for query: %s",
-            query,
-        )
-
     # Construct search queries with their corresponding place DCIDs for filtering
     search_tasks = []
 
@@ -210,16 +202,9 @@ async def search_indicators(
             )
         )
 
-    if search_mode == SearchMode.LOOKUP:
-        # For lookup mode, use simplified logic with query rewriting
-        search_result = await _search_indicators_lookup_mode(
-            client, search_tasks, per_search_limit
-        )
-    else:
-        # For browse mode, use the existing search_topics_and_variables logic
-        search_result = await _search_indicators_browse_mode(
-            client, search_tasks, per_search_limit
-        )
+    search_result = await _search_indicators(
+        client, search_mode, search_tasks, per_search_limit
+    )
 
     # Collect all DCIDs for lookups
     all_dcids = set()
@@ -246,24 +231,18 @@ async def search_indicators(
     return SearchResponse(
         status="SUCCESS",
         lookups=lookups,
-        topics=list(search_result.topics.values())
-        if search_mode == SearchMode.BROWSE
-        else None,
+        topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
     )
 
 
-async def _search_indicators_browse_mode(
+async def _search_indicators(
     client: DCClient,
+    mode: SearchMode,
     search_tasks: list[SearchTask],
     per_search_limit: int = 10,
 ) -> SearchResult:
-    """Search for topics and variables matching a query, optionally filtered by place existence.
-
-    Args:
-        client: DCClient instance to use for data operations
-        search_tasks: List of SearchTask objects for parallel searches
-        per_search_limit: Maximum results per search (default 10, max 100)
+    """Search for indicators matching a query, optionally filtered by place existence.
 
     Returns:
         SearchResult: Typed result with topics and variables dictionaries
@@ -271,8 +250,9 @@ async def _search_indicators_browse_mode(
     # Execute parallel searches
     tasks = []
     for search_task in search_tasks:
-        task = client.fetch_topics_and_variables(
+        task = client.fetch_indicators(
             query=search_task.query,
+            mode=mode,
             place_dcids=search_task.place_dcids,
             max_results=per_search_limit,
         )
@@ -325,63 +305,3 @@ async def _merge_search_results(results: list[dict]) -> SearchResult:
                 )
 
     return SearchResult(topics=all_topics, variables=all_variables)
-
-
-async def _search_indicators_lookup_mode(
-    client: DCClient,
-    search_tasks: list[SearchTask],
-    per_search_limit: int = 10,
-) -> SearchResult:
-    """Search for variables only in lookup mode with query rewriting.
-
-    Args:
-        client: DCClient instance to use for data operations
-        search_tasks: List of SearchTask objects for parallel searches
-        per_search_limit: Maximum results per search (default 10, max 100)
-
-    Returns:
-        SearchResult: Typed result with variables dictionary only
-    """
-    # Execute parallel searches for each query/place combination
-    all_variables: dict[
-        str, SearchVariable
-    ] = {}  # Map of variable_dcid -> SearchVariable
-    all_place_dcids = set()
-
-    for search_task in search_tasks:
-        all_place_dcids.update(search_task.place_dcids)
-
-        # For each place, search for variables
-        for place_dcid in search_task.place_dcids:
-            try:
-                variable_data = await client.fetch_topic_variables(
-                    place_dcid, topic_query=search_task.query
-                )
-
-                # Extract variable DCIDs and track which place found each variable
-                variable_dcids = variable_data.get("topic_variable_ids", [])
-                for var_dcid in variable_dcids:
-                    if var_dcid not in all_variables:
-                        all_variables[var_dcid] = SearchVariable(
-                            dcid=var_dcid, places_with_data=[]
-                        )
-                    all_variables[var_dcid].places_with_data.append(place_dcid)
-
-            except Exception as e:  # noqa: BLE001
-                logger.error("Error fetching variables for place %s: %s", place_dcid, e)
-                continue
-
-    # Limit results if needed
-    if per_search_limit and len(all_variables) > per_search_limit:
-        # Convert to list, limit, then back to dict
-        limited_variables = {}
-        for i, (var_dcid, var_obj) in enumerate(all_variables.items()):
-            if i >= per_search_limit:
-                break
-            limited_variables[var_dcid] = var_obj
-        all_variables = limited_variables
-
-    return SearchResult(
-        topics={},  # No topics in lookup mode
-        variables=all_variables,
-    )
