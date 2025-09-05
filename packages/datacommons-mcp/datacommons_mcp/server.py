@@ -36,7 +36,11 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import SearchMode, SearchModeType, SearchResponse
+from datacommons_mcp.data_models.search import (
+    SearchMode,
+    SearchModeType,
+    SearchResponse,
+)
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
     search_indicators as search_indicators_service,
@@ -420,7 +424,7 @@ async def search_indicators(
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
-        mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only). 
+        mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
             **Agents should explicitly set this to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
             ** Default: "browse" (if not specified).
         places (list[str], optional): List of place names for filtering and existence checks.

@@ -143,13 +143,17 @@ async def search_indicators(
         SearchResponse: Typed response with topics, variables, and lookups (browse mode) or variables only (lookup mode)
     """
     # Validate parameters and convert mode to enum
-    search_mode = _validate_search_parameters(mode, places, bilateral_places, per_search_limit)
+    search_mode = _validate_search_parameters(
+        mode, places, bilateral_places, per_search_limit
+    )
 
     # Resolve place names to DCIDs
     place_dcids_map = await _resolve_places(client, places, bilateral_places)
 
     # Create search tasks based on place parameters
-    search_tasks = _create_search_tasks(query, places, bilateral_places, place_dcids_map)
+    search_tasks = _create_search_tasks(
+        query, places, bilateral_places, place_dcids_map
+    )
 
     search_result = await _search_indicators(
         client, search_mode, search_tasks, per_search_limit
@@ -157,7 +161,7 @@ async def search_indicators(
 
     # Collect all DCIDs for lookups
     all_dcids = _collect_all_dcids(search_result, search_tasks)
-    
+
     # Fetch lookups
     lookups = await _fetch_and_update_lookups(client, list(all_dcids))
 
@@ -177,13 +181,13 @@ def _create_search_tasks(
     place_dcids_map: dict[str, str],
 ) -> list[SearchTask]:
     """Create search tasks based on place parameters.
-    
+
     Args:
         query: The search query
         places: List of place names (mutually exclusive with bilateral_places)
         bilateral_places: List of exactly 2 place names (mutually exclusive with places)
         place_dcids_map: Mapping of place names to DCIDs
-        
+
     Returns:
         List of SearchTask objects
     """
@@ -191,24 +195,26 @@ def _create_search_tasks(
 
     if places:
         # Single search task with all place DCIDs (no query rewriting)
-        place_dcids = [place_dcids_map.get(name) for name in places if place_dcids_map.get(name)]
+        place_dcids = [
+            place_dcids_map.get(name) for name in places if place_dcids_map.get(name)
+        ]
         search_tasks.append(SearchTask(query=query, place_dcids=place_dcids))
-    
+
     elif bilateral_places:
         # Three search tasks with query rewriting (same as current behavior)
         place1_name, place2_name = bilateral_places
         place1_dcid = place_dcids_map.get(place1_name)
         place2_dcid = place_dcids_map.get(place2_name)
-        
+
         # Base query: search for the original query, filter by all available places
         base_place_dcids = []
         if place1_dcid:
             base_place_dcids.append(place1_dcid)
         if place2_dcid:
             base_place_dcids.append(place2_dcid)
-        
+
         search_tasks.append(SearchTask(query=query, place_dcids=base_place_dcids))
-        
+
         # Place1 query: search for query + place1_name, filter by place2_dcid
         if place1_dcid:
             search_tasks.append(
@@ -217,7 +223,7 @@ def _create_search_tasks(
                     place_dcids=[place2_dcid] if place2_dcid else [],
                 )
             )
-        
+
         # Place2 query: search for query + place2_name, filter by place1_dcid
         if place2_dcid:
             search_tasks.append(
@@ -226,7 +232,7 @@ def _create_search_tasks(
                     place_dcids=[place1_dcid] if place1_dcid else [],
                 )
             )
-    
+
     else:
         # No places: single search task with no place constraints
         search_tasks.append(SearchTask(query=query, place_dcids=[]))
@@ -241,16 +247,16 @@ def _validate_search_parameters(
     per_search_limit: int,
 ) -> SearchMode:
     """Validate search parameters and convert mode to enum.
-    
+
     Args:
         mode: Search mode string or None
         places: List of place names (mutually exclusive with bilateral_places)
         bilateral_places: List of exactly 2 place names (mutually exclusive with places)
         per_search_limit: Maximum results per search
-        
+
     Returns:
         SearchMode enum value
-        
+
     Raises:
         ValueError: If any parameter validation fails
     """
@@ -285,23 +291,23 @@ async def _resolve_places(
     bilateral_places: list[str] | None,
 ) -> dict[str, str]:
     """Resolve place names to DCIDs.
-    
+
     Args:
         client: DCClient instance for place resolution
         places: List of place names (mutually exclusive with bilateral_places)
         bilateral_places: List of exactly 2 place names (mutually exclusive with places)
-        
+
     Returns:
         Dictionary mapping place names to DCIDs
-        
+
     Raises:
         DataLookupError: If place resolution fails
     """
     place_names = places or bilateral_places or []
-    
+
     if not place_names:
         return {}
-    
+
     try:
         return await client.search_places(place_names)
     except Exception as e:
@@ -310,13 +316,15 @@ async def _resolve_places(
         raise DataLookupError(msg) from e
 
 
-def _collect_all_dcids(search_result: SearchResult, search_tasks: list[SearchTask]) -> set[str]:
+def _collect_all_dcids(
+    search_result: SearchResult, search_tasks: list[SearchTask]
+) -> set[str]:
     """Collect all DCIDs that need to be looked up.
-    
+
     Args:
         search_result: The search result containing topics and variables
         search_tasks: List of search tasks containing place DCIDs
-        
+
     Returns:
         Set of all DCIDs that need lookup (topics, variables, and places)
     """
