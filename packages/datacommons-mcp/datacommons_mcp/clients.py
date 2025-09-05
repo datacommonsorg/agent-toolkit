@@ -286,7 +286,7 @@ class DCClient:
         Search for topics and variables using search_svs.
         When mode is SearchMode.LOOKUP, expand topics to variables.
         """
-        logger.info(f"Searching for indicators with query: {query} and mode: {mode}")
+        logger.info("Searching for indicators with query: %s and mode: %s", query, mode)
         search_results = await self.search_svs(
             [query], skip_topics=False, max_results=max_results
         )
