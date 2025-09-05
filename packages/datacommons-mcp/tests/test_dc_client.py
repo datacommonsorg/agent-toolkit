@@ -28,6 +28,7 @@ import pytest
 from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
+from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.data_models.observations import (
     ObservationPeriod,
     ObservationRequest,
@@ -303,11 +304,11 @@ class TestDCClientFetchObs:
         mocked_datacommons_client.observation.fetch.assert_not_called()
 
 
-class TestDCClientFetchTopicsAndVariables:
-    """Tests for the fetch_topics_and_variables method of DCClient."""
+class TestDCClientFetchIndicators:
+    """Tests for the fetch_indicators method of DCClient."""
 
     @pytest.mark.asyncio
-    async def test_fetch_topics_and_variables_basic(self, mocked_datacommons_client):
+    async def test_fetch_indicators_browse_mode_basic(self, mocked_datacommons_client):
         """Test basic functionality without place filtering."""
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
@@ -345,7 +346,9 @@ class TestDCClientFetchTopicsAndVariables:
         }
 
         # Act: Call the method
-        result = await client_under_test.fetch_topics_and_variables("test query")
+        result = await client_under_test.fetch_indicators(
+            "test query", mode=SearchMode.BROWSE
+        )
 
         # Assert: Verify the response structure
         assert "topics" in result
@@ -370,7 +373,78 @@ class TestDCClientFetchTopicsAndVariables:
         assert result["lookups"]["dc/variable/Count_Person"] == "Count of Persons"
 
     @pytest.mark.asyncio
-    async def test_fetch_topics_and_variables_with_places(
+    async def test_fetch_indicators_lookup_mode_basic(self, mocked_datacommons_client):
+        """Test basic functionality without place filtering."""
+        # Arrange: Create client and mock search results
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+
+        # Mock search_svs to return topics and variables
+        mock_search_results = {
+            "test query": [
+                {"SV": "dc/topic/Health", "CosineScore": 0.9},
+                {"SV": "dc/topic/Economy", "CosineScore": 0.8},
+                {"SV": "dc/variable/Count_Person", "CosineScore": 0.7},
+                {"SV": "dc/variable/Count_Household", "CosineScore": 0.6},
+            ]
+        }
+
+        # Mock the search_svs method
+        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+
+        # Mock topic store
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.get_name.side_effect = lambda dcid: {
+            "dc/variable/Count_Health": "Count of Health",
+            "dc/variable/Count_Economy": "Count of Economy",
+            "dc/variable/Count_Person": "Count of Persons",
+            "dc/variable/Count_Household": "Count of Households",
+        }.get(dcid, dcid)
+
+        # Mock topic data
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(
+                member_topics=[], variables=["dc/variable/Count_Person"]
+            ),
+            "dc/topic/Economy": Mock(
+                member_topics=[], variables=["dc/variable/Count_Household"]
+            ),
+        }
+
+        client_under_test.topic_store.get_topic_variables.side_effect = lambda dcid: {
+            "dc/topic/Health": ["dc/variable/Count_Health"],
+            "dc/topic/Economy": ["dc/variable/Count_Economy"],
+        }.get(dcid, [])
+
+        # Act: Call the method
+        result = await client_under_test.fetch_indicators(
+            "test query", mode=SearchMode.LOOKUP
+        )
+
+        # Assert: Verify the response structure
+        assert "topics" in result
+        assert "variables" in result
+        assert "lookups" in result
+
+        # Verify topics
+        assert len(result["topics"]) == 0
+
+        # Verify variables
+        assert len(result["variables"]) == 4
+        variable_dcids = [var["dcid"] for var in result["variables"]]
+        assert variable_dcids == [
+            "dc/variable/Count_Health",
+            "dc/variable/Count_Economy",
+            "dc/variable/Count_Person",
+            "dc/variable/Count_Household",
+        ]
+
+        # Verify lookups
+        assert len(result["lookups"]) == 4
+        assert result["lookups"]["dc/variable/Count_Health"] == "Count of Health"
+        assert result["lookups"]["dc/variable/Count_Person"] == "Count of Persons"
+
+    @pytest.mark.asyncio
+    async def test_fetch_indicators_browse_mode_with_places(
         self, mocked_datacommons_client
     ):
         """Test functionality with place filtering."""
@@ -411,8 +485,8 @@ class TestDCClientFetchTopicsAndVariables:
         }.get(place_dcid, set())
 
         # Act: Call the method with place filtering
-        result = await client_under_test.fetch_topics_and_variables(
-            "test query", place_dcids=["geoId/06", "geoId/36"]
+        result = await client_under_test.fetch_indicators(
+            "test query", mode=SearchMode.BROWSE, place_dcids=["geoId/06", "geoId/36"]
         )
 
         # Assert: Verify that only variables with data are returned
@@ -547,7 +621,9 @@ class TestDCClientFetchTopicsAndVariables:
         }
 
         # Act: Call the method
-        result = await client_under_test._search_entities("test query")
+        result = await client_under_test._search_indicators(
+            "test query", mode=SearchMode.BROWSE
+        )
 
         # Assert: Verify that only valid topics are returned
         assert "topics" in result
@@ -586,7 +662,9 @@ class TestDCClientFetchTopicsAndVariables:
         client_under_test.topic_store = None
 
         # Act: Call the method
-        result = await client_under_test._search_entities("test query")
+        result = await client_under_test._search_indicators(
+            "test query", mode=SearchMode.BROWSE
+        )
 
         # Assert: Verify that no topics are returned when topic store is None
         assert "topics" in result
@@ -615,7 +693,9 @@ class TestDCClientFetchTopicsAndVariables:
         }
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
 
-        result = await client_under_test._search_entities("test query", max_results=2)
+        result = await client_under_test._search_indicators(
+            "test query", mode=SearchMode.BROWSE, max_results=2
+        )
 
         # Verify that search_svs was called with max_results=2
         client_under_test.search_svs.assert_called_once_with(

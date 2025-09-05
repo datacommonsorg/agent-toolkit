@@ -29,6 +29,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
     ObservationRequest,
 )
+from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.data_models.settings import (
     BaseDCSettings,
     CustomDCSettings,
@@ -124,42 +125,6 @@ class DCClient:
             for dcid in response.get_properties()
         }
 
-    async def fetch_topic_variables(
-        self, place_dcid: str, topic_query: str = "statistics"
-    ) -> dict:
-        """
-        Fetch the variables for a place and topic.
-
-        The variables are filtered to be the intersection
-        of the topic variables and the variables available for the place.
-        """
-        all_variables = self.variable_cache.get(place_dcid)
-
-        if all_variables is None:
-            # If not in cache, fetch from API
-            response = self.dc.observation.fetch_available_statistical_variables(
-                entity_dcids=[place_dcid]
-            )
-            unfiltered_variables = response.get(place_dcid, [])
-            # Filter out internal "dc/alpha-numeric-string" variables that look like IDs.
-            # These variables don't seem to have a name so not sure if they are useful.
-            # TODO(keyurva): This is a hack to filter out internal variables that look like IDs.
-            # We should find a better way to do this or fix the schema so they have names.
-            # TODO(keyurva): Since we're only supporting topic variables now, should we only keep those that are in the topic store?
-            all_variables = {
-                var
-                for var in unfiltered_variables
-                if self.topic_store.has_variable(var)
-                or not re.fullmatch(r"dc/[a-z0-9]{10,}", var)
-            }
-            # Store the full filtered list in the cache
-            self.variable_cache.put(place_dcid, all_variables)
-
-        topic_svs = await self._get_topic_svs(topic_query)
-        # Get an intersection of the topic SVs and the place SVs while maintaining order.
-        topic_svs = [sv for sv in topic_svs if sv in all_variables]
-        return {"topic_variable_ids": topic_svs}
-
     async def search_places(self, names: list[str]) -> dict:
         results_map = {}
         response = self.dc.resolve.fetch_dcids_by_name(names=names)
@@ -170,49 +135,6 @@ class DCClient:
             if node and candidates:
                 results_map[node] = candidates[0].get("dcid", "")
         return results_map
-
-    async def _get_topic_svs(self, topic_query: str) -> list[str]:
-        """
-        Get the SVs for a given topic.
-
-        This is done by searching for the topic and finding the first result that
-        is a topic. Then all the SVs that came before that topic in the search
-        results are combined with all the SVs in that topic.
-        """
-
-        # TODO(keyurva): This is clearly a hack to get the variables for the statistics topic.
-        # This is because when searching for "statistics", the first result is an agriculture topic and the statistics topic is nowhere to be found.
-        # We are special casing this because "statistics" is the default category for the tool and we want to return the variables for the statistics topic.
-        # We should find a better way to do this.
-        if topic_query.lower().strip() == "statistics":
-            return self.topic_store.get_topic_variables("dc/topic/Root")
-
-        # Search for SVs and topics, the results are ordered by relevance.
-        search_results = await self.search_svs([topic_query], skip_topics=False)
-        sv_topic_results = search_results.get(topic_query, [])
-
-        if not sv_topic_results:
-            return []
-
-        svs_before_topic = []
-        for result in sv_topic_results:
-            sv_dcid = result.get("SV", "")
-            if not sv_dcid:
-                continue
-
-            # A topic is identified by "topic/" in its dcid.
-            if "topic/" in sv_dcid:
-                topic_svs = self.topic_store.get_topic_variables(sv_dcid)
-
-                # Combine SVs found before the topic with the SVs from the topic.
-                # Using dict.fromkeys preserves order and removes duplicates.
-                combined_svs = dict.fromkeys(svs_before_topic + topic_svs)
-                return list(combined_svs.keys())
-            # This is a regular SV that appeared before the first topic.
-            svs_before_topic.append(sv_dcid)
-
-        # If no topic was found, return all the SVs found in the search.
-        return svs_before_topic
 
     async def search_svs(
         self, queries: list[str], *, skip_topics: bool = True, max_results: int = 10
@@ -274,22 +196,27 @@ class DCClient:
         )
         return len(response.get(parent_place_dcid, [])) > 0
 
-    async def fetch_topics_and_variables(
-        self, query: str, place_dcids: list[str] = None, max_results: int = 10
+    async def fetch_indicators(
+        self,
+        query: str,
+        mode: SearchMode,
+        place_dcids: list[str] = None,
+        max_results: int = 10,
     ) -> dict:
         """
-        Search for topics and variables matching a query, optionally filtered by place existence.
-
-        Args:
-            query: Search query string
-            place_dcids: Optional list of place DCIDs to filter by existence (OR logic)
-            max_results: Maximum number of results to return (default 10)
+        Search for indicators matching a query, optionally filtered by place existence.
+        When mode is SearchMode.LOOKUP, return variables only.
+        When mode is SearchMode.BROWSE, return both topics and variables.
+        When place_dcids are specified, filter the results by place existence.
 
         Returns:
             Dictionary with topics, variables, and lookups
         """
-        # Search for entities (both topics and variables)
-        search_results = await self._search_entities(query, max_results)
+        # Search for more results than we need to ensure we get enough topics and variables.
+        # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
+        max_search_results = max_results * 2
+        # Search for indicators - it returns topics and / or variables based on the mode.
+        search_results = await self._search_indicators(query, mode, max_search_results)
 
         # Separate topics and variables
         topics = search_results.get("topics", [])
@@ -352,9 +279,14 @@ class DCClient:
             ),
         }
 
-    async def _search_entities(self, query: str, max_results: int = 10) -> dict:
-        """Search for topics and variables using search_svs."""
-        # Search with topics included
+    async def _search_indicators(
+        self, query: str, mode: SearchMode, max_results: int = 10
+    ) -> dict:
+        """
+        Search for topics and variables using search_svs.
+        When mode is SearchMode.LOOKUP, expand topics to variables.
+        """
+        logger.info(f"Searching for indicators with query: {query} and mode: {mode}")
         search_results = await self.search_svs(
             [query], skip_topics=False, max_results=max_results
         )
@@ -362,6 +294,8 @@ class DCClient:
 
         topics = []
         variables = []
+        # Track variables to avoid duplicates when expanding topics to variables in lookup mode.
+        variable_set: set[str] = set()
 
         for result in results:
             sv_dcid = result.get("SV", "")
@@ -372,9 +306,17 @@ class DCClient:
             if "/topic/" in sv_dcid:
                 # Only include topics that exist in the topic store
                 if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
-                    topics.append(sv_dcid)
+                    # In lookup mode, expand topics to variables.
+                    if mode == SearchMode.LOOKUP:
+                        for variable in self.topic_store.get_topic_variables(sv_dcid):
+                            if variable not in variable_set:
+                                variables.append(variable)
+                                variable_set.add(variable)
+                    else:
+                        topics.append(sv_dcid)
             else:
                 variables.append(sv_dcid)
+                variable_set.add(sv_dcid)
 
         return {"topics": topics, "variables": variables}
 
