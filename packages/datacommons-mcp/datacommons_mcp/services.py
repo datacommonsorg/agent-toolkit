@@ -17,6 +17,7 @@ import logging
 
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
+    DataSeries,
     DateRange,
     EntityMetadata,
     ObservationApiResponse,
@@ -232,8 +233,10 @@ def _add_place_observation(
             name=place_metadata.name,
             place_type=(place_metadata.type_of or [None])[0],
         ),
-        primary_series_metadata=primary_series_metadata,
-        observations=primary_observations,
+        primary_series=DataSeries(
+            source_id=primary_series_metadata.source_id,
+            observations=primary_observations,
+        ),
         alternative_series_metadata=alternative_series_metadata,
     )
     response.observations_by_place.append(place_observation)

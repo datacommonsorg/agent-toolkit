@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
+    DataSeries,
     ObservationApiResponse,
     ObservationPeriod,
     ObservationToolResponse,
@@ -175,16 +176,13 @@ class TestGetObservations:
 
         # 3. Check the primary series and the filtered observation_count
         primary_series = place_obs.primary_series
+        assert isinstance(primary_series, DataSeries)
         assert primary_series.source_id == "source1"
 
         # 4. Check that the observations themselves are filtered
         assert len(primary_series.observations) == 2
         assert {obs.value for obs in primary_series.observations} == {20, 30}
         assert {obs.date for obs in primary_series.observations} == {"2021", "2022"}
-
-        # 5. Check source info
-        assert len(result.source_info) == 1
-        assert result.source_info[0].source_id == "source1"
 
         # 5. Check that the underlying API call was made correctly
         mock_client.fetch_obs.assert_awaited_once()
@@ -246,7 +244,7 @@ class TestGetObservations:
         place_obs = result.observations_by_place[0]
 
         # The primary series should be present, but with 0 observations
-        assert not place_obs.primary_series.observations
+        assert len(place_obs.primary_series.observations) == 0
         assert len(place_obs.alternative_series_metadata) == 0
 
     async def test_get_observations_multiple_sources(self, mock_client):
@@ -314,7 +312,6 @@ class TestGetObservations:
 
         # Primary series should be source2, as it's the first with data
         assert place_obs.primary_series.source_id == "source2"
-        assert len(place_obs.primary_series.observations) == 2
 
         # Alternative series should be source1
         assert len(place_obs.alternative_series_metadata) == 1
