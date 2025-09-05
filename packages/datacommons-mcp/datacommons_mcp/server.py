@@ -40,9 +40,6 @@ from datacommons_mcp.data_models.search import SearchMode, SearchModeType
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
 )
-from datacommons_mcp.services import (
-    search_indicators as search_indicators_service,
-)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -361,8 +358,8 @@ async def get_datacommons_chart_config(
 async def search_indicators(
     query: str,
     mode: SearchModeType | None = SearchMode.BROWSE.value,
-    place1_name: str | None = None,
-    place2_name: str | None = None,
+    places: list[str] | None = None,
+    bilateral_places: list[str] | None = None,
     per_search_limit: int = 10,
 ) -> dict:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
@@ -396,14 +393,19 @@ async def search_indicators(
     **How to Use This Tool:**
 
     * **For place-constrained queries** like "trade exports to France":
-        - Call with `query="trade exports"`, `mode="lookup"`, and `place1_name="France"`
+        - Call with `query="trade exports"`, `mode="lookup"`, and `places=["France"]`
         - The tool will match indicators and perform existence checks for the specified place
 
     * **For bilateral place-constrained queries** like "trade exports from USA to France":
-        - Call with `query="trade exports"`, `mode="lookup"`, `place1_name="USA"`, and `place2_name="France"`
+        - Call with `query="trade exports"`, `mode="lookup"`, and `bilateral_places=["USA", "France"]`
         - The tool will match indicators and perform existence checks for both places
         - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA") is where we have observations
-        - Use `places_with_data` to identify which place has observations.
+        - Use `places_with_data` to identify which place has observations
+
+    * **For child entity sampling** like "population of Indian states":
+        - Call with `query="population"` and `places=["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]`
+        - Sample 5-6 diverse child entities as representative proxy for all child entities
+        - Results are indicative of broader child entity coverage
 
     * **For exploratory queries** like "what basic health data do you have":
         - Call with `query="health"` and `mode="browse"` (or omit mode parameter)
@@ -418,10 +420,11 @@ async def search_indicators(
             Examples: "health grants", "carbon emissions", "unemployment rate"
         mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
             Default: "browse" (if not specified).
-        place1_name (str, optional): First place name for filtering and existence checks.
-            Examples: "France", "United States", "California"
-        place2_name (str, optional): Second place name for filtering and existence checks.
-            Examples: "Albania", "Germany", "New York"
+        places (list[str], optional): List of place names for filtering and existence checks.
+            Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
+        bilateral_places (list[str], optional): Exactly 2 place names for bilateral relationships.
+            Examples: ["Indonesia", "Malaysia"], ["USA", "France"]
+            Cannot be specified together with `places`.
         per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
@@ -458,9 +461,46 @@ async def search_indicators(
     **Best Practices:**
     - Use **"browse"** when you want to understand data organization and discover collections of variables (topics) or related variables
     - Use **"lookup"** only when you have a specific query AND at least one place
+    - For child entity queries, sample 5-6 diverse child entities as representative proxy
     - Both modes support place filtering and bilateral queries
     - Both modes use sophisticated query rewriting logic for optimal results
     """
-    return await search_indicators_service(
-        dc_client, query, mode, place1_name, place2_name, per_search_limit
-    )
+    # Dummy implementation for Phase 1 - log parameters and return mock response
+    logging.info(f"search_indicators called with: query='{query}', mode='{mode}', places={places}, bilateral_places={bilateral_places}, per_search_limit={per_search_limit}")
+    
+    # Parameter validation
+    if places is not None and bilateral_places is not None:
+        raise ValueError("Cannot specify both 'places' and 'bilateral_places'")
+    
+    if bilateral_places is not None and len(bilateral_places) != 2:
+        raise ValueError("bilateral_places must contain exactly 2 place names")
+    
+    # Mock response structure
+    return {
+        "topics": [
+            {
+                "dcid": "topic/health",
+                "member_topics": ["topic/health_conditions", "topic/health_services"],
+                "member_variables": ["Count_Person_WithArthritis", "Count_Person_WithDiabetes"],
+                "places_with_data": places if places else []
+            }
+        ] if mode != "lookup" else None,
+        "variables": [
+            {
+                "dcid": "Count_Person_WithArthritis",
+                "places_with_data": places if places else []
+            },
+            {
+                "dcid": "Count_Person_WithDiabetes", 
+                "places_with_data": places if places else []
+            }
+        ],
+        "lookups": {
+            "topic/health": "Health",
+            "Count_Person_WithArthritis": "People with Arthritis",
+            "Count_Person_WithDiabetes": "People with Diabetes"
+        },
+        "status": "SUCCESS",
+        "notes" : "This is a mock response to test if the agent is able to call the tool with the correct parameters. The actual implementation will be added later.",
+        "params" : {"query": query, "mode": mode, "places": places, "bilateral_places": bilateral_places, "per_search_limit": per_search_limit}
+    }
