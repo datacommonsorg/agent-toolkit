@@ -22,7 +22,7 @@ from datacommons_mcp.exceptions import (
     InvalidDateFormatError,
     InvalidDateRangeError,
 )
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, dataclasses, model_validator
 
 # Wrapper to rename datacommons_client object to avoid confusion.
 ObservationPeriod = ObservationDate
@@ -130,6 +130,14 @@ class Source(Facet):
     """Represents the static metadata for a data source (facet)."""
 
     source_id: str
+
+
+@dataclasses.dataclass
+class EntityMetadata:
+    """A simple container for the name and type of a Data Commons entity."""
+
+    name: str
+    type_of: list[str] | None
 
 
 class SeriesMetadata(BaseModel):
