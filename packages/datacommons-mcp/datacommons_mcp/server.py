@@ -451,7 +451,7 @@ async def search_indicators(
                         "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
                     }
                 ],
-                "lookups": dict[str, str],  # DCID to name mappings
+                "dcid_name_mappings": dict[str, str],  # DCID to name mappings
                 "status": str  # Status of the search operation
             }
 
@@ -459,8 +459,8 @@ async def search_indicators(
         **Lookup Mode**: Returns only variables (topics field is None)
 
     **Processing the Response:**
-    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the lookups to get readable names.
-    * **Variables**: Individual data indicators. Use the lookups to get readable names.
+    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the dcid_name_mappings to get readable names.
+    * **Variables**: Individual data indicators. Use the dcid_name_mappings to get readable names.
     * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.

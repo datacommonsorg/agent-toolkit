@@ -129,19 +129,7 @@ async def search_indicators(
     bilateral_places: list[str] | None = None,
     per_search_limit: int = 10,
 ) -> SearchResponse:
-    """Search for topics and/or variables based on mode.
-
-    Args:
-        client: DCClient instance to use for data operations
-        query: The search query for indicators
-        mode: "browse" (topics + variables) or "lookup" (variables only)
-        places: List of place names for filtering and existence checks (mutually exclusive with bilateral_places)
-        bilateral_places: List of exactly 2 place names for bilateral relationships (mutually exclusive with places)
-        per_search_limit: Maximum results per search (default 10, max 100)
-
-    Returns:
-        SearchResponse: Typed response with topics, variables, and lookups (browse mode) or variables only (lookup mode)
-    """
+    """Search for topics and/or variables based on mode."""
     # Validate parameters and convert mode to enum
     search_mode = _validate_search_parameters(
         mode, places, bilateral_places, per_search_limit
@@ -168,7 +156,7 @@ async def search_indicators(
     # Create unified response
     return SearchResponse(
         status="SUCCESS",
-        lookups=lookups,
+        dcid_name_mappings=lookups,
         topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
     )

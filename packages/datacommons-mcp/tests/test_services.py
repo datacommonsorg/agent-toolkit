@@ -172,7 +172,7 @@ class TestSearchIndicators:
 
         assert result.topics is not None
         assert result.variables is not None
-        assert result.lookups is not None
+        assert result.dcid_name_mappings is not None
         assert result.status == "SUCCESS"
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", mode=SearchMode.BROWSE, place_dcids=[], max_results=10
@@ -300,7 +300,7 @@ class TestSearchIndicators:
 
         # Test valid mode values
         mock_client.fetch_indicators = AsyncMock(
-            return_value={"topics": [], "variables": [], "lookups": {}}
+            return_value={"topics": [], "variables": [], "dcid_name_mappings": {}}
         )
 
         # Should not raise for valid values
@@ -448,7 +448,7 @@ class TestSearchIndicators:
         # Should return lookup mode results (variables only)
         assert result.topics == []
         assert result.variables is not None
-        assert result.lookups is not None
+        assert result.dcid_name_mappings is not None
         assert result.status == "SUCCESS"
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", mode=SearchMode.LOOKUP, place_dcids=[], max_results=10
