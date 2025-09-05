@@ -154,6 +154,13 @@ class SeriesMetadata(BaseModel):
     )
 
 
+class DataSeries(BaseModel):
+    """Represents a single series of data, including its source and observations."""
+
+    source_id: str
+    observations: list[Observation] = Field(default_factory=list)
+
+
 class ResolvedPlace(BaseModel):
     """Represents a place that was resolved from a name in the request."""
 
@@ -178,11 +185,9 @@ class PlaceObservation(BaseModel):
 
     place: ResolvedPlace
 
-    # The primary series data
-    primary_series_metadata: SeriesMetadata
-    observations: list[Observation]
-
-    # Metadata for other available sources
+    # The primary data series, including its metadata and observation points.
+    primary_series: DataSeries
+    # Metadata for other available data series.
     alternative_series_metadata: list[SeriesMetadata] = Field(default_factory=list)
 
 

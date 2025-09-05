@@ -253,6 +253,49 @@ async def get_observations(
     """
     Builds the request, fetches the data, and returns the final response.
     This is the main entry point for the observation service.
+
+    Response Structure Example:
+      {
+        "variable_dcid": "Count_Person",
+        "variable_name": "Count of Person",
+        "resolved_parent_place": null,
+        "observations_by_place": [
+          {
+            "place": {
+              "dcid": "country/USA",
+              "name": "United States",
+              "place_type": "Country"
+            },
+            "primary_series": {
+              "source_id": "source1",
+              "observations": [
+                {"date": "2021", "value": 332000000},
+                {"date": "2022", "value": 333000000}
+              ]
+            },
+            "alternative_series_metadata": [
+              {
+                "source_id": "source2",
+                "earliest_date": "2019",
+                "latest_date": "2021",
+                "observation_count": 3
+              }
+            ]
+          }
+        ],
+        "source_info": [
+          {
+            "source_id": "source1",
+            "importName": "U.S. Census Bureau",
+            "url": "https://www.census.gov/"
+          },
+          {
+            "source_id": "source2",
+            "importName": "World Bank",
+            "url": "https://www.worldbank.org/"
+          }
+        ]
+      }
     """
     observation_request = await _build_observation_request(
         client=client,

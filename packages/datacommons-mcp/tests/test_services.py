@@ -21,7 +21,6 @@ from datacommons_mcp.data_models.observations import (
     ObservationPeriod,
     ObservationToolResponse,
     PlaceObservation,
-    SeriesMetadata,
 )
 from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.exceptions import DataLookupError
@@ -174,17 +173,14 @@ class TestGetObservations:
         assert place_obs.place.name == "United States"
         assert place_obs.place.place_type == "Country"
 
-        # 3. Check the primary series metadata and the filtered observation_count
-        primary_meta = place_obs.primary_series_metadata
-        assert isinstance(primary_meta, SeriesMetadata)
-        assert primary_meta.source_id == "source1"
-        # This is the key assertion for the user's request
-        assert primary_meta.observation_count == 2  # Should be 2 after filtering
+        # 3. Check the primary series and the filtered observation_count
+        primary_series = place_obs.primary_series
+        assert primary_series.source_id == "source1"
 
         # 4. Check that the observations themselves are filtered
-        assert len(place_obs.observations) == 2
-        assert {obs.value for obs in place_obs.observations} == {20, 30}
-        assert {obs.date for obs in place_obs.observations} == {"2021", "2022"}
+        assert len(primary_series.observations) == 2
+        assert {obs.value for obs in primary_series.observations} == {20, 30}
+        assert {obs.date for obs in primary_series.observations} == {"2021", "2022"}
 
         # 5. Check source info
         assert len(result.source_info) == 1
@@ -250,8 +246,7 @@ class TestGetObservations:
         place_obs = result.observations_by_place[0]
 
         # The primary series should be present, but with 0 observations
-        assert place_obs.primary_series_metadata.observation_count == 0
-        assert len(place_obs.observations) == 0
+        assert not place_obs.primary_series.observations
         assert len(place_obs.alternative_series_metadata) == 0
 
     async def test_get_observations_multiple_sources(self, mock_client):
@@ -318,9 +313,8 @@ class TestGetObservations:
         place_obs = result.observations_by_place[0]
 
         # Primary series should be source2, as it's the first with data
-        assert place_obs.primary_series_metadata.source_id == "source2"
-        assert place_obs.primary_series_metadata.observation_count == 2
-        assert len(place_obs.observations) == 2
+        assert place_obs.primary_series.source_id == "source2"
+        assert len(place_obs.primary_series.observations) == 2
 
         # Alternative series should be source1
         assert len(place_obs.alternative_series_metadata) == 1
@@ -409,14 +403,14 @@ class TestGetObservations:
         alameda_obs = obs_by_dcid["geoId/06001"]
         assert alameda_obs.place.name == "Alameda County"
         assert alameda_obs.place.place_type == "County"
-        assert len(alameda_obs.observations) == 1
-        assert alameda_obs.observations[0].value == 100
+        assert len(alameda_obs.primary_series.observations) == 1
+        assert alameda_obs.primary_series.observations[0].value == 100
 
         la_obs = obs_by_dcid["geoId/06037"]
         assert la_obs.place.name == "Los Angeles County"
         assert la_obs.place.place_type == "County"
-        assert len(la_obs.observations) == 1
-        assert la_obs.observations[0].value == 200
+        assert len(la_obs.primary_series.observations) == 1
+        assert la_obs.primary_series.observations[0].value == 200
 
         # 3. Check that the underlying API call was made correctly
         mock_client.fetch_obs.assert_awaited_once()
