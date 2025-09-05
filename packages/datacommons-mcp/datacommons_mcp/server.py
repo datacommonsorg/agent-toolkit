@@ -36,9 +36,10 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import SearchMode, SearchModeType
+from datacommons_mcp.data_models.search import SearchMode, SearchModeType, SearchResponse
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
+    search_indicators as search_indicators_service,
 )
 
 # Configure logging
@@ -361,7 +362,7 @@ async def search_indicators(
     places: list[str] | None = None,
     bilateral_places: list[str] | None = None,
     per_search_limit: int = 10,
-) -> dict:
+) -> SearchResponse:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
     This tool returns candidate indicators that match your query. You should treat these as
@@ -383,6 +384,7 @@ async def search_indicators(
 
     **Mode: "lookup"**
     - **Purpose**: Direct variable search for specific data needs
+    - **Agents should explicitly set mode to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
     - **Use when**: You have a specific query
     - **Returns**: Variables only (no topic hierarchy)
     - **Example use cases**:
@@ -418,8 +420,9 @@ async def search_indicators(
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
-        mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
-            Default: "browse" (if not specified).
+        mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only). 
+            **Agents should explicitly set this to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
+            ** Default: "browse" (if not specified).
         places (list[str], optional): List of place names for filtering and existence checks.
             Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
         bilateral_places (list[str], optional): Exactly 2 place names for bilateral relationships.
@@ -465,42 +468,12 @@ async def search_indicators(
     - Both modes support place filtering and bilateral queries
     - Both modes use sophisticated query rewriting logic for optimal results
     """
-    # Dummy implementation for Phase 1 - log parameters and return mock response
-    logging.info(f"search_indicators called with: query='{query}', mode='{mode}', places={places}, bilateral_places={bilateral_places}, per_search_limit={per_search_limit}")
-    
-    # Parameter validation
-    if places is not None and bilateral_places is not None:
-        raise ValueError("Cannot specify both 'places' and 'bilateral_places'")
-    
-    if bilateral_places is not None and len(bilateral_places) != 2:
-        raise ValueError("bilateral_places must contain exactly 2 place names")
-    
-    # Mock response structure
-    return {
-        "topics": [
-            {
-                "dcid": "topic/health",
-                "member_topics": ["topic/health_conditions", "topic/health_services"],
-                "member_variables": ["Count_Person_WithArthritis", "Count_Person_WithDiabetes"],
-                "places_with_data": places if places else []
-            }
-        ] if mode != "lookup" else None,
-        "variables": [
-            {
-                "dcid": "Count_Person_WithArthritis",
-                "places_with_data": places if places else []
-            },
-            {
-                "dcid": "Count_Person_WithDiabetes", 
-                "places_with_data": places if places else []
-            }
-        ],
-        "lookups": {
-            "topic/health": "Health",
-            "Count_Person_WithArthritis": "People with Arthritis",
-            "Count_Person_WithDiabetes": "People with Diabetes"
-        },
-        "status": "SUCCESS",
-        "notes" : "This is a mock response to test if the agent is able to call the tool with the correct parameters. The actual implementation will be added later.",
-        "params" : {"query": query, "mode": mode, "places": places, "bilateral_places": bilateral_places, "per_search_limit": per_search_limit}
-    }
+    # Call the real search_indicators service
+    return await search_indicators_service(
+        client=dc_client,
+        query=query,
+        mode=mode,
+        places=places,
+        bilateral_places=bilateral_places,
+        per_search_limit=per_search_limit,
+    )
