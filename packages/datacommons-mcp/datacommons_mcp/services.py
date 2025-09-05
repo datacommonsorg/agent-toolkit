@@ -19,9 +19,9 @@ from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
     DateRange,
     ObservationPeriod,
+    ObservationRequest,
     ObservationToolResponse,
     PlaceObservation,
-    ResolvedObservationRequest,
     ResolvedPlace,
     SeriesMetadata,
     Source,
@@ -51,7 +51,7 @@ async def _build_observation_request(
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-) -> ResolvedObservationRequest:
+) -> ObservationRequest:
     """
     Creates an ObservationRequest from the raw inputs provided by a tool call.
     This method contains the logic to resolve names to DCIDs and structure the data.
@@ -86,7 +86,7 @@ async def _build_observation_request(
         raise DataLookupError(f"No place found matching '{place_name}'.")
 
     # 3. Return an instance of the class
-    return ResolvedObservationRequest(
+    return ObservationRequest(
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
         child_place_type=child_place_type,

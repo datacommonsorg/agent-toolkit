@@ -27,7 +27,7 @@ from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
-    ResolvedObservationRequest,
+    ObservationRequest,
 )
 from datacommons_mcp.data_models.settings import (
     BaseDCSettings,
@@ -94,9 +94,7 @@ class DCClient:
 
         return indices
 
-    async def fetch_obs(
-        self, request: ResolvedObservationRequest
-    ) -> ObservationApiResponse:
+    async def fetch_obs(self, request: ObservationRequest) -> ObservationApiResponse:
         # Get the raw API response
         if request.child_place_type:
             return self.dc.observation.fetch_observations_by_entity_type(

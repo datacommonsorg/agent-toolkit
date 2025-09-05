@@ -30,7 +30,7 @@ from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationPeriod,
-    ResolvedObservationRequest,
+    ObservationRequest,
 )
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
 
@@ -251,7 +251,7 @@ class TestDCClientFetchObs:
         """
         # Arrange
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        request = ResolvedObservationRequest(
+        request = ObservationRequest(
             variable_dcid="var1",
             place_dcid="place1",
             observation_period=ObservationPeriod.LATEST,
@@ -280,7 +280,7 @@ class TestDCClientFetchObs:
         """
         # Arrange
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        request = ResolvedObservationRequest(
+        request = ObservationRequest(
             variable_dcid="var1",
             place_dcid="parent_place",
             child_place_type="County",

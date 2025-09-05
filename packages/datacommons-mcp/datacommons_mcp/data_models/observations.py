@@ -116,7 +116,7 @@ class DateRange(BaseModel):
         return self
 
 
-class ResolvedObservationRequest(BaseModel):
+class ObservationRequest(BaseModel):
     variable_dcid: str
     place_dcid: str
     child_place_type_dcid: str | None = None
