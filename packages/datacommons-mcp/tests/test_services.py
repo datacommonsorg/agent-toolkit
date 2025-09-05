@@ -186,6 +186,10 @@ class TestGetObservations:
         assert {obs.value for obs in place_obs.observations} == {20, 30}
         assert {obs.date for obs in place_obs.observations} == {"2021", "2022"}
 
+        # 5. Check source info
+        assert len(result.source_info) == 1
+        assert result.source_info[0].source_id == "source1"
+
         # 5. Check that the underlying API call was made correctly
         mock_client.fetch_obs.assert_awaited_once()
         request_arg = mock_client.fetch_obs.call_args[0][0]
@@ -839,7 +843,7 @@ class TestSearchIndicators:
 
         # Verify default per_search_limit=10 was used (though not directly passed to fetch_indicators)
         # The limit is applied after fetching results
-        mock_client.fetch_indicators.call_count == 2
+        assert mock_client.fetch_indicators.call_count == 2
 
     @pytest.mark.asyncio
     async def test_search_indicators_lookup_mode_no_places(self):

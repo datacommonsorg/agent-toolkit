@@ -166,11 +166,16 @@ def _build_observation_tool_response(
 
         all_series_data = []
         for facet_data in api_place_data.orderedFacets:
-            if facet_data.facetId not in final_response.source_info:
+            # Check if source is already added to avoid duplicates
+            if not any(
+                s.source_id == facet_data.facetId for s in final_response.source_info
+            ):
                 facet_metadata = api_response.facets.get(facet_data.facetId)
                 if facet_metadata:
-                    final_response.source_info[facet_data.facetId] = Source(
-                        **facet_metadata.model_dump(), source_id=facet_data.facetId
+                    final_response.source_info.append(
+                        Source(
+                            **facet_metadata.model_dump(), source_id=facet_data.facetId
+                        )
                     )
 
             filtered_obs = filter_by_date(

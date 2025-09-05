@@ -214,7 +214,6 @@ class ObservationToolResponse(BaseModel):
         description="A list of observation data, with one entry per place.",
     )
 
-    source_info: dict[str, Source] = Field(
-        default_factory=dict,
-        description="A dictionary of all data sources, keyed by source_id. This avoids data repetition.",
+    source_info: list[Source] = Field(
+        default_factory=list,
     )
