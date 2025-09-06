@@ -121,12 +121,16 @@ async def get_observations(
       end_date (str, optional): The end date for a custom range. **Used only with `start_date` and ignored if `period` is set.**
 
     Returns:
-      dict: A dictionary containing the request status and data.
 
-      **How to Process the Response:**
-      1.  **Check Status**: First, check the `status` field. If it's "ERROR" or "NO_DATA_FOUND", inform the user accordingly using the `message`.
-      2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
-      3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
+      **How to Process the Response:** The tool returns a structured object with the following key fields:
+      - `variable_dcid` and `variable_name`: Identifiers for the statistical variable.
+      - `resolved_parent_place`: If you requested data for child places, this object confirms which parent place was used.
+      - `observations_by_place`: A list where each item represents a single place and its data.
+        - Each item contains the `place`'s DCID and name.
+        - The `primary_series` object holds the main data points in its `observations` list. Each observation has a `date` and a `value`.
+        - `alternative_series_metadata`: A list of other available data sources for that place, which you can use to call the tool again with `source_id_override`.
+      - `source_info`: A top-level list containing detailed information about each data source, which can be looked up by the `source_id` from a data series.
+
     """
     return await get_observations_service(
         client=dc_client,

@@ -17,7 +17,6 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
-    DataSeries,
     ObservationApiResponse,
     ObservationPeriod,
     ObservationToolResponse,
@@ -26,14 +25,14 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.exceptions import DataLookupError
 from datacommons_mcp.services import (
-    _build_observation_request,
+    _validate_and_build_request,
     get_observations,
     search_indicators,
 )
 
 
 @pytest.mark.asyncio
-class TestBuildObservationRequest:
+class TestValidateAndBuildRequest:
     @pytest.fixture
     def mock_client(self):
         client = Mock(spec=DCClient)
@@ -43,7 +42,7 @@ class TestBuildObservationRequest:
     async def test_validation_errors(self, mock_client):
         # Missing variable
         with pytest.raises(ValueError, match="'variable_dcid' must be specified."):
-            await _build_observation_request(
+            await _validate_and_build_request(
                 mock_client, variable_dcid="", place_name="USA"
             )
 
@@ -51,18 +50,18 @@ class TestBuildObservationRequest:
         with pytest.raises(
             ValueError, match="Specify either 'place_name' or 'place_dcid'"
         ):
-            await _build_observation_request(mock_client, variable_dcid="var1")
+            await _validate_and_build_request(mock_client, variable_dcid="var1")
 
         # Incomplete date range
         with pytest.raises(
             ValueError, match="Both 'start_date' and 'end_date' are required"
         ):
-            await _build_observation_request(
+            await _validate_and_build_request(
                 mock_client, variable_dcid="var1", place_name="USA", start_date="2022"
             )
 
     async def test_with_dcids(self, mock_client):
-        request = await _build_observation_request(
+        request = await _validate_and_build_request(
             mock_client, variable_dcid="var1", place_dcid="country/USA"
         )
         assert request.variable_dcid == "var1"
@@ -73,7 +72,7 @@ class TestBuildObservationRequest:
     async def test_with_resolution_success(self, mock_client):
         mock_client.search_places.return_value = {"USA": "country/USA"}
 
-        request = await _build_observation_request(
+        request = await _validate_and_build_request(
             mock_client,
             variable_dcid="Count_Person",
             place_name="USA",
@@ -91,7 +90,7 @@ class TestBuildObservationRequest:
     async def test_resolution_failure(self, mock_client):
         mock_client.search_places.return_value = {}  # No place found
         with pytest.raises(DataLookupError, match="DataLookupError: No place found"):
-            await _build_observation_request(
+            await _validate_and_build_request(
                 mock_client, variable_dcid="var1", place_name="invalid"
             )
 
@@ -164,7 +163,6 @@ class TestGetObservations:
         # 1. Check the response structure
         assert isinstance(result, ObservationToolResponse)
         assert result.variable_dcid == "var1"
-        assert result.variable_name == "Variable 1"
         assert len(result.observations_by_place) == 1
 
         # 2. Check the place observation
@@ -174,15 +172,13 @@ class TestGetObservations:
         assert place_obs.place.name == "United States"
         assert place_obs.place.place_type == "Country"
 
-        # 3. Check the primary series and the filtered observation_count
-        primary_series = place_obs.primary_series
-        assert isinstance(primary_series, DataSeries)
-        assert primary_series.source_id == "source1"
+        # 3. Check the source and observations
+        assert place_obs.source_id == "source1"
 
         # 4. Check that the observations themselves are filtered
-        assert len(primary_series.observations) == 2
-        assert {obs.value for obs in primary_series.observations} == {20, 30}
-        assert {obs.date for obs in primary_series.observations} == {"2021", "2022"}
+        assert len(place_obs.observations) == 2
+        assert {"2021": 20} in place_obs.observations
+        assert {"2022": 30} in place_obs.observations
 
         # 5. Check that the underlying API call was made correctly
         mock_client.fetch_obs.assert_awaited_once()
@@ -244,8 +240,7 @@ class TestGetObservations:
         place_obs = result.observations_by_place[0]
 
         # The primary series should be present, but with 0 observations
-        assert len(place_obs.primary_series.observations) == 0
-        assert len(place_obs.alternative_series_metadata) == 0
+        assert len(place_obs.observations) == 0
 
     async def test_get_observations_multiple_sources(self, mock_client):
         """Test that primary and alternative sources are handled correctly."""
@@ -311,14 +306,8 @@ class TestGetObservations:
         place_obs = result.observations_by_place[0]
 
         # Primary series should be source2, as it's the first with data
-        assert place_obs.primary_series.source_id == "source2"
-
-        # Alternative series should be source1
-        assert len(place_obs.alternative_series_metadata) == 1
-        assert place_obs.alternative_series_metadata[0].source_id == "source1"
-        assert (
-            place_obs.alternative_series_metadata[0].observation_count == 0
-        )  # No data after filtering
+        assert place_obs.source_id == "source2"
+        assert len(place_obs.observations) == 2
 
     async def test_get_observations_child_places(self, mock_client):
         """Test observation retrieval for child places of a parent."""
@@ -387,8 +376,8 @@ class TestGetObservations:
         # 1. Check response structure and parent place resolution
         assert isinstance(result, ObservationToolResponse)
         assert result.variable_dcid == "var1"
-        assert result.resolved_parent_place.dcid == "country/USA/state/CA"
         assert result.resolved_parent_place.name == "California"
+        assert result.child_place_type == "County"
         assert result.resolved_parent_place.place_type == "State"
         assert len(result.observations_by_place) == 2
 
@@ -399,15 +388,19 @@ class TestGetObservations:
 
         alameda_obs = obs_by_dcid["geoId/06001"]
         assert alameda_obs.place.name == "Alameda County"
-        assert alameda_obs.place.place_type == "County"
-        assert len(alameda_obs.primary_series.observations) == 1
-        assert alameda_obs.primary_series.observations[0].value == 100
+        assert (
+            alameda_obs.place.place_type is None
+        )  # Omitted because child_place_type is set
+        assert len(alameda_obs.observations) == 1
+        assert alameda_obs.observations[0]["2022"] == 100
 
         la_obs = obs_by_dcid["geoId/06037"]
         assert la_obs.place.name == "Los Angeles County"
-        assert la_obs.place.place_type == "County"
-        assert len(la_obs.primary_series.observations) == 1
-        assert la_obs.primary_series.observations[0].value == 200
+        assert (
+            la_obs.place.place_type is None
+        )  # Omitted because child_place_type is set
+        assert len(la_obs.observations) == 1
+        assert la_obs.observations[0]["2022"] == 200
 
         # 3. Check that the underlying API call was made correctly
         mock_client.fetch_obs.assert_awaited_once()

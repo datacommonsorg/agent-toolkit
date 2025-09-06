@@ -17,7 +17,7 @@ from datetime import datetime
 from functools import lru_cache
 
 from datacommons_client.endpoints.response import ObservationResponse
-from datacommons_client.models.observation import Facet, Observation, ObservationDate
+from datacommons_client.models.observation import Facet, ObservationDate
 from datacommons_mcp.exceptions import (
     InvalidDateFormatError,
     InvalidDateRangeError,
@@ -140,25 +140,7 @@ class EntityMetadata:
     type_of: list[str] | None
 
 
-class SeriesMetadata(BaseModel):
-    """Represents the dynamic metadata for a single series of observations."""
-
-    source_id: str = Field(
-        description="The unique identifier for the data source (facet), used to look up full details in the top-level `source_info`."
-    )
-    earliest_date: str | None = None
-    latest_date: str | None = None
-    observation_count: int | None = Field(
-        default=None,
-        description="The number of observations available from this source, after any date filtering has been applied.",
-    )
-
-
-class DataSeries(BaseModel):
-    """Represents a single series of data, including its source and observations."""
-
-    source_id: str
-    observations: list[Observation] = Field(default_factory=list)
+type Observation = dict[str, float]
 
 
 class ResolvedPlace(BaseModel):
@@ -184,11 +166,8 @@ class PlaceObservation(BaseModel):
     """
 
     place: ResolvedPlace
-
-    # The primary data series, including its metadata and observation points.
-    primary_series: DataSeries
-    # Metadata for other available data series.
-    alternative_series_metadata: list[SeriesMetadata] = Field(default_factory=list)
+    source_id: str
+    observations: list[Observation] = Field(default_factory=list)
 
 
 class ObservationToolResponse(BaseModel):
@@ -199,14 +178,13 @@ class ObservationToolResponse(BaseModel):
     """
 
     variable_dcid: str
-    variable_name: str | None = None
 
     resolved_parent_place: ResolvedPlace | None = Field(
         default=None,
         description="The parent place that was resolved from the request, if a hierarchical query was made. This confirms how the tool interpreted the `place_name`.",
     )
 
-    observation_place_type: str | None = Field(
+    child_place_type: str | None = Field(
         default=None,
         description=(
             "The common place type for all observations in the response (e.g., 'State', 'County'). "
@@ -214,11 +192,12 @@ class ObservationToolResponse(BaseModel):
             "If places are of mixed types, this will be null and the type will be specified in each `PlaceObservation`."
         ),
     )
+
     observations_by_place: list[PlaceObservation] = Field(
         default_factory=list,
         description="A list of observation data, with one entry per place.",
     )
 
-    source_info: list[Source] = Field(
+    sources: list[Source] = Field(
         default_factory=list,
     )
