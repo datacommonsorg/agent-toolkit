@@ -233,7 +233,6 @@ async def get_observations(
             "place": {
               "dcid": "geoId/06001",
               "name": "Alameda County",
-              "place_type": null
             },
             "source_id": "source_census",
             "observations": [
@@ -245,7 +244,6 @@ async def get_observations(
             "place": {
               "dcid": "geoId/06037",
               "name": "Los Angeles County",
-              "place_type": null
             },
             "source_id": "source_census",
             "observations": [
@@ -267,8 +265,6 @@ async def get_observations(
       ```json
       {
         "variable_dcid": "Count_Person",
-        "resolved_parent_place": null,
-        "child_place_type": null,
         "observations_by_place": [
           {
             "place": {
