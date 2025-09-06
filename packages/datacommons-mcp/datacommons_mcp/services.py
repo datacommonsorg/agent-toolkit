@@ -15,12 +15,19 @@
 import asyncio
 import logging
 
+from datacommons_client.models.observation import OrderedFacet
+
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
     DateRange,
+    EntityMetadata,
+    ObservationApiResponse,
     ObservationPeriod,
-    ObservationToolRequest,
+    ObservationRequest,
     ObservationToolResponse,
+    PlaceObservation,
+    ResolvedPlace,
+    Source,
 )
 from datacommons_mcp.data_models.search import (
     SearchMode,
@@ -32,11 +39,12 @@ from datacommons_mcp.data_models.search import (
     SearchVariable,
 )
 from datacommons_mcp.exceptions import DataLookupError
+from datacommons_mcp.utils import filter_by_date
 
 logger = logging.getLogger(__name__)
 
 
-async def _build_observation_request(
+async def _validate_and_build_request(
     client: DCClient,
     variable_dcid: str,
     place_dcid: str | None = None,
@@ -46,49 +54,154 @@ async def _build_observation_request(
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-) -> ObservationToolRequest:
-    """
-    Creates an ObservationRequest from the raw inputs provided by a tool call.
-    This method contains the logic to resolve names to DCIDs and structure the data.
-    """
-    # 0. Perform inital validations
+) -> ObservationRequest:
+    """Validates inputs and builds an ObservationRequest, resolving place names."""
     if not variable_dcid:
         raise ValueError("'variable_dcid' must be specified.")
 
     if not (place_name or place_dcid):
         raise ValueError("Specify either 'place_name' or 'place_dcid'.")
 
-    if (not period) and (bool(start_date) ^ bool(end_date)):
+    if not period and (start_date is None) != (end_date is None):
         raise ValueError(
-            "Both 'start_date' and 'end_date' are required to specify a custom date range."
+            "Both 'start_date' and 'end_date' are required for a date range."
         )
 
-    # 2. Get observation period and date filters
+    resolved_place_dcid = place_dcid
+    if not resolved_place_dcid:
+        # Resolve place name to a DCID
+        results = await client.search_places([place_name])
+        resolved_place_dcid = results.get(place_name)
+        if not resolved_place_dcid:
+            raise DataLookupError(f"No place found matching '{place_name}'.")
+
+    # Determine the observation period and date filter
     date_filter = None
-    if not (period or (start_date and end_date)):
-        observation_period = ObservationPeriod.LATEST
-    elif period:
+    observation_period = ObservationPeriod.LATEST
+    if period:
         observation_period = ObservationPeriod(period)
-    else:  # A date range is provided
+    elif start_date and end_date:
         observation_period = ObservationPeriod.ALL
         date_filter = DateRange(start_date=start_date, end_date=end_date)
 
-    # 3. Resolve place DCID
-    if not place_dcid:
-        results = await client.search_places([place_name])
-        place_dcid = results.get(place_name)
-    if not place_dcid:
-        raise DataLookupError(f"No place found matching '{place_name}'.")
-
-    # 3. Return an instance of the class
-    return ObservationToolRequest(
+    return ObservationRequest(
         variable_dcid=variable_dcid,
-        place_dcid=place_dcid,
+        place_dcid=resolved_place_dcid,
         child_place_type=child_place_type,
         source_ids=[source_id_override] if source_id_override else None,
         observation_period=observation_period,
         date_filter=date_filter,
     )
+
+
+async def _fetch_all_metadata(
+    client: DCClient,
+    variable_dcid: str,
+    api_response: ObservationApiResponse,
+    parent_place_dcid: str | None,
+) -> dict[str, EntityMetadata]:
+    """Fetches and combines names and types for all entities into a single map."""
+    dcids_to_fetch = set(api_response.byVariable.get(variable_dcid, {}).byEntity.keys())
+    if parent_place_dcid:
+        dcids_to_fetch.add(parent_place_dcid)
+
+    if not dcids_to_fetch:
+        return {}
+
+    dcids_list = list(dcids_to_fetch)
+    names_task = client.fetch_entity_names(dcids_list)
+    types_task = client.fetch_entity_types(dcids_list)
+    names_map, types_map = await asyncio.gather(names_task, types_task)
+
+    metadata_map = {}
+    for dcid in dcids_list:
+        metadata_map[dcid] = EntityMetadata(
+            name=names_map.get(dcid, ""),
+            type_of=types_map.get(dcid),
+        )
+    return metadata_map
+
+
+def _process_place_data(
+    response: ObservationToolResponse,
+    api_response: ObservationApiResponse,
+    request: ObservationRequest,
+    metadata_map: dict[str, EntityMetadata],
+) -> None:
+    """Iterates through API response and adds place observations to the final response."""
+    api_variable_data = api_response.byVariable.get(request.variable_dcid)
+    if not api_variable_data:
+        return
+
+    for obs_place_dcid, place_data in api_variable_data.byEntity.items():
+        if not place_data.orderedFacets:
+            continue
+
+        # We need to find the first valid series.
+        found_observation = False
+        for facet_data in place_data.orderedFacets:
+            filtered_obs = filter_by_date(facet_data.observations, request.date_filter)
+
+            if filtered_obs:
+                _add_series_to_response(
+                    response,
+                    api_response,
+                    facet_data,
+                    obs_place_dcid,
+                    metadata_map,
+                    filtered_obs,
+                    request,
+                )
+                found_observation = True
+                break  # Stop after finding the first valid series
+
+        # If no valid observations were found, but facets existed, add an empty one.
+        if not found_observation and place_data.orderedFacets:
+            first_facet = place_data.orderedFacets[0]
+            _add_series_to_response(
+                response,
+                api_response,
+                first_facet,
+                obs_place_dcid,
+                metadata_map,
+                [],
+                request,
+            )
+
+
+def _add_series_to_response(
+    response: ObservationToolResponse,
+    api_response: ObservationApiResponse,
+    facet_data: OrderedFacet,
+    obs_place_dcid: str,
+    metadata_map: dict[str, EntityMetadata],
+    observations: list,
+    request: ObservationRequest,
+) -> None:
+    """Adds a single PlaceObservation and its source to the response."""
+    # Ensure source info is in the response
+    if not any(s.source_id == facet_data.facetId for s in response.sources):
+        facet_metadata = api_response.facets.get(facet_data.facetId)
+        if facet_metadata:
+            response.sources.append(
+                Source(**facet_metadata.model_dump(), source_id=facet_data.facetId)
+            )
+
+    place_metadata = metadata_map.get(
+        obs_place_dcid, EntityMetadata(name="", type_of=None)
+    )
+    place_type = None
+    if not request.child_place_type:
+        place_type = (place_metadata.type_of or [None])[0]
+
+    place_observation = PlaceObservation(
+        place=ResolvedPlace(
+            dcid=obs_place_dcid, name=place_metadata.name, place_type=place_type
+        ),
+        source_id=facet_data.facetId,
+        observations=[{o.date: o.value} for o in observations],
+    )
+    response.observations_by_place.append(place_observation)
 
 
 async def get_observations(
@@ -103,10 +216,79 @@ async def get_observations(
     end_date: str | None = None,
 ) -> ObservationToolResponse:
     """
-    Builds the request, fetches the data, and returns the final response.
-    This is the main entry point for the observation service.
+    Main entry point to get clean, structured observation data.
+
+    **Response Structure Example (Child Places Query):**
+      ```json
+      {
+        "variable_dcid": "Count_Person",
+        "resolved_parent_place": {
+          "dcid": "geoId/06",
+          "name": "California",
+          "place_type": "State"
+        },
+        "child_place_type": "County",
+        "observations_by_place": [
+          {
+            "place": {
+              "dcid": "geoId/06001",
+              "name": "Alameda County",
+            },
+            "source_id": "source_census",
+            "observations": [
+              {"2021": 1660000},
+              {"2022": 1675000}
+            ]
+          },
+          {
+            "place": {
+              "dcid": "geoId/06037",
+              "name": "Los Angeles County",
+            },
+            "source_id": "source_census",
+            "observations": [
+              {"2021": 9829000},
+              {"2022": 9721000}
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "source_id": "source_census",
+            "importName": "US Census Bureau"
+          }
+        ]
+      }
+      ```
+
+    **Response Structure Example (Single Place Query):**
+      ```json
+      {
+        "variable_dcid": "Count_Person",
+        "observations_by_place": [
+          {
+            "place": {
+              "dcid": "country/USA",
+              "name": "United States",
+              "place_type": "Country"
+            },
+            "source_id": "source_census",
+            "observations": [
+              {"2021": 332000000},
+              {"2022": 333000000}
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "source_id": "source_census",
+            "importName": "US Census Bureau"
+          }
+        ]
+      }
+      ```
     """
-    observation_request = await _build_observation_request(
+    observation_request = await _validate_and_build_request(
         client=client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
@@ -118,7 +300,34 @@ async def get_observations(
         end_date=end_date,
     )
 
-    return await client.fetch_obs(observation_request)
+    api_response = await client.fetch_obs(observation_request)
+
+    parent_place_dcid = observation_request.place_dcid if child_place_type else None
+    metadata_map = await _fetch_all_metadata(
+        client, observation_request.variable_dcid, api_response, parent_place_dcid
+    )
+
+    final_response = ObservationToolResponse(
+        variable_dcid=observation_request.variable_dcid,
+        variable_name=metadata_map.get(
+            observation_request.variable_dcid, EntityMetadata(name="", type_of=None)
+        ).name,
+        child_place_type=observation_request.child_place_type,
+    )
+
+    if observation_request.child_place_type:
+        parent_metadata = metadata_map.get(observation_request.place_dcid)
+        final_response.resolved_parent_place = ResolvedPlace(
+            dcid=observation_request.place_dcid,
+            name=parent_metadata.name if parent_metadata else "",
+            place_type=(parent_metadata.type_of or [None])[0]
+            if parent_metadata
+            else None,
+        )
+
+    _process_place_data(final_response, api_response, observation_request, metadata_map)
+
+    return final_response
 
 
 async def search_indicators(
