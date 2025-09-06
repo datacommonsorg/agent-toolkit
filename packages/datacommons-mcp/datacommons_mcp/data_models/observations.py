@@ -142,8 +142,13 @@ class EntityMetadata:
 
 type Observation = dict[str, float]
 
+class ToolResponseBaseModel(BaseModel):
+    """A base model to configure all tool responses to exclude None values."""
 
-class ResolvedPlace(BaseModel):
+    model_config = {"ser_exclude_none": True}
+
+
+class ResolvedPlace(ToolResponseBaseModel):
     """Represents a place that was resolved from a name in the request."""
 
     dcid: str
@@ -157,8 +162,7 @@ class ResolvedPlace(BaseModel):
         ),
     )
 
-
-class PlaceObservation(BaseModel):
+class PlaceObservation(ToolResponseBaseModel):
     """Contains all observation data for a single place.
 
     It includes a primary series (with observations), a list of metadata for
@@ -170,7 +174,7 @@ class PlaceObservation(BaseModel):
     observations: list[Observation] = Field(default_factory=list)
 
 
-class ObservationToolResponse(BaseModel):
+class ObservationToolResponse(ToolResponseBaseModel):
     """The response from the get_observations tool.
 
     It contains observation data organized as a list of places. To save tokens,
