@@ -36,11 +36,13 @@ from datacommons_mcp.data_models.charts import (
 from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import SearchMode, SearchModeType
-from datacommons_mcp.services import (
-    get_observations as get_observations_service,
+from datacommons_mcp.data_models.search import (
+    SearchMode,
+    SearchModeType,
+    SearchResponse,
 )
 from datacommons_mcp.services import (
+    get_observations as get_observations_service,
     search_indicators as search_indicators_service,
 )
 
@@ -365,10 +367,10 @@ async def get_datacommons_chart_config(
 async def search_indicators(
     query: str,
     mode: SearchModeType | None = SearchMode.BROWSE.value,
-    place1_name: str | None = None,
-    place2_name: str | None = None,
+    places: list[str] | None = None,
+    bilateral_places: list[str] | None = None,
     per_search_limit: int = 10,
-) -> dict:
+) -> SearchResponse:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
     This tool returns candidate indicators that match your query. You should treat these as
@@ -390,6 +392,7 @@ async def search_indicators(
 
     **Mode: "lookup"**
     - **Purpose**: Direct variable search for specific data needs
+    - **Agents should explicitly set mode to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
     - **Use when**: You have a specific query
     - **Returns**: Variables only (no topic hierarchy)
     - **Example use cases**:
@@ -400,14 +403,19 @@ async def search_indicators(
     **How to Use This Tool:**
 
     * **For place-constrained queries** like "trade exports to France":
-        - Call with `query="trade exports"`, `mode="lookup"`, and `place1_name="France"`
+        - Call with `query="trade exports"`, `mode="lookup"`, and `places=["France"]`
         - The tool will match indicators and perform existence checks for the specified place
 
     * **For bilateral place-constrained queries** like "trade exports from USA to France":
-        - Call with `query="trade exports"`, `mode="lookup"`, `place1_name="USA"`, and `place2_name="France"`
+        - Call with `query="trade exports"`, `mode="lookup"`, and `bilateral_places=["USA", "France"]`
         - The tool will match indicators and perform existence checks for both places
         - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA") is where we have observations
-        - Use `places_with_data` to identify which place has observations.
+        - Use `places_with_data` to identify which place has observations
+
+    * **For child entity sampling** like "population of Indian states":
+        - Call with `query="population"` and `places=["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]`
+        - Sample 5-6 diverse child entities as representative proxy for all child entities
+        - Results are indicative of broader child entity coverage
 
     * **For exploratory queries** like "what basic health data do you have":
         - Call with `query="health"` and `mode="browse"` (or omit mode parameter)
@@ -421,11 +429,13 @@ async def search_indicators(
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
         mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
-            Default: "browse" (if not specified).
-        place1_name (str, optional): First place name for filtering and existence checks.
-            Examples: "France", "United States", "California"
-        place2_name (str, optional): Second place name for filtering and existence checks.
-            Examples: "Albania", "Germany", "New York"
+            **Agents should explicitly set this to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
+            ** Default: "browse" (if not specified).
+        places (list[str], optional): List of place names for filtering and existence checks.
+            Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
+        bilateral_places (list[str], optional): Exactly 2 place names for bilateral relationships.
+            Examples: ["Indonesia", "Malaysia"], ["USA", "France"]
+            Cannot be specified together with `places`.
         per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
@@ -445,7 +455,7 @@ async def search_indicators(
                         "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
                     }
                 ],
-                "lookups": dict[str, str],  # DCID to name mappings
+                "dcid_name_mappings": dict[str, str],  # DCID to name mappings
                 "status": str  # Status of the search operation
             }
 
@@ -453,8 +463,8 @@ async def search_indicators(
         **Lookup Mode**: Returns only variables (topics field is None)
 
     **Processing the Response:**
-    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the lookups to get readable names.
-    * **Variables**: Individual data indicators. Use the lookups to get readable names.
+    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the dcid_name_mappings to get readable names.
+    * **Variables**: Individual data indicators. Use the dcid_name_mappings to get readable names.
     * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
@@ -462,9 +472,16 @@ async def search_indicators(
     **Best Practices:**
     - Use **"browse"** when you want to understand data organization and discover collections of variables (topics) or related variables
     - Use **"lookup"** only when you have a specific query AND at least one place
+    - For child entity queries, sample 5-6 diverse child entities as representative proxy
     - Both modes support place filtering and bilateral queries
     - Both modes use sophisticated query rewriting logic for optimal results
     """
+    # Call the real search_indicators service
     return await search_indicators_service(
-        dc_client, query, mode, place1_name, place2_name, per_search_limit
+        client=dc_client,
+        query=query,
+        mode=mode,
+        places=places,
+        bilateral_places=bilateral_places,
+        per_search_limit=per_search_limit,
     )

@@ -1,13 +1,14 @@
 # .github/workflows/secure-evals.yaml
-name: Run Secure Evals
+name: Run Agent Evals
 
 on:
-  # This workflow ONLY runs on pull_request_target for security
+  # This workflow ONLY runs on pull_request_target for security.
+  # It runs the workflow defined in the 'main' branch, not the one from the PR.
   pull_request_target:
     branches:
       - main
 
-  # And on manual dispatch by a maintainer
+  # Allows maintainers to manually re-run evals on a specific PR number.
   workflow_dispatch:
     inputs:
       pr:
@@ -35,7 +36,7 @@ jobs:
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          # CRITICAL: This explicitly checks out the head commit of the PR
+          # This explicitly checks out the head commit of the PR
           ref: ${{ github.event_name == 'workflow_dispatch' && steps.get_pr_sha.outputs.sha || github.event.pull_request.head.sha }}
 
       - name: Set up Python
@@ -51,4 +52,3 @@ jobs:
         env:
           DC_API_KEY: ${{ secrets.DC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GOOGLE_GENAI_USE_VERTEXAI: TRUE
