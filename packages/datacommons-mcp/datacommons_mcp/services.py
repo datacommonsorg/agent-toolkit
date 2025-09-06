@@ -217,6 +217,80 @@ async def get_observations(
 ) -> ObservationToolResponse:
     """
     Main entry point to get clean, structured observation data.
+
+    **Response Structure Example (Child Places Query):**
+      ```json
+      {
+        "variable_dcid": "Count_Person",
+        "resolved_parent_place": {
+          "dcid": "geoId/06",
+          "name": "California",
+          "place_type": "State"
+        },
+        "child_place_type": "County",
+        "observations_by_place": [
+          {
+            "place": {
+              "dcid": "geoId/06001",
+              "name": "Alameda County",
+              "place_type": null
+            },
+            "source_id": "source_census",
+            "observations": [
+              {"2021": 1660000},
+              {"2022": 1675000}
+            ]
+          },
+          {
+            "place": {
+              "dcid": "geoId/06037",
+              "name": "Los Angeles County",
+              "place_type": null
+            },
+            "source_id": "source_census",
+            "observations": [
+              {"2021": 9829000},
+              {"2022": 9721000}
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "source_id": "source_census",
+            "importName": "US Census Bureau"
+          }
+        ]
+      }
+      ```
+
+    **Response Structure Example (Single Place Query):**
+      ```json
+      {
+        "variable_dcid": "Count_Person",
+        "resolved_parent_place": null,
+        "child_place_type": null,
+        "observations_by_place": [
+          {
+            "place": {
+              "dcid": "country/USA",
+              "name": "United States",
+              "place_type": "Country"
+            },
+            "source_id": "source_census",
+            "observations": [
+              {"2021": 332000000},
+              {"2022": 333000000}
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "source_id": "source_census",
+            "importName": "US Census Bureau"
+          }
+        ]
+      }
+      ```
     """
     observation_request = await _validate_and_build_request(
         client=client,

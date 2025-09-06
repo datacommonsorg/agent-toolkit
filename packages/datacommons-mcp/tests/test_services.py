@@ -410,6 +410,63 @@ class TestGetObservations:
         assert request_arg.child_place_type == "County"
         assert request_arg.observation_period == ObservationPeriod.LATEST
 
+    async def test_get_observations_with_source_override(self, mock_client):
+        """Test that source_id_override correctly filters the data source."""
+        # Arrange
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "country/USA": {
+                            "orderedFacets": [
+                                {  # This is the source we want to override to
+                                    "facetId": "source_override",
+                                    "observations": [{"date": "2022", "value": 999}],
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "facets": {
+                "source_default": {"importName": "Default Source"},
+                "source_override": {"importName": "Override Source"},
+            },
+        }
+        mock_api_response = ObservationApiResponse.model_validate(api_response_data)
+        mock_client.fetch_obs.return_value = mock_api_response
+        mock_client.fetch_entity_names.return_value = {
+            "var1": "Variable 1",
+            "country/USA": "United States",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "country/USA": ["Country"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="USA",
+            source_id_override="source_override",
+        )
+
+        # Assert
+        # 1. Check that we got an observation from the correct place
+        assert len(result.observations_by_place) == 1
+        place_obs = result.observations_by_place[0]
+        assert place_obs.place.dcid == "country/USA"
+
+        # 2. Check that the observation is from the OVERRIDE source
+        assert place_obs.source_id == "source_override"
+        assert place_obs.observations[0]["2022"] == 999
+
+        # 3. Check that the underlying API call was made with the override
+        mock_client.fetch_obs.assert_awaited_once()
+        request_arg = mock_client.fetch_obs.call_args[0][0]
+        assert request_arg.source_ids == ["source_override"]
+
 
 @pytest.mark.asyncio
 class TestSearchIndicators:
