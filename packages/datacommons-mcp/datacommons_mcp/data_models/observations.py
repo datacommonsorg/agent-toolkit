@@ -142,6 +142,7 @@ class EntityMetadata:
 
 type Observation = dict[str, float]
 
+
 class ToolResponseBaseModel(BaseModel):
     """A base model to configure all tool responses to exclude None values."""
 
@@ -161,6 +162,7 @@ class ResolvedPlace(ToolResponseBaseModel):
             "match multiple place types (e.g., 'Sacramento' could be a City or County)."
         ),
     )
+
 
 class PlaceObservation(ToolResponseBaseModel):
     """Contains all observation data for a single place.

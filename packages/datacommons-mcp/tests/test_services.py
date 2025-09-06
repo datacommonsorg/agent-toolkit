@@ -545,7 +545,7 @@ class TestSearchIndicators:
             return_value={"topic/health": "Health", "Count_Person": "Population"}
         )
 
-        result = await search_indicators(
+        await search_indicators(
             client=mock_client, query="health", mode="browse", per_search_limit=5
         )
 
@@ -592,7 +592,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(return_value={})
         mock_client.fetch_entity_names = Mock(return_value={})
 
-        result = await search_indicators(client=mock_client, query="health")
+        await search_indicators(client=mock_client, query="health")
 
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", mode=SearchMode.BROWSE, place_dcids=[], max_results=10
