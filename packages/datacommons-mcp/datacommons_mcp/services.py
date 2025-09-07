@@ -218,7 +218,7 @@ def _validate_search_parameters(
     places: list[str] | None,
     include_bilateral: bool,
     per_search_limit: int,
-) -> SearchMode:
+) -> None:
     """Validate search parameters
 
     Args:
@@ -226,13 +226,9 @@ def _validate_search_parameters(
         include_bilateral: Whether to include bilateral search
         per_search_limit: Maximum results per search
 
-    Returns:
-        SearchMode enum value
-
     Raises:
         ValueError: If any parameter validation fails
     """
-    # Convert string mode to enum for validation and comparison, defaulting to browse if not specified
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
         raise ValueError("per_search_limit must be between 1 and 100")

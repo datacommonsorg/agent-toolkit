@@ -65,6 +65,7 @@ class BaseDCSettings(BaseSettings):
         description="Path to topic cache file",
     )
 
+
 class CustomDCSettings(BaseSettings):
     """Settings for custom Data Commons instance."""
 

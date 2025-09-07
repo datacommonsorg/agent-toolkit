@@ -388,7 +388,7 @@ async def search_indicators(
         - Results are indicative of broader child entity coverage
 
     * **For exploratory queries** like "what basic health data do you have":
-        - Call with `query="health"` and `include_topics=True` (or omit mode parameter)
+        - Call with `query="health"` and `include_topics=True`
         - The tool will return organized topic categories and variables
 
     * **For non-place-constrained queries** like "what basic health data do you have":
@@ -400,7 +400,7 @@ async def search_indicators(
         places (list[str], optional): List of place names for filtering and existence checks.
             Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
         include_topics (bool, optional): Whether to include topics in the results (default True).
-        include_bilateral (bool, optional): Whether to search for variables in which there's a `source` and a `target` place. (default False).
+        include_bilateral (bool, optional): Whether to search for variables in which there's `source` `target` place(s). (default False).
         per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
@@ -431,10 +431,10 @@ async def search_indicators(
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
 
     **Best Practices:**
-    - Use `include_bilateral=True` for which may involve more than one entity/place (e.g., `to` or `from`
+    - Use `include_bilateral=True` for queries which may involve more than one entity/place (e.g., `to` or `from`
      like trade between countries, aid to a country, loans from an entity to another). Only
     specify this mode if you are filtering by at least one place.
-    - Set `include_topics=False` if you only want specific variables and do need to understand how collections
+    - Set `include_topics=False` if you only want specific variables and don't need to understand how collections
     of variables are organised.
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
 

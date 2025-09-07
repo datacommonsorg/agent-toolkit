@@ -60,4 +60,3 @@ def stdio() -> None:
 def main() -> None:
     """Main entry point for the CLI."""
     cli()
-    
