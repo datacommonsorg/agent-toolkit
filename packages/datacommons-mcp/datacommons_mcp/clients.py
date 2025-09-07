@@ -86,6 +86,8 @@ class DCClient:
 
         if place_like_constraints:
             self._compute_place_like_statvar_store(constraints=place_like_constraints)
+        else:
+            self._place_like_statvar_store = set()
 
     def _compute_search_indices(self) -> list[str]:
         """Compute and validate search indices based on the configured search_scope.

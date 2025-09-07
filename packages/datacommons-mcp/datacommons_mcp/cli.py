@@ -60,8 +60,3 @@ def stdio() -> None:
 def main() -> None:
     """Main entry point for the CLI."""
     cli()
-
-if __name__ == "__main__":
-    from datacommons_mcp.server import mcp
-
-    mcp.run(host="0.0.0.0", port=3333, transport="streamable-http")
