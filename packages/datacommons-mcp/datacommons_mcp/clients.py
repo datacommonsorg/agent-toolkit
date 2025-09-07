@@ -42,9 +42,11 @@ from datacommons_mcp.data_models.settings import (
     DCSettings,
 )
 from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
-from datacommons_mcp.utils import filter_by_date
+from datacommons_mcp.utils import filter_by_date, merge_dicts
 
 logger = logging.getLogger(__name__)
+
+PLACE_LIKE_CONSTRAINTS = ["lendingEntity"]
 
 
 class DCClient:
@@ -56,6 +58,7 @@ class DCClient:
         custom_index: str | None = None,
         sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
+        place_like_constraints: list[str] = None,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -81,6 +84,9 @@ class DCClient:
             topic_store = TopicStore(topics_by_dcid={}, all_variables=set())
         self.topic_store = topic_store
 
+        if place_like_constraints:
+            self._compute_place_like_statvar_store(constraints=place_like_constraints)
+
     def _compute_search_indices(self) -> list[str]:
         """Compute and validate search indices based on the configured search_scope.
 
@@ -101,6 +107,19 @@ class DCClient:
             indices.append(self.base_index)
 
         return indices
+
+    def _compute_place_like_statvar_store(self, constraints: list[str]):
+        """Compute and cache place-like to statistical variable mappings."""
+        places_statvars: list[dict[str, list[str]]] = []
+        for constraint in constraints:
+            places_statvars.append(
+                _place_statvar_constraint_mapping(
+                    client=self.dc, place_like_constraint=constraint
+                )
+            )
+
+        # Merge all mappings into a single dictionary
+        self._place_like_statvar_store = merge_dicts(places_statvars)
 
     async def fetch_obs(
         self, request: ObservationToolRequest
@@ -283,13 +302,12 @@ class DCClient:
 
     async def search_places(self, names: list[str]) -> dict:
         results_map = {}
-        response = self.dc.resolve.fetch_dcids_by_name(names=names)
-        data = response.to_dict()
-        entities = data.get("entities", [])
-        for entity in entities:
-            node, candidates = entity.get("node", ""), entity.get("candidates", [])
-            if node and candidates:
-                results_map[node] = candidates[0].get("dcid", "")
+        response = self.dc.resolve.fetch_dcids_by_name(names=names).to_flat_dict()
+        for entity, candidates in response.items():
+            if entity and candidates:
+                results_map[entity] = (
+                    candidates[0] if isinstance(candidates, list) else candidates
+                )
         return results_map
 
     async def search_svs(
@@ -371,11 +389,11 @@ class DCClient:
         max_search_results = max_results * 2
         # Search for indicators - it returns topics and / or variables based on the mode.
         search_results = await self._search_indicators(
-            query=query, max_results=max_search_results
+            query=query, include_topics=include_topics, max_results=max_search_results
         )
 
         # Separate topics and variables
-        topics = search_results.get("topics", []) if include_topics else []
+        topics = search_results.get("topics", [])
         variables = search_results.get("variables", [])
 
         # Apply existence filtering if places are specified
@@ -435,21 +453,20 @@ class DCClient:
             ),
         }
 
-    async def _search_indicators(self, query: str, max_results: int = 10) -> dict:
+    async def _search_indicators(
+        self, query: str, include_topics: bool, max_results: int = 10
+    ) -> dict:
         """
         Search for topics and variables using search_svs.
-        When mode is SearchMode.LOOKUP, expand topics to variables.
         """
         logger.info(f"Searching for indicators with query: {query}")
         search_results = await self.search_svs(
-            [query], skip_topics=False, max_results=max_results
+            [query], skip_topics=not include_topics, max_results=max_results
         )
         results = search_results.get(query, [])
 
         topics = []
         variables = []
-        # Track variables to avoid duplicates when expanding topics to variables in lookup mode.
-        variable_set: set[str] = set()
 
         for result in results:
             sv_dcid = result.get("SV", "")
@@ -463,7 +480,6 @@ class DCClient:
                     topics.append(sv_dcid)
             else:
                 variables.append(sv_dcid)
-                variable_set.add(sv_dcid)
 
         return {"topics": topics, "variables": variables}
 
@@ -496,8 +512,10 @@ class DCClient:
         for var in variable_dcids:
             places_with_data = []
             for place_dcid in place_dcids:
-                place_variables = self.variable_cache.get(place_dcid)
-                if place_variables is not None and var in place_variables:
+                place_variables = self.variable_cache.get(
+                    place_dcid
+                ) | self._place_like_statvar_store.get(place_dcid, set())
+                if place_variables and var in place_variables:
                     places_with_data.append(place_dcid)
 
             if places_with_data:
@@ -565,7 +583,9 @@ class DCClient:
 
         # Check direct variables
         for place_dcid in place_dcids:
-            place_variables = self.variable_cache.get(place_dcid)
+            place_variables = self.variable_cache.get(
+                place_dcid
+            ) | self._place_like_statvar_store.get(place_dcid, set())
             if place_variables is not None:
                 matching_vars = [
                     var for var in topic_data.variables if var in place_variables
@@ -681,6 +701,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         custom_index=None,
         sv_search_base_url=settings.sv_search_base_url,
         topic_store=topic_store,
+        place_like_constraints=PLACE_LIKE_CONSTRAINTS,
     )
 
 
@@ -705,4 +726,35 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         custom_index=settings.custom_index,
         sv_search_base_url=settings.custom_dc_url,  # Use custom_dc_url as sv_search_base_url
         topic_store=topic_store,
+        place_like_constraints=list(
+            set(PLACE_LIKE_CONSTRAINTS + settings.place_like_constraints)
+        ),
     )
+
+
+def _place_statvar_constraint_mapping(
+    client: DataCommonsClient, place_like_constraint: str
+) -> dict[str, list[str]]:
+
+    # Get all the nodes which have the given place_like_constraint
+    statvars = client.node.fetch(
+        node_dcids=place_like_constraint, expression="<-constraintProperties"
+    ).get_properties()[place_like_constraint]["constraintProperties"]
+
+    # Extract all the DCDIDs from the nodes
+    dcids = [r.dcid for r in statvars if r.dcid]
+
+    # Get the values for the given place_like_constraint for all the nodes
+    property_nodes = client.node.fetch_property_values(
+        node_dcids=dcids, properties=[place_like_constraint]
+    ).get_properties()
+
+    result = {}
+
+    for dcid, node in property_nodes.items():
+        entity = node[place_like_constraint]
+        if not entity:
+            continue
+        result.setdefault(entity[0].dcid, []).append(dcid)
+
+    return result

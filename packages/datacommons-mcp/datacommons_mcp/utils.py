@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 from datacommons_client.models.observation import Observation
 
 from datacommons_mcp.data_models.observations import DateRange
@@ -41,3 +42,10 @@ def filter_by_date(
             filtered_list.append(obs)
 
     return filtered_list
+
+def merge_dicts(dicts: list[dict]) -> dict[str, set[str]]:
+    merged: dict[str, set[str]] = defaultdict(set)
+    for d in dicts:
+        for k, vs in d.items():
+            merged[k].update(vs)
+    return merged

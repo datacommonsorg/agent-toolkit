@@ -65,7 +65,6 @@ class BaseDCSettings(BaseSettings):
         description="Path to topic cache file",
     )
 
-
 class CustomDCSettings(BaseSettings):
     """Settings for custom Data Commons instance."""
 
@@ -109,7 +108,13 @@ class CustomDCSettings(BaseSettings):
         description="List of root topic DCIDs",
     )
 
-    @field_validator("root_topic_dcids", mode="before")
+    place_like_constraints: list[str] | None = Field(
+        default=None,
+        alias="PLACE_LIKE_CONSTRAINTS",
+        description="List of place-like constraintProperties",
+    )
+
+    @field_validator("root_topic_dcids", "place_like_constraints", mode="before")
     @classmethod
     def parse_root_topic_dcids(cls, v: str) -> str | None:
         """Parse comma-separated string into list of strings."""
