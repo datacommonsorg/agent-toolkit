@@ -17,12 +17,12 @@ from datetime import datetime
 from functools import lru_cache
 
 from datacommons_client.endpoints.response import ObservationResponse
-from datacommons_client.models.observation import Facet, ObservationDate
+from datacommons_client.models.observation import ObservationDate
 from datacommons_mcp.exceptions import (
     InvalidDateFormatError,
     InvalidDateRangeError,
 )
-from pydantic import BaseModel, Field, dataclasses, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 # Wrapper to rename datacommons_client object to avoid confusion.
 ObservationPeriod = ObservationDate
@@ -125,30 +125,7 @@ class ObservationRequest(BaseModel):
     date_filter: DateRange | None = None
     child_place_type: str | None = None
 
-
-class Source(Facet):
-    """Represents the static metadata for a data source (facet)."""
-
-    source_id: str
-
-
-class AlternativeSource(Source):
-    num_available_places: int = Field(
-        description=(
-            "The number of places within the current API response for which this alternative source has data."
-        )
-    )
-
-
-@dataclasses.dataclass
-class EntityMetadata:
-    """A simple container for the name and type of a Data Commons entity."""
-
-    name: str
-    type_of: list[str] | None
-
-
-type Observation = dict[str, float]
+type Observation = tuple[str, float]
 
 
 class ToolResponseBaseModel(BaseModel):
@@ -157,31 +134,41 @@ class ToolResponseBaseModel(BaseModel):
     model_config = {"ser_exclude_none": True}
 
 
-class ResolvedPlace(ToolResponseBaseModel):
-    """Represents a place that was resolved from a name in the request."""
+class Node(ToolResponseBaseModel):
+    """Represents a Data Commons node, with an optional name, type, and dcid."""
 
-    dcid: str
-    name: str
-    place_type: str | None = Field(
+    dcid: str | None = None
+    name: str | None = None
+    type_of: list[str] | None = Field(default=None, alias="typeOf")
+
+
+class SourceMetadata(BaseModel):
+    """Represents the static metadata for a data source."""
+
+    source_id: str
+    import_name: str | None = Field(default=None, alias="importName")
+    measurement_method: str | None = Field(default=None, alias="measurementMethod")
+    observation_period: str | None = Field(default=None, alias="observationPeriod")
+    provenance_url: str | None = Field(default=None, alias="provenanceUrl")
+
+
+class AlternativeSource(SourceMetadata):
+    """Represents metadata for an alternative data source."""
+
+    place_count: int | None = Field(
         default=None,
         description=(
-            "The specific type of this place (e.g., 'City', 'County'). "
-            "This is especially useful for resolving ambiguity when a query could "
-            "match multiple place types (e.g., 'Sacramento' could be a City or County)."
+            "The number of places within the current API response for which this"
+            " alternative source has data."
         ),
     )
 
 
 class PlaceObservation(ToolResponseBaseModel):
-    """Contains all observation data for a single place.
+    """Contains all observation data for a single place."""
 
-    It includes a primary series (with observations), a list of metadata for
-    alternative series, and the specific type of the place (e.g., 'City').
-    """
-
-    place: ResolvedPlace
-    source_id: str
-    observations: list[Observation] = Field(default_factory=list)
+    place: Node
+    time_series: list[Observation] = Field(default_factory=list)
 
 
 class ObservationToolResponse(ToolResponseBaseModel):
@@ -190,29 +177,31 @@ class ObservationToolResponse(ToolResponseBaseModel):
     It contains observation data organized as a list of places. To save tokens,
     source information is normalized into a top-level `source_info` dictionary.
     """
-
     variable_dcid: str
 
-    resolved_parent_place: ResolvedPlace | None = Field(
+    resolved_parent_place: Node | None = Field(
         default=None,
-        description="The parent place that was resolved from the request, if a hierarchical query was made. This confirms how the tool interpreted the `place_name`.",
+        description=(
+            "The parent place that was resolved from the request, if a hierarchical"
+            " query was made. This confirms how the tool interpreted the `place_name`."
+        ),
     )
 
     child_place_type: str | None = Field(
         default=None,
         description=(
-            "The common place type for all observations in the response (e.g., 'State', 'County'). "
-            "This is used when all returned places are of the same type to avoid repetition. "
-            "If places are of mixed types, this will be null and the type will be specified in each `PlaceObservation`."
+            "The common place type for all observations in the response (e.g.,"
+            " 'State', 'County'). This is used when all returned places are of the"
+            " same type to avoid repetition. If places are of mixed types, this will"
+            " be null and the type will be specified in each `PlaceObservation`."
         ),
     )
 
-    observations_by_place: list[PlaceObservation] = Field(
+    place_observations: list[PlaceObservation] = Field(
         default_factory=list,
         description="A list of observation data, with one entry per place.",
     )
 
-    observations_source: Source
-    alternative_sources: list[AlternativeSource] = Field(
-        default_factory=list,
-    )
+    source_metadata: SourceMetadata
+    alternative_sources: list[AlternativeSource] = Field(default_factory=list)
+    unit: str | None = None
