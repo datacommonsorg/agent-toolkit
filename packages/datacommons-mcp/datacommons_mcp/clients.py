@@ -112,11 +112,11 @@ class DCClient:
             filter_facet_ids=request.source_ids,
         )
 
-    def fetch_entity_names(self, dcids: list[str]) -> dict:
+    async def fetch_entity_names(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_entity_names(entity_dcids=dcids)
-        return {dcid: name.value for dcid, name in response.items()}
+        return {dcid: name.value for dcid, name in response.items() if name}
 
-    def fetch_entity_types(self, dcids: list[str]) -> dict:
+    async def fetch_entity_types(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_property_values(
             node_dcids=dcids, properties="typeOf"
         )

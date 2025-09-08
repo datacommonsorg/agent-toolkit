@@ -132,6 +132,14 @@ class Source(Facet):
     source_id: str
 
 
+class AlternativeSource(Source):
+    num_available_places: int = Field(
+        description=(
+            "The number of places within the current API response for which this alternative source has data."
+        )
+    )
+
+
 @dataclasses.dataclass
 class EntityMetadata:
     """A simple container for the name and type of a Data Commons entity."""
@@ -204,6 +212,7 @@ class ObservationToolResponse(ToolResponseBaseModel):
         description="A list of observation data, with one entry per place.",
     )
 
-    sources: list[Source] = Field(
+    observations_source: Source
+    alternative_sources: list[AlternativeSource] = Field(
         default_factory=list,
     )

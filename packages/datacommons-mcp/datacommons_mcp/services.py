@@ -14,11 +14,15 @@
 
 import asyncio
 import logging
+from collections import defaultdict
+from datetime import datetime
+from typing import Any
 
-from datacommons_client.models.observation import OrderedFacet
+from datacommons_client.models.observation import ByVariable
 
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
+    AlternativeSource,
     DateRange,
     EntityMetadata,
     ObservationApiResponse,
@@ -101,7 +105,15 @@ async def _fetch_all_metadata(
     parent_place_dcid: str | None,
 ) -> dict[str, EntityMetadata]:
     """Fetches and combines names and types for all entities into a single map."""
-    dcids_to_fetch = set(api_response.byVariable.get(variable_dcid, {}).byEntity.keys())
+    variable_data = (
+        api_response.byVariable.get(variable_dcid)
+        if api_response and api_response.byVariable
+        else None
+    )
+    dcids_to_fetch = set()
+    if variable_data:
+        dcids_to_fetch.update(variable_data.byEntity.keys())
+
     if parent_place_dcid:
         dcids_to_fetch.add(parent_place_dcid)
 
@@ -109,7 +121,7 @@ async def _fetch_all_metadata(
         return {}
 
     dcids_list = list(dcids_to_fetch)
-    names_task = client.fetch_entity_names(dcids_list)
+    names_task = client.fetch_entity_names(dcids_list)  # Now an awaitable coroutine
     types_task = client.fetch_entity_types(dcids_list)
     names_map, types_map = await asyncio.gather(names_task, types_task)
 
@@ -122,88 +134,162 @@ async def _fetch_all_metadata(
     return metadata_map
 
 
-def _process_place_data(
-    response: ObservationToolResponse,
-    api_response: ObservationApiResponse,
-    request: ObservationRequest,
-    metadata_map: dict[str, EntityMetadata],
-) -> None:
-    """Iterates through API response and adds place observations to the final response."""
-    api_variable_data = api_response.byVariable.get(request.variable_dcid)
-    if not api_variable_data:
-        return
+# Streamlined helper method for selecting the primary source
+def _select_primary_source(
+    variable_data: ByVariable, request: ObservationRequest
+) -> tuple[str | None, dict[str, int], dict[str, Any]]:
+    """
+    Selects the primary source and returns pre-processed data for each place.
+    Returns: (primary_source_id, alt_source_counts, processed_data_by_place)
+    """
+    source_place_counts = defaultdict(int)
+    source_date_counts = defaultdict(int)
+    source_latest_dates = defaultdict(lambda: datetime.min)
 
-    for obs_place_dcid, place_data in api_variable_data.byEntity.items():
+    processed_data_by_place = {}
+
+    for place_dcid, place_data in variable_data.byEntity.items():
         if not place_data.orderedFacets:
             continue
 
-        # We need to find the first valid series.
-        found_observation = False
+        best_facet = None
+        best_filtered_obs = []
         for facet_data in place_data.orderedFacets:
             filtered_obs = filter_by_date(facet_data.observations, request.date_filter)
+            if (
+                filtered_obs
+                and not best_facet
+                or len(filtered_obs) > len(best_filtered_obs)
+            ):
+                best_facet = facet_data
+                best_filtered_obs = filtered_obs
 
-            if filtered_obs:
-                _add_series_to_response(
-                    response,
-                    api_response,
-                    facet_data,
-                    obs_place_dcid,
-                    metadata_map,
-                    filtered_obs,
-                    request,
-                )
-                found_observation = True
-                break  # Stop after finding the first valid series
+        if best_facet:
+            processed_data_by_place[place_dcid] = {
+                "facet": best_facet,
+                "observations": best_filtered_obs,
+            }
 
-        # If no valid observations were found, but facets existed, add an empty one.
-        if not found_observation and place_data.orderedFacets:
-            first_facet = place_data.orderedFacets[0]
-            _add_series_to_response(
-                response,
-                api_response,
-                first_facet,
-                obs_place_dcid,
-                metadata_map,
-                [],
-                request,
-            )
+            source_id = best_facet.facetId
+            source_place_counts[source_id] += 1
+            source_date_counts[source_id] += len(best_filtered_obs)
 
+            latest_date_str = max(o.date for o in best_filtered_obs)
+            latest_date = datetime.strptime(latest_date_str, "%Y")
+            if latest_date > source_latest_dates[source_id]:
+                source_latest_dates[source_id] = latest_date
 
-def _add_series_to_response(
-    response: ObservationToolResponse,
-    api_response: ObservationApiResponse,
-    facet_data: OrderedFacet,
-    obs_place_dcid: str,
-    metadata_map: dict[str, EntityMetadata],
-    observations: list,
-    request: ObservationRequest,
-) -> None:
-    """Adds a single PlaceObservation and its source to the response."""
-    # Ensure source info is in the response
-    if not any(s.source_id == facet_data.facetId for s in response.sources):
-        facet_metadata = api_response.facets.get(facet_data.facetId)
-        if facet_metadata:
-            response.sources.append(
-                Source(**facet_metadata.model_dump(), source_id=facet_data.facetId)
-            )
+    if not source_place_counts:
+        return None, {}, {}
 
-    place_metadata = metadata_map.get(
-        obs_place_dcid, EntityMetadata(name="", type_of=None)
-    )
-    place_type = None
-    if not request.child_place_type:
-        place_type = (place_metadata.type_of or [None])[0]
-
-    place_observation = PlaceObservation(
-        place=ResolvedPlace(
-            dcid=obs_place_dcid, name=place_metadata.name, place_type=place_type
+    primary_source = max(
+        source_place_counts.keys(),
+        key=lambda src_id: (
+            source_place_counts[src_id],
+            source_date_counts[src_id],
+            source_latest_dates[src_id],
+            src_id,  # Final deterministic tie-breaker
         ),
-        source_id=facet_data.facetId,
-        observations=[{o.date: o.value} for o in observations],
     )
-    response.observations_by_place.append(place_observation)
+
+    alternative_source_counts = {
+        src_id: count
+        for src_id, count in source_place_counts.items()
+        if src_id != primary_source
+    }
+
+    return primary_source, alternative_source_counts, processed_data_by_place
 
 
+def _create_place_observation(
+    obs_place_dcid: str,
+    preprocessed_data: dict[str, Any],
+    metadata_map: dict[str, EntityMetadata],
+) -> PlaceObservation | None:
+    """
+    Builds a PlaceObservation model using pre-processed data.
+    """
+    if not preprocessed_data:
+        return None
+
+    selected_facet = preprocessed_data["facet"]
+    filtered_obs = preprocessed_data["observations"]
+
+    observations = [{o.date: o.value} for o in filtered_obs]
+
+    place_metadata = metadata_map.get(obs_place_dcid)
+    resolved_place = ResolvedPlace(
+        dcid=obs_place_dcid,
+        name=place_metadata.name if place_metadata else "",
+        place_type=(place_metadata.type_of or [None])[0] if place_metadata else None,
+    )
+
+    return PlaceObservation(
+        place=resolved_place,
+        source_id=selected_facet.facetId,
+        observations=observations,
+    )
+
+
+async def _build_final_response(
+    request: ObservationRequest,
+    api_response: ObservationApiResponse,
+    metadata_map: dict[str, EntityMetadata],
+) -> ObservationToolResponse:
+    """
+    Builds the final ObservationToolResponse model from API data and metadata.
+    """
+    variable_data = api_response.byVariable.get(request.variable_dcid, ByVariable({}))
+    primary_source_id, alternative_source_counts, processed_data_by_place = (
+        _select_primary_source(variable_data, request)
+    )
+
+    primary_source = None
+    if primary_source_id and primary_source_id in api_response.facets:
+        facet_metadata = api_response.facets[primary_source_id]
+        primary_source = Source(source_id=primary_source_id, **facet_metadata.to_dict())
+
+    final_response = ObservationToolResponse(
+        variable_dcid=request.variable_dcid,
+        child_place_type=request.child_place_type,
+        observations_source=primary_source,
+    )
+
+    if request.child_place_type:
+        parent_metadata = metadata_map.get(request.place_dcid)
+        final_response.resolved_parent_place = ResolvedPlace(
+            dcid=request.place_dcid,
+            name=parent_metadata.name if parent_metadata else "",
+            place_type=(parent_metadata.type_of or [None])[0]
+            if parent_metadata
+            else None,
+        )
+
+    if processed_data_by_place:
+        for obs_place_dcid, preprocessed_data in processed_data_by_place.items():
+            place_observation = _create_place_observation(
+                obs_place_dcid=obs_place_dcid,
+                preprocessed_data=preprocessed_data,
+                metadata_map=metadata_map,
+            )
+            if place_observation:
+                final_response.observations_by_place.append(place_observation)
+
+    for alt_source_id, count in alternative_source_counts.items():
+        facet_metadata = api_response.facets.get(alt_source_id)
+        if facet_metadata:
+            final_response.alternative_sources.append(
+                AlternativeSource(
+                    source_id=alt_source_id,
+                    num_available_places=count,
+                    **facet_metadata.to_dict(),
+                )
+            )
+
+    return final_response
+
+
+# Main function to get observations
 async def get_observations(
     client: DCClient,
     variable_dcid: str,
@@ -215,79 +301,6 @@ async def get_observations(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> ObservationToolResponse:
-    """
-    Main entry point to get clean, structured observation data.
-
-    **Response Structure Example (Child Places Query):**
-      ```json
-      {
-        "variable_dcid": "Count_Person",
-        "resolved_parent_place": {
-          "dcid": "geoId/06",
-          "name": "California",
-          "place_type": "State"
-        },
-        "child_place_type": "County",
-        "observations_by_place": [
-          {
-            "place": {
-              "dcid": "geoId/06001",
-              "name": "Alameda County",
-            },
-            "source_id": "source_census",
-            "observations": [
-              {"2021": 1660000},
-              {"2022": 1675000}
-            ]
-          },
-          {
-            "place": {
-              "dcid": "geoId/06037",
-              "name": "Los Angeles County",
-            },
-            "source_id": "source_census",
-            "observations": [
-              {"2021": 9829000},
-              {"2022": 9721000}
-            ]
-          }
-        ],
-        "sources": [
-          {
-            "source_id": "source_census",
-            "importName": "US Census Bureau"
-          }
-        ]
-      }
-      ```
-
-    **Response Structure Example (Single Place Query):**
-      ```json
-      {
-        "variable_dcid": "Count_Person",
-        "observations_by_place": [
-          {
-            "place": {
-              "dcid": "country/USA",
-              "name": "United States",
-              "place_type": "Country"
-            },
-            "source_id": "source_census",
-            "observations": [
-              {"2021": 332000000},
-              {"2022": 333000000}
-            ]
-          }
-        ],
-        "sources": [
-          {
-            "source_id": "source_census",
-            "importName": "US Census Bureau"
-          }
-        ]
-      }
-      ```
-    """
     observation_request = await _validate_and_build_request(
         client=client,
         variable_dcid=variable_dcid,
@@ -302,32 +315,15 @@ async def get_observations(
 
     api_response = await client.fetch_obs(observation_request)
 
-    parent_place_dcid = observation_request.place_dcid if child_place_type else None
     metadata_map = await _fetch_all_metadata(
-        client, observation_request.variable_dcid, api_response, parent_place_dcid
+        client, variable_dcid, api_response, observation_request.place_dcid
     )
 
-    final_response = ObservationToolResponse(
-        variable_dcid=observation_request.variable_dcid,
-        variable_name=metadata_map.get(
-            observation_request.variable_dcid, EntityMetadata(name="", type_of=None)
-        ).name,
-        child_place_type=observation_request.child_place_type,
+    return await _build_final_response(
+        request=observation_request,
+        api_response=api_response,
+        metadata_map=metadata_map,
     )
-
-    if observation_request.child_place_type:
-        parent_metadata = metadata_map.get(observation_request.place_dcid)
-        final_response.resolved_parent_place = ResolvedPlace(
-            dcid=observation_request.place_dcid,
-            name=parent_metadata.name if parent_metadata else "",
-            place_type=(parent_metadata.type_of or [None])[0]
-            if parent_metadata
-            else None,
-        )
-
-    _process_place_data(final_response, api_response, observation_request, metadata_map)
-
-    return final_response
 
 
 async def search_indicators(
@@ -577,7 +573,7 @@ async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
         return {}
 
     try:
-        return client.fetch_entity_names(dcids)
+        return await client.fetch_entity_names(dcids)
     except Exception:  # noqa: BLE001
         # If fetching fails, return empty dict (not an error)
         return {}
