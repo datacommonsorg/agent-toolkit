@@ -142,6 +142,7 @@ class ObservationRequest(BaseModel):
     date_filter: DateRange | None = None
     child_place_type: str | None = None
 
+
 Observation = tuple[str, float]
 
 
@@ -169,6 +170,7 @@ class FacetMetadata(BaseModel):
     provenance_url: str | None = Field(default=None, alias="provenanceUrl")
     unit: str | None = None
 
+
 class AlternativeSource(FacetMetadata):
     """Represents metadata for an alternative data source."""
 
@@ -194,6 +196,7 @@ class ObservationToolResponse(ToolResponseBaseModel):
     It contains observation data organized as a list of places. To save tokens,
     source information is normalized into a top-level `source_info` dictionary.
     """
+
     variable_dcid: str
 
     resolved_parent_place: Node | None = Field(
