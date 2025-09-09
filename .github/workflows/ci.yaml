@@ -11,6 +11,12 @@ on:
 jobs:
   ci-checks:
     runs-on: ubuntu-latest
+
+    # Run tests on python 3.11 and 3.12
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install uv
         run: pip install uv

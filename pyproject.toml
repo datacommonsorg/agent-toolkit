@@ -3,7 +3,7 @@ name = "datacommons-agent-toolkit"
 version = "0.0.1"
 description = 'Data Commons tools and test agents using the Model Context Protocol (MCP).'
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.11,<3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 keywords = []
