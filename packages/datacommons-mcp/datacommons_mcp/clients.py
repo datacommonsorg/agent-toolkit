@@ -468,12 +468,7 @@ class DCClient:
             if "/topic/" in sv_dcid:
                 # Only include topics that exist in the topic store
                 if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
-                    for variable in self.topic_store.get_topic_variables(sv_dcid):
-                        if variable not in variable_set:
-                            variables.append(variable)
-                            variable_set.add(variable)
-                    else:
-                        topics.append(sv_dcid)
+                    topics.append(sv_dcid)
             else:
                 variables.append(sv_dcid)
                 variable_set.add(sv_dcid)
