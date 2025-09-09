@@ -108,10 +108,16 @@ class CustomDCSettings(BaseSettings):
         alias="DC_ROOT_TOPIC_DCIDS",
         description="List of root topic DCIDs",
     )
+    # TODO (@jm-rivera): Remove once new endpoint is live.
+    place_like_constraints: list[str] | None = Field(
+        default=None,
+        alias="PLACE_LIKE_CONSTRAINTS",
+        description="List of place-like constraintProperties",
+    )
 
-    @field_validator("root_topic_dcids", mode="before")
+    @field_validator("root_topic_dcids", "place_like_constraints", mode="before")
     @classmethod
-    def parse_root_topic_dcids(cls, v: str) -> str | None:
+    def parse_list_like_parameter(cls, v: str) -> str | None:
         """Parse comma-separated string into list of strings."""
         if isinstance(v, str):
             if not v.strip():

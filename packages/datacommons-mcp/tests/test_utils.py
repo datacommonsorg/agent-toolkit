@@ -15,7 +15,7 @@
 import pytest
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
-from datacommons_mcp.utils import filter_by_date
+from datacommons_mcp.utils import filter_by_date, merge_dicts
 
 
 class TestFilterByDate:
@@ -47,3 +47,16 @@ class TestFilterByDate:
     def test_empty_result(self, observations):
         date_filter = DateRange(start_date="2025", end_date="2026")
         assert len(filter_by_date(observations, date_filter)) == 0
+
+
+class TestMergeDicts:
+    def test_merge_dicts_unions_values(self):
+        d1 = {"p1": ["v1", "v2"], "p2": ["v3"]}
+        d2 = {"p1": ["v2", "v4"], "p3": ["v5"]}
+
+        merged = merge_dicts([d1, d2])
+
+        # Expect sets with unioned values
+        assert merged["p1"] == {"v1", "v2", "v4"}
+        assert merged["p2"] == {"v3"}
+        assert merged["p3"] == {"v5"}

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import defaultdict
 
 from datacommons_client.models.observation import Observation
 
@@ -41,3 +42,18 @@ def filter_by_date(
             filtered_list.append(obs)
 
     return filtered_list
+
+
+def merge_dicts(dicts: list[dict]) -> dict[str, set[str]]:
+    """
+    Merges a list of dictionaries with string keys and set-of-string values
+    into a single dictionary. For each key, the resulting dictionary contains"
+    all unique values from the input dictionaries.
+
+    # TODO (@jm-rivera): Remove once new search endpoint is live.
+    """
+    merged: dict[str, set[str]] = defaultdict(set)
+    for d in dicts:
+        for k, vs in d.items():
+            merged[k].update(vs)
+    return merged
