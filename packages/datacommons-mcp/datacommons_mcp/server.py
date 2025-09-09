@@ -205,8 +205,7 @@ async def validate_child_place_types(
 
     return dict(zip(child_place_types, results, strict=False))
 
-
-@mcp.tool()
+# TODO(clincoln8): Add to optional visualization toolset
 async def get_datacommons_chart_config(
     chart_type: str,
     chart_title: str,
