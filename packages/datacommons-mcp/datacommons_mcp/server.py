@@ -37,8 +37,6 @@ from datacommons_mcp.data_models.observations import (
     ObservationToolResponse,
 )
 from datacommons_mcp.data_models.search import (
-    SearchMode,
-    SearchModeType,
     SearchResponse,
     SearchTopic,
     SearchVariable,
@@ -364,8 +362,8 @@ async def get_datacommons_chart_config(
 @mcp.tool()
 async def search_indicators(
     query: str,
-    mode: SearchModeType | None = SearchMode.BROWSE.value,
     places: list[str] | None = None,
+    include_topics: bool = True,
     maybe_bilateral: bool = False,
     per_search_limit: int = 10,
 ) -> SearchResponse:
@@ -375,34 +373,10 @@ async def search_indicators(
     candidates and filter them based on the user's query and context to surface the most
     relevant results.
 
-    **Mode Selection Guidelines:**
-
-    **Primary Rule**: If the user has explicitly specified a mode, use it as requested.
-
-    **Mode: "browse" (default)**
-    - **Purpose**: Explore topic hierarchy and find related variables
-    - **Use when**: You want to understand the structure of data categories and discover related variables
-    - **Returns**: Both topics (categories) and variables with hierarchical structure
-    - **Example use cases**:
-        - "what basic health data do you have"
-        - "Show me health data categories and what variables are available"
-        - "What economic indicators are available and how are they organized?"
-
-    **Mode: "lookup"**
-    - **Purpose**: Direct variable search for specific data needs
-    - **Agents should explicitly set mode to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
-    - **Use when**: You have a specific query
-    - **Returns**: Variables only (no topic hierarchy)
-    - **Example use cases**:
-        - "Find unemployment rate variables for United States"
-        - "Get population data variables for India"
-        - "Search for carbon emission variables in NYC"
 
     **How to Use This Tool:**
 
-    * The examples below exclude the mode parameter intentionally. The calls can be made in both modes. Choose the mode based on the mode selection guidelines above.
-
-    * **For non-bilateral place-constrained queries** like "population of France":
+    * **For place-constrained queries** like "population of France":
         - Call with `query="population"`, `places=["France"]`, and `maybe_bilateral=False`
         - The tool will match indicators and perform existence checks for the specified place
 
@@ -416,7 +390,8 @@ async def search_indicators(
         - between multiple places like "trade exports from USA, Germany and UK to France":
           + Call with `query="trade exports"`, `places=["USA", "Germany", "UK", "France"]`, and `maybe_bilateral=True`
         - The tool will match indicators and perform existence checks for the specified places
-        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA", "Germany", "UK") is where we have observations
+        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while
+          the other place (e.g., "USA", "Germany", "UK") is where we have observations
         - Use `places_with_data` to identify which place has observations
 
     * **For child entity sampling** like "population of Indian states":
@@ -434,14 +409,14 @@ async def search_indicators(
 
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
-            Examples: "health grants", "carbon emissions", "unemployment rate"
-        mode (str, optional): Search mode - "browse" (topics + variables) or "lookup" (variables only).
-            **Agents should explicitly set this to "lookup" when the goal is to fetch specific data, rather than to explore or present data categories to the user.
-            ** Default: "browse" (if not specified).
+            Examples: "health grants", "carbon emissions", "unemployment rate", "share of government spending on health"
         places (list[str], optional): List of place names for filtering and existence checks.
             Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
+        include_topics (bool, optional): Whether to search for Topics (collections of variables) or
+            just variables. Default: True
         maybe_bilateral (bool, optional): Whether this query could represent bilateral relationships.
-            Set to True for queries that could be bilateral (e.g., "trade exports to france").
+            Set to True for queries which may involve more than one entity/place (e.g., `to` or `from`
+            like trade between countries, aid to a country, loans from an entity to another)
             Set to False for queries about properties of places (e.g., "population of france").
             Default: False
         per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
@@ -449,9 +424,9 @@ async def search_indicators(
     Returns:
         dict: A dictionary containing candidate indicators with the following structure:
             {
-                "topics": [
+                "topics": [ # Only if `include_topics` is True
                     {
-                        "dcid": str,  # Topic DCID (browse mode only)
+                        "dcid": str,  # Topic DCID
                         "member_topics": list[str],  # Direct member topic DCIDs
                         "member_variables": list[str],  # Direct member variable DCIDs
                         "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
@@ -467,8 +442,8 @@ async def search_indicators(
                 "status": str  # Status of the search operation
             }
 
-        **Browse Mode**: Returns both topics and variables with hierarchical structure
-        **Lookup Mode**: Returns only variables (topics field is None)
+        **If `include_topics = True`**: Returns both topics and variables with hierarchical structure
+        **If `include_topics = False`**: Returns only variables
 
     **Processing the Response:**
     * **Topics**: Collections of variables and sub-topics (browse mode only). Use the dcid_name_mappings to get readable names.
@@ -478,17 +453,14 @@ async def search_indicators(
     * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
 
     **Best Practices:**
-    - Use **"browse"** when you want to understand data organization and discover collections of variables (topics) or related variables
-    - Use **"lookup"** only when you have a specific query AND at least one place
+    - Include topics if you want to understand data organization and discover collections of variables (topics) or related variables
+    - Exclude topics only when you have a specific query for a precise variable.
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
-    - Both modes support place filtering and bilateral queries
-    - Both modes use sophisticated query rewriting logic for optimal results
     """
     # Call the real search_indicators service
     return await search_indicators_service(
         client=dc_client,
         query=query,
-        mode=mode,
         places=places,
         maybe_bilateral=maybe_bilateral,
         per_search_limit=per_search_limit,
