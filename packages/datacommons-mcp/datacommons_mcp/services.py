@@ -306,6 +306,99 @@ async def get_observations(
         start_date=start_date,
         end_date=end_date,
     )
+    """Fetches statistical observations from Data Commons for one or more places.
+
+    This service acts as a high-level orchestrator for retrieving observation data.
+    It handles input validation, place resolution, data fetching, source selection,
+    and metadata enrichment to provide a clean and consistent response.
+
+    The function can be called in two modes:
+    1.  **Single Place Mode**: Fetches data for a single, specific place.
+        - Invoked by providing `variable_dcid` and a place identifier (`place_dcid`
+          or `place_name`).
+    2.  **Hierarchy Mode**: Fetches data for all child places of a specific type
+        within a parent place (e.g., all counties in a state).
+        - Invoked by also providing `child_place_type`.
+
+    A key feature is the source selection logic. When multiple data sources (facets)
+    are available for a variable, this function determines a single "primary source"
+    based on which source provides the most comprehensive data across the requested
+    places. Data from other sources is reported in `alternative_sources`.
+
+    Args:
+        client: An instance of `DCClient` for interacting with Data Commons.
+        variable_dcid: The DCID of the statistical variable to fetch.
+        place_dcid: The DCID of the place. Takes precedence over `place_name`.
+        place_name: The common name of the place (e.g., "California").
+        child_place_type: The type of child places to fetch data for (e.g., "County").
+        source_override: A facet ID to force the use of a specific data source.
+        period: A special filter for "latest" or "all" observations.
+        start_date: The start of a custom date range (e.g., "2022", "2022-01").
+        end_date: The end of a custom date range (e.g., "2023", "2023-12").
+
+    Returns:
+        An `ObservationToolResponse` object containing the structured data.
+
+    Raises:
+        ValueError: If required parameters are missing or invalid.
+        DataLookupError: If a `place_name` cannot be resolved to a DCID.
+        InvalidDateRangeError: If `start_date` is after `end_date`.
+        InvalidDateFormatError: If date strings are in an unsupported format.
+
+    **Example Output (Single Place Call):**
+    ```json
+    {
+      "variable_dcid": "Count_Person",
+      "source_metadata": {
+        "source_id": "source1",
+        "import_name": "US Census"
+      },
+      "place_observations": [
+        {
+          "place": {
+            "dcid": "country/USA",
+            "name": "United States",
+            "type_of": ["Country"]
+          },
+          "time_series": [
+            ["2022", 333287557.0],
+            ["2021", 332031554.0]
+          ]
+        }
+      ]
+    }
+    ```
+
+    **Example Output (Hierarchy Call):**
+    ```json
+    {
+      "variable_dcid": "Count_Person",
+      "resolved_parent_place": {
+        "dcid": "geoId/06",
+        "name": "California",
+        "type_of": ["State"]
+      },
+      "child_place_type": "County",
+      "place_observations": [
+        {
+          "place": { "dcid": "geoId/06001", "name": "Alameda County", "type_of": ["County"] },
+          "time_series": [["2022", 1628997.0]]
+        },
+        {
+          "place": { "dcid": "geoId/06037", "name": "Los Angeles County", "type_of": ["County"] },
+          "time_series": [["2022", 9721138.0]]
+        }
+      ],
+      "source_metadata": { "source_id": "source1", "import_name": "US Census" },
+      "alternative_sources": [
+        {
+          "source_id": "source2",
+          "import_name": "Another Census Source",
+          "place_count": 1
+        }
+      ]
+    }
+    """
 
     api_response = await client.fetch_obs(observation_request)
 
