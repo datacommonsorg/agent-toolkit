@@ -1064,7 +1064,9 @@ class TestCreateDCClient:
 
 
 class TestPlaceLikeStoreIntegration:
-    def test_filter_variables_includes_place_like_store(self, mocked_datacommons_client):
+    def test_filter_variables_includes_place_like_store(
+        self, mocked_datacommons_client
+    ):
         """_filter_variables_by_existence should consider _place_like_statvar_store union.
         # TODO (@jm-rivera): Remove once new endpoint is live.
         """
@@ -1103,9 +1105,7 @@ class TestPlaceLikeStoreIntegration:
         client_under_test.variable_cache.get.side_effect = lambda p: set()
 
         # Place-like store provides the variable for the place
-        client_under_test._place_like_statvar_store = {
-            "geoId/06": {var_dcid}
-        }
+        client_under_test._place_like_statvar_store = {"geoId/06": {var_dcid}}
 
         places = client_under_test._get_topic_places_with_data(
             topic_dcid, ["geoId/06", "geoId/36"]
