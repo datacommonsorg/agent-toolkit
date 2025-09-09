@@ -399,12 +399,6 @@ async def search_indicators(
         - Sample 5-6 diverse child entities as representative proxy for all child entities
         - Results are indicative of broader child entity coverage
 
-    * **Include topics** when you want to understand data organization and discover collections of
-      variables (topics) or related variables.
-        - Call with `include_topics=True` (default)
-        - The tool will return both topics and variables with hierarchical structure
-      If the user has specified a preference to include or exclude topics, use `include_topics` as requested.
-
     * **For exploratory queries** like "what basic health data do you have":
         - Call with `query="basic health"`
         - The tool will return organized topic categories and variables
