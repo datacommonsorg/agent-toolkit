@@ -72,7 +72,7 @@ async def get_observations(
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
-    source_id_override: str | None = None,
+    source_override: str | None = None,
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -119,7 +119,7 @@ async def get_observations(
       place_dcid (str, optional): The DCID of the place.
       place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
-      source_id_override (str, optional): An optional facet ID to force the use of a specific data source.
+      source_override (str, optional): An optional facet ID to force the use of a specific data source.
       period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
       start_date (str, optional): The start date for a custom range. **Used only with `end_date` and ignored if `period` is set.**
       end_date (str, optional): The end date for a custom range. **Used only with `start_date` and ignored if `period` is set.**
@@ -132,7 +132,7 @@ async def get_observations(
       - `observations_by_place`: A list where each item represents a single place and its data.
         - Each item contains the `place`'s DCID and name.
         - The `primary_series` object holds the main data points in its `observations` list. Each observation has a `date` and a `value`.
-        - `alternative_series_metadata`: A list of other available data sources for that place, which you can use to call the tool again with `source_id_override`.
+        - `alternative_series_metadata`: A list of other available data sources for that place, which you can use to call the tool again with `source_override`.
       - `source_info`: A top-level list containing detailed information about each data source, which can be looked up by the `source_id` from a data series.
 
     """
@@ -142,7 +142,7 @@ async def get_observations(
         place_dcid=place_dcid,
         place_name=place_name,
         child_place_type=child_place_type,
-        source_id_override=source_id_override,
+        source_override=source_override,
         period=period,
         start_date=start_date,
         end_date=end_date,

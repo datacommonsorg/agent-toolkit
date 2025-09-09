@@ -175,6 +175,7 @@ def _select_primary_source(
             source_date_counts[source_id] += len(best_filtered_obs)
 
             latest_date_str = max(o.date for o in best_filtered_obs)
+            # TODO: handle non year-only dates
             latest_date = datetime.strptime(latest_date_str, "%Y")
             if latest_date > source_latest_dates[source_id]:
                 source_latest_dates[source_id] = latest_date
@@ -252,7 +253,7 @@ async def _build_final_response(
     final_response = ObservationToolResponse(
         variable_dcid=request.variable_dcid,
         child_place_type=request.child_place_type,
-        observations_source=primary_source,
+        source=primary_source,
     )
 
     if request.child_place_type:
@@ -277,11 +278,15 @@ async def _build_final_response(
 
     for alt_source_id, count in alternative_source_counts.items():
         facet_metadata = api_response.facets.get(alt_source_id)
+
+        # If there's only one place in the response, set count to None
+        num_places = count if len(processed_data_by_place) > 1 else None
+
         if facet_metadata:
             final_response.alternative_sources.append(
                 AlternativeSource(
                     source_id=alt_source_id,
-                    num_available_places=count,
+                    num_available_places=num_places,
                     **facet_metadata.to_dict(),
                 )
             )
@@ -296,7 +301,7 @@ async def get_observations(
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
-    source_id_override: str | None = None,
+    source_override: str | None = None,
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -307,7 +312,7 @@ async def get_observations(
         place_dcid=place_dcid,
         place_name=place_name,
         child_place_type=child_place_type,
-        source_id_override=source_id_override,
+        source_override=source_override,
         period=period,
         start_date=start_date,
         end_date=end_date,
