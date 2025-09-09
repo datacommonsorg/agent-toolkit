@@ -17,7 +17,6 @@ Provides classes for managing connections to both base and custom Data Commons i
 """
 
 import asyncio
-import concurrent.futures
 import json
 import logging
 import re
@@ -383,16 +382,12 @@ class DCClient:
         # Apply existence filtering if places are specified
         if place_dcids:
             # Ensure place variables are cached for all places in parallel
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                await asyncio.gather(
-                    *[
-                        loop.run_in_executor(
-                            executor, self._ensure_place_variables_cached, place_dcid
-                        )
-                        for place_dcid in place_dcids
-                    ]
+            await asyncio.gather(
+                *(
+                    asyncio.to_thread(self._ensure_place_variables_cached, place_dcid)
+                    for place_dcid in place_dcids
                 )
+            )
 
             # Filter topics and variables by existence (OR logic)
             topics = self._filter_topics_by_existence(topics, place_dcids)

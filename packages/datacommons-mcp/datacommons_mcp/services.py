@@ -193,9 +193,6 @@ def _create_search_tasks(
                 )
 
         # Original query search last
-        place_dcids = [
-            place_dcids_map.get(name) for name in places if place_dcids_map.get(name)
-        ]
         search_tasks.append(SearchTask(query=query, place_dcids=place_dcids))
 
     elif places:
