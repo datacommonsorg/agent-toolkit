@@ -24,14 +24,13 @@ from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
     AlternativeSource,
     DateRange,
-    EntityMetadata,
+    FacetMetadata,
+    Node,
     ObservationApiResponse,
     ObservationPeriod,
     ObservationRequest,
     ObservationToolResponse,
     PlaceObservation,
-    ResolvedPlace,
-    Source,
 )
 from datacommons_mcp.data_models.search import (
     SearchMode,
@@ -54,7 +53,7 @@ async def _validate_and_build_request(
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
-    source_id_override: str | None = None,
+    source_override: str | None = None,
     period: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -71,14 +70,6 @@ async def _validate_and_build_request(
             "Both 'start_date' and 'end_date' are required for a date range."
         )
 
-    resolved_place_dcid = place_dcid
-    if not resolved_place_dcid:
-        # Resolve place name to a DCID
-        results = await client.search_places([place_name])
-        resolved_place_dcid = results.get(place_name)
-        if not resolved_place_dcid:
-            raise DataLookupError(f"No place found matching '{place_name}'.")
-
     # Determine the observation period and date filter
     date_filter = None
     observation_period = ObservationPeriod.LATEST
@@ -88,11 +79,19 @@ async def _validate_and_build_request(
         observation_period = ObservationPeriod.ALL
         date_filter = DateRange(start_date=start_date, end_date=end_date)
 
+    resolved_place_dcid = place_dcid
+    if not resolved_place_dcid:
+        # Resolve place name to a DCID
+        results = await client.search_places([place_name])
+        resolved_place_dcid = results.get(place_name)
+        if not resolved_place_dcid:
+            raise DataLookupError(f"No place found matching '{place_name}'.")
+
     return ObservationRequest(
         variable_dcid=variable_dcid,
         place_dcid=resolved_place_dcid,
         child_place_type=child_place_type,
-        source_ids=[source_id_override] if source_id_override else None,
+        source_ids=[source_override] if source_override else None,
         observation_period=observation_period,
         date_filter=date_filter,
     )
@@ -103,15 +102,11 @@ async def _fetch_all_metadata(
     variable_dcid: str,
     api_response: ObservationApiResponse,
     parent_place_dcid: str | None,
-) -> dict[str, EntityMetadata]:
+) -> dict[str, Node]:
     """Fetches and combines names and types for all entities into a single map."""
-    variable_data = (
-        api_response.byVariable.get(variable_dcid)
-        if api_response and api_response.byVariable
-        else None
-    )
+    variable_data = api_response.byVariable.get(variable_dcid) if api_response else None
     dcids_to_fetch = set()
-    if variable_data:
+    if variable_data and variable_data.byEntity:
         dcids_to_fetch.update(variable_data.byEntity.keys())
 
     if parent_place_dcid:
@@ -124,10 +119,10 @@ async def _fetch_all_metadata(
     names_task = client.fetch_entity_names(dcids_list)  # Now an awaitable coroutine
     types_task = client.fetch_entity_types(dcids_list)
     names_map, types_map = await asyncio.gather(names_task, types_task)
-
     metadata_map = {}
     for dcid in dcids_list:
-        metadata_map[dcid] = EntityMetadata(
+        metadata_map[dcid] = Node(
+            dcid=dcid,
             name=names_map.get(dcid, ""),
             type_of=types_map.get(dcid),
         )
@@ -136,7 +131,7 @@ async def _fetch_all_metadata(
 
 # Streamlined helper method for selecting the primary source
 def _select_primary_source(
-    variable_data: ByVariable, request: ObservationRequest
+    variable_data: ByVariable, request: ObservationRequest, source_override: str | None
 ) -> tuple[str | None, dict[str, int], dict[str, Any]]:
     """
     Selects the primary source and returns pre-processed data for each place.
@@ -146,52 +141,31 @@ def _select_primary_source(
     source_date_counts = defaultdict(int)
     source_latest_dates = defaultdict(lambda: datetime.min)
 
-    processed_data_by_place = {}
-
-    for place_dcid, place_data in variable_data.byEntity.items():
-        if not place_data.orderedFacets:
-            continue
-
-        best_facet = None
-        best_filtered_obs = []
+    # First pass: gather statistics for all available sources to rank them.
+    for place_data in variable_data.byEntity.values():
         for facet_data in place_data.orderedFacets:
+            source_id = facet_data.facetId
             filtered_obs = filter_by_date(facet_data.observations, request.date_filter)
-            if (
-                filtered_obs
-                and not best_facet
-                or len(filtered_obs) > len(best_filtered_obs)
-            ):
-                best_facet = facet_data
-                best_filtered_obs = filtered_obs
+            if filtered_obs:
+                source_place_counts[source_id] += 1
+                source_date_counts[source_id] += len(filtered_obs)
+                latest_date_str = max(o.date for o in filtered_obs)
+                latest_date = DateRange.get_standardized_date(latest_date_str)
+                if latest_date > source_latest_dates[source_id]:
+                    source_latest_dates[source_id] = latest_date
 
-        if best_facet:
-            processed_data_by_place[place_dcid] = {
-                "facet": best_facet,
-                "observations": best_filtered_obs,
-            }
-
-            source_id = best_facet.facetId
-            source_place_counts[source_id] += 1
-            source_date_counts[source_id] += len(best_filtered_obs)
-
-            latest_date_str = max(o.date for o in best_filtered_obs)
-            # TODO: handle non year-only dates
-            latest_date = datetime.strptime(latest_date_str, "%Y")
-            if latest_date > source_latest_dates[source_id]:
-                source_latest_dates[source_id] = latest_date
-
-    if not source_place_counts:
-        return None, {}, {}
-
-    primary_source = max(
-        source_place_counts.keys(),
-        key=lambda src_id: (
-            source_place_counts[src_id],
-            source_date_counts[src_id],
-            source_latest_dates[src_id],
-            src_id,  # Final deterministic tie-breaker
-        ),
-    )
+    if source_override and source_override in source_place_counts:
+        primary_source = source_override
+    else:
+        primary_source = max(
+            source_place_counts.keys(),
+            key=lambda src_id: (
+                source_place_counts[src_id],
+                source_date_counts[src_id],
+                source_latest_dates[src_id],
+                src_id,  # Final deterministic tie-breaker
+            ),
+        )
 
     alternative_source_counts = {
         src_id: count
@@ -199,94 +173,109 @@ def _select_primary_source(
         if src_id != primary_source
     }
 
+    # Second pass: build the processed data using only the primary source.
+    processed_data_by_place = {}
+    for place_dcid, place_data in variable_data.byEntity.items():
+        for facet_data in place_data.orderedFacets:
+            if facet_data.facetId == primary_source:
+                filtered_obs = filter_by_date(
+                    facet_data.observations, request.date_filter
+                )
+                if filtered_obs:
+                    processed_data_by_place[place_dcid] = {
+                        "facet": facet_data,
+                        "observations": filtered_obs,
+                    }
+                # Found the primary source for this place, no need to check others.
+                break
+
     return primary_source, alternative_source_counts, processed_data_by_place
 
 
 def _create_place_observation(
     obs_place_dcid: str,
     preprocessed_data: dict[str, Any],
-    metadata_map: dict[str, EntityMetadata],
-) -> PlaceObservation | None:
+    metadata_map: dict[str, Node],
+) -> PlaceObservation:
     """
     Builds a PlaceObservation model using pre-processed data.
     """
+    # Use the fully populated Node object from the metadata map.
+    place_node = metadata_map.get(obs_place_dcid, Node(dcid=obs_place_dcid))
     if not preprocessed_data:
-        return None
+        return PlaceObservation(
+            place=place_node,
+            time_series=[],
+        )
 
-    selected_facet = preprocessed_data["facet"]
     filtered_obs = preprocessed_data["observations"]
 
-    observations = [{o.date: o.value} for o in filtered_obs]
-
-    place_metadata = metadata_map.get(obs_place_dcid)
-    resolved_place = ResolvedPlace(
-        dcid=obs_place_dcid,
-        name=place_metadata.name if place_metadata else "",
-        place_type=(place_metadata.type_of or [None])[0] if place_metadata else None,
-    )
+    time_series = [(o.date, o.value) for o in filtered_obs]
 
     return PlaceObservation(
-        place=resolved_place,
-        source_id=selected_facet.facetId,
-        observations=observations,
+        place=place_node,
+        time_series=time_series,
     )
 
 
 async def _build_final_response(
     request: ObservationRequest,
     api_response: ObservationApiResponse,
-    metadata_map: dict[str, EntityMetadata],
+    metadata_map: dict[str, Node],
 ) -> ObservationToolResponse:
     """
     Builds the final ObservationToolResponse model from API data and metadata.
     """
     variable_data = api_response.byVariable.get(request.variable_dcid, ByVariable({}))
     primary_source_id, alternative_source_counts, processed_data_by_place = (
-        _select_primary_source(variable_data, request)
+        _select_primary_source(
+            variable_data, request, (request.source_ids or [None])[0]
+        )
     )
 
     primary_source = None
     if primary_source_id and primary_source_id in api_response.facets:
         facet_metadata = api_response.facets[primary_source_id]
-        primary_source = Source(source_id=primary_source_id, **facet_metadata.to_dict())
+        primary_source = FacetMetadata(
+            source_id=primary_source_id, **facet_metadata.to_dict()
+        )
 
     final_response = ObservationToolResponse(
         variable_dcid=request.variable_dcid,
         child_place_type=request.child_place_type,
-        source=primary_source,
+        source_metadata=primary_source
+        if primary_source
+        else FacetMetadata(source_id="unknown"),
     )
 
     if request.child_place_type:
         parent_metadata = metadata_map.get(request.place_dcid)
-        final_response.resolved_parent_place = ResolvedPlace(
-            dcid=request.place_dcid,
-            name=parent_metadata.name if parent_metadata else "",
-            place_type=(parent_metadata.type_of or [None])[0]
-            if parent_metadata
-            else None,
-        )
+        final_response.resolved_parent_place = parent_metadata
 
-    if processed_data_by_place:
-        for obs_place_dcid, preprocessed_data in processed_data_by_place.items():
-            place_observation = _create_place_observation(
-                obs_place_dcid=obs_place_dcid,
-                preprocessed_data=preprocessed_data,
-                metadata_map=metadata_map,
-            )
-            if place_observation:
-                final_response.observations_by_place.append(place_observation)
+    # Iterate over all places from the original API response to ensure all child
+    # places are included in the final result, even if they have no data from
+    # the primary source.
+    all_places_in_response = variable_data.byEntity.keys()
+    for obs_place_dcid in all_places_in_response:
+        preprocessed_data = processed_data_by_place.get(obs_place_dcid)
+        place_observation = _create_place_observation(
+            obs_place_dcid=obs_place_dcid,
+            preprocessed_data=preprocessed_data,
+            metadata_map=metadata_map,
+        )
+        final_response.place_observations.append(place_observation)
 
     for alt_source_id, count in alternative_source_counts.items():
         facet_metadata = api_response.facets.get(alt_source_id)
 
         # If there's only one place in the response, set count to None
-        num_places = count if len(processed_data_by_place) > 1 else None
+        place_count = count if len(processed_data_by_place) > 1 else None
 
         if facet_metadata:
             final_response.alternative_sources.append(
                 AlternativeSource(
                     source_id=alt_source_id,
-                    num_available_places=num_places,
+                    place_count=place_count,
                     **facet_metadata.to_dict(),
                 )
             )

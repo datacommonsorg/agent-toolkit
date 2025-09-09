@@ -24,25 +24,30 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.exceptions import (
     DataLookupError,
-    InvalidDateFormatError,
-    InvalidDateRangeError,
 )
 from datacommons_mcp.services import (
     _validate_and_build_request,
     get_observations,
     search_indicators,
 )
+from pydantic import ValidationError
 
 
 @pytest.mark.asyncio
-class TestObservationInputValidation:
+class TestGetObservations:
     @pytest.fixture
     def mock_client(self):
-        client = Mock(spec_set=DCClient)
-        client.search_places = AsyncMock()
-        return client
+        """
+        Provides a fresh, reset mock for each test method.
+        """
+        mock = Mock(spec_set=DCClient)
+        mock.search_places = AsyncMock()
+        mock.fetch_obs = AsyncMock()
+        mock.fetch_entity_names = AsyncMock()
+        mock.fetch_entity_types = AsyncMock()
+        return mock
 
-    async def test_validation_errors(self, mock_client):
+    async def test_input_validation_errors(self, mock_client):
         # Missing variable
         with pytest.raises(ValueError, match="'variable_dcid' must be specified."):
             await _validate_and_build_request(
@@ -53,9 +58,9 @@ class TestObservationInputValidation:
         with pytest.raises(
             ValueError, match="Specify either 'place_name' or 'place_dcid'"
         ):
-            await _validate_and_build_request(mock_client, variable_dcid="var1")
+            await _validate_and_build_request(client=mock_client, variable_dcid="var1")
 
-    async def test_date_validation(self, mock_client):
+    async def test_input_validation_date_validation(self, mock_client):
         # Incomplete date range
         with pytest.raises(
             ValueError, match="Both 'start_date' and 'end_date' are required"
@@ -65,48 +70,39 @@ class TestObservationInputValidation:
             )
 
         # Invalid date format
-        with pytest.raises(InvalidDateFormatError):
+        with pytest.raises(ValidationError):
             await _validate_and_build_request(
-                mock_client,
+                client=mock_client,
                 variable_dcid="var1",
                 place_name="USA",
-                start_date="2022-1",
+                start_date="2022-a",
                 end_date="2023",
             )
 
         # Invalid date range
-        with pytest.raises(InvalidDateRangeError):
+        with pytest.raises(ValidationError):
             await _validate_and_build_request(
-                mock_client,
+                client=mock_client,
                 variable_dcid="var1",
                 place_name="USA",
                 start_date="2023",
                 end_date="2022",
             )
 
-
-@pytest.mark.asyncio
-class TestObservationRequestBuilding:
-    @pytest.fixture
-    def mock_client(self):
-        client = Mock(spec_set=DCClient)
-        client.search_places = AsyncMock()
-        return client
-
-    async def test_with_dcids(self, mock_client):
+    async def test_request_building_with_dcids(self, mock_client):
         request = await _validate_and_build_request(
-            mock_client, variable_dcid="var1", place_dcid="country/USA"
+            client=mock_client, variable_dcid="var1", place_dcid="country/USA"
         )
         assert request.variable_dcid == "var1"
         assert request.place_dcid == "country/USA"
         assert request.observation_period == ObservationPeriod.LATEST
         mock_client.search_places.assert_not_called()
 
-    async def test_with_resolution_success(self, mock_client):
+    async def test_request_building_with_resolution_success(self, mock_client):
         mock_client.search_places.return_value = {"USA": "country/USA"}
 
         request = await _validate_and_build_request(
-            mock_client,
+            client=mock_client,
             variable_dcid="Count_Person",
             place_name="USA",
             start_date="2022",
@@ -120,24 +116,12 @@ class TestObservationRequestBuilding:
         assert request.date_filter.start_date == "2022-01-01"
         assert request.date_filter.end_date == "2023-12-31"
 
-    async def test_resolution_failure(self, mock_client):
+    async def test_request_building_resolution_failure(self, mock_client):
         mock_client.search_places.return_value = {}  # No place found
         with pytest.raises(DataLookupError, match="DataLookupError: No place found"):
             await _validate_and_build_request(
-                mock_client, variable_dcid="var1", place_name="invalid"
+                client=mock_client, variable_dcid="var1", place_name="invalid"
             )
-
-
-@pytest.mark.asyncio
-class TestObservationDataFetchingAndProcessing:
-    @pytest.fixture
-    def mock_client(self):
-        client = Mock(spec_set=DCClient)
-        client.search_places = AsyncMock()
-        client.fetch_obs = AsyncMock()
-        client.fetch_entity_names = AsyncMock()
-        client.fetch_entity_types = AsyncMock()
-        return client
 
     @pytest.fixture
     def mock_api_response(self):
@@ -179,13 +163,16 @@ class TestObservationDataFetchingAndProcessing:
         }
         return ObservationApiResponse.model_validate(api_response_data)
 
-    async def test_get_observations_e2e_single_place(self, mock_client):
+    async def test_data_fetching_and_processing_get_observations_e2e_single_place(
+        self, mock_client
+    ):
         """Test the full get_observations flow for a single place."""
         # Arrange
         # This mock response is specific to this test and only contains data for the requested place.
         single_place_api_response_data = {
             "byVariable": {
                 "var1": {
+                    "metadata": {},  # Ensure metadata is present
                     "byEntity": {
                         "country/USA": {
                             "orderedFacets": [
@@ -199,7 +186,7 @@ class TestObservationDataFetchingAndProcessing:
                                 }
                             ]
                         }
-                    }
+                    },
                 }
             },
             "facets": {"source1": {"importName": "Source One"}},
@@ -208,6 +195,7 @@ class TestObservationDataFetchingAndProcessing:
         mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
             single_place_api_response_data
         )
+
         mock_client.fetch_entity_names.return_value = {
             "country/USA": "United States",
             "country/CAN": "Canada",
@@ -247,8 +235,9 @@ class TestObservationDataFetchingAndProcessing:
         assert result.source_metadata.import_name == "Source One"
         assert len(result.alternative_sources) == 0  # No other sources for USA
 
-    @pytest.mark.asyncio
-    async def test_get_observations_e2e_child_places(self, mock_client):
+    async def test_data_fetching_and_processing_get_observations_e2e_child_places(
+        self, mock_client
+    ):
         """Test observation retrieval for child places of a parent."""
         # Arrange
         mock_client.search_places.return_value = {"California": "country/USA/state/CA"}
@@ -317,9 +306,65 @@ class TestObservationDataFetchingAndProcessing:
         # Assert
         assert result.resolved_parent_place.name == "California"
         assert result.child_place_type == "County"
+        # All 3 counties should be in the response
         assert len(result.place_observations) == 3
 
-    async def test_date_filtering_period_latest(self, mock_client):
+        # Check that the observations are correct
+        obs_by_dcid = {obs.place.dcid: obs for obs in result.place_observations}
+        # Alameda and LA have data from the primary source (source1)
+        assert len(obs_by_dcid["geoId/06001"].time_series) == 1
+        assert obs_by_dcid["geoId/06001"].time_series[0] == ("2022", 100.0)
+        assert len(obs_by_dcid["geoId/06037"].time_series) == 1
+        assert obs_by_dcid["geoId/06037"].time_series[0] == ("2022", 200.0)
+        # Santa Clara has no data from source1, so its time_series is empty
+        assert len(obs_by_dcid["geoId/06085"].time_series) == 0
+
+        # Check that source2 is listed as an alternative
+        assert len(result.alternative_sources) == 1
+        alt_source = result.alternative_sources[0]
+        assert alt_source.source_id == "source2"
+        assert alt_source.place_count == 1
+
+    async def test_data_fetching_unit_field(self, mock_client):
+        """Tests that period='latest' fetches only the latest observation."""
+        # Arrange
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            {
+                "byVariable": {
+                    "var1": {
+                        "metadata": {"unit": "USDollar"},
+                        "byEntity": {
+                            "country/USA": {
+                                "orderedFacets": [
+                                    {
+                                        "facetId": "source1",
+                                        "observations": [
+                                            {"date": "2022", "value": 30},
+                                        ],
+                                    }
+                                ]
+                            }
+                        },
+                    }
+                },
+                "facets": {"source1": {"importName": "Source One", "unit": "USDollar"}},
+            }
+        )
+        mock_client.fetch_entity_names.return_value = {"country/USA": "United States"}
+        mock_client.fetch_entity_types.return_value = {"country/USA": ["Country"]}
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="USA",
+        )
+
+        # Assert
+        assert result.source_metadata.unit == "USDollar"
+
+    async def test_data_fetching_date_filtering_period_latest(self, mock_client):
         """Tests that period='latest' fetches only the latest observation."""
         # Arrange
         mock_client.search_places.return_value = {"USA": "country/USA"}
@@ -332,10 +377,8 @@ class TestObservationDataFetchingAndProcessing:
                                 "orderedFacets": [
                                     {
                                         "facetId": "source1",
-                                        "observations": [
-                                            {"date": "2020", "value": 10},
+                                        "observations": [  # Only the latest observation is returned by the mock
                                             {"date": "2022", "value": 30},
-                                            {"date": "2021", "value": 20},
                                         ],
                                     }
                                 ]
@@ -369,21 +412,7 @@ class TestObservationDataFetchingAndProcessing:
             == ObservationPeriod.LATEST
         )
 
-
-@pytest.mark.asyncio
-class TestObservationSourceSelectionLogic:
-    @pytest.fixture
-    def mock_client(self):
-        client = Mock(spec_set=DCClient)
-        client.search_places = AsyncMock()
-        client.fetch_obs = AsyncMock()
-        client.fetch_entity_names = AsyncMock()
-        client.fetch_entity_types = AsyncMock()
-        return client
-
-        # Check primary source (source1 has more places)
-
-    async def test_primary_source_selection(self, mock_client):
+    async def test_source_selection_primary_source_selection(self, mock_client):
         """Tests that the source with data for the most places is chosen as primary."""
         # Arrange
         mock_client.search_places.return_value = {"California": "country/USA/state/CA"}
@@ -455,7 +484,7 @@ class TestObservationSourceSelectionLogic:
         assert alt_source.source_id == "source2"
         assert alt_source.place_count == 1
 
-    async def test_get_observations_single_place_with_alternative_source(
+    async def test_source_selection_single_place_with_alternative_source(
         self, mock_client
     ):
         """
@@ -509,7 +538,7 @@ class TestObservationSourceSelectionLogic:
         assert alt_source.source_id == "source2"
         assert alt_source.place_count is None
 
-    async def test_source_override(self, mock_client):
+    async def test_source_selection_source_override(self, mock_client):
         """Tests that source_override forces the use of a specific source."""
         # Arrange
         mock_client.search_places.return_value = {"USA": "country/USA"}
@@ -564,11 +593,13 @@ class TestObservationSourceSelectionLogic:
             ("2022-01", "2022-02", "source2"),  # YYYY-MM
             ("2022-02", "2022-01", "source1"),  # YYYY-MM
             ("2022-01-15", "2022-01-16", "source2"),  # YYYY-MM-DD
+            ("2022", "2022-06", "source2"),  # YYYY vs YYYY-MM
+            ("2022-06", "2022", "source1"),  # YYYY-MM vs YYYY
             ("2022-01-16", "2022-01-15", "source1"),  # YYYY-MM-DD
             ("2022-02", "2022-01-15", "source1"),  # Mixed Granularity
         ],
     )
-    async def test_primary_source_tiebreaker_by_latest_date(
+    async def test_source_selection_primary_source_tiebreaker_by_latest_date(
         self, mock_client, date1, date2, expected_primary_source
     ):
         """
@@ -632,7 +663,9 @@ class TestObservationSourceSelectionLogic:
         # Assert
         assert result.source_metadata.source_id == expected_primary_source
 
-    async def test_primary_source_tiebreaker_by_source_id(self, mock_client):
+    async def test_source_selection_primary_source_tiebreaker_by_source_id(
+        self, mock_client
+    ):
         """
         Tests that source_id is the final tie-breaker when all other metrics
         are equal.

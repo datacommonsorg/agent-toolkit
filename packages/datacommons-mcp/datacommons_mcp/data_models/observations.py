@@ -22,6 +22,7 @@ from datacommons_mcp.exceptions import (
     InvalidDateFormatError,
     InvalidDateRangeError,
 )
+from dateutil.parser import parse
 from pydantic import BaseModel, Field, model_validator
 
 # Wrapper to rename datacommons_client object to avoid confusion.
@@ -30,12 +31,28 @@ ObservationPeriod = ObservationDate
 # Wrapper to rename datacommons_client ObservationResponse to avoid confusion.
 ObservationApiResponse = ObservationResponse
 
+STANDARDIZED_DATE_FORMAT = "%Y-%m-%d"
+DEFAULT_DATE = datetime(1970, 1, 1)  # UTC start date
+
 
 class DateRange(BaseModel):
     "Accepted formats: YYYY or YYYY-MM or YYYY-MM-DD"
 
     start_date: str
     end_date: str
+
+    @staticmethod
+    def get_standardized_date(date_str: str) -> datetime:
+        try:
+            return datetime.fromisoformat(date_str)
+        except ValueError:
+            return parse(date_str, default=DEFAULT_DATE)
+
+    @staticmethod
+    def get_standardized_date_str(date_str: str) -> str:
+        return DateRange.get_standardized_date(date_str).strftime(
+            STANDARDIZED_DATE_FORMAT
+        )
 
     @staticmethod
     @lru_cache(maxsize=128)
@@ -81,7 +98,7 @@ class DateRange(BaseModel):
                 year, month, day = map(int, parts)
                 # This will raise ValueError for an invalid year, month, or day.
                 date_str = datetime(year=year, month=month, day=day).strftime(
-                    "%Y-%m-%d"
+                    STANDARDIZED_DATE_FORMAT
                 )
                 return date_str, date_str
 
@@ -125,13 +142,13 @@ class ObservationRequest(BaseModel):
     date_filter: DateRange | None = None
     child_place_type: str | None = None
 
-type Observation = tuple[str, float]
+Observation = tuple[str, float]
 
 
 class ToolResponseBaseModel(BaseModel):
     """A base model to configure all tool responses to exclude None values."""
 
-    model_config = {"ser_exclude_none": True}
+    model_config = {"ser_exclude_none": True, "populate_by_name": True}
 
 
 class Node(ToolResponseBaseModel):
@@ -142,7 +159,7 @@ class Node(ToolResponseBaseModel):
     type_of: list[str] | None = Field(default=None, alias="typeOf")
 
 
-class SourceMetadata(BaseModel):
+class FacetMetadata(BaseModel):
     """Represents the static metadata for a data source."""
 
     source_id: str
@@ -150,9 +167,9 @@ class SourceMetadata(BaseModel):
     measurement_method: str | None = Field(default=None, alias="measurementMethod")
     observation_period: str | None = Field(default=None, alias="observationPeriod")
     provenance_url: str | None = Field(default=None, alias="provenanceUrl")
+    unit: str | None = None
 
-
-class AlternativeSource(SourceMetadata):
+class AlternativeSource(FacetMetadata):
     """Represents metadata for an alternative data source."""
 
     place_count: int | None = Field(
@@ -202,6 +219,5 @@ class ObservationToolResponse(ToolResponseBaseModel):
         description="A list of observation data, with one entry per place.",
     )
 
-    source_metadata: SourceMetadata
+    source_metadata: FacetMetadata
     alternative_sources: list[AlternativeSource] = Field(default_factory=list)
-    unit: str | None = None
