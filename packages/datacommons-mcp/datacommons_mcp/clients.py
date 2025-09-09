@@ -356,14 +356,12 @@ class DCClient:
     async def fetch_indicators(
         self,
         query: str,
-        mode: SearchMode,
         place_dcids: list[str] = None,
+        include_topics: bool = True,
         max_results: int = 10,
     ) -> dict:
         """
         Search for indicators matching a query, optionally filtered by place existence.
-        When mode is SearchMode.LOOKUP, return variables only.
-        When mode is SearchMode.BROWSE, return both topics and variables.
         When place_dcids are specified, filter the results by place existence.
 
         Returns:
@@ -372,8 +370,12 @@ class DCClient:
         # Search for more results than we need to ensure we get enough topics and variables.
         # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
         max_search_results = max_results * 2
-        # Search for indicators - it returns topics and / or variables based on the mode.
-        search_results = await self._search_indicators(query, mode, max_search_results)
+        # Search for indicators - it returns topics and / or variables.
+        search_results = await self._search_indicators(
+            query=query,
+            include_topics=include_topics,
+            max_results=max_search_results,
+        )
 
         # Separate topics and variables
         topics = search_results.get("topics", [])
@@ -441,21 +443,20 @@ class DCClient:
         }
 
     async def _search_indicators(
-        self, query: str, mode: SearchMode, max_results: int = 10
+        self, query: str, include_topics: bool = True, max_results: int = 10
     ) -> dict:
         """
         Search for topics and variables using search_svs.
-        When mode is SearchMode.LOOKUP, expand topics to variables.
         """
-        logger.info(f"Searching for indicators with query: {query} and mode: {mode}")
+        logger.info(f"Searching for indicators with query: {query}")
         search_results = await self.search_svs(
-            [query], skip_topics=False, max_results=max_results
+            [query], skip_topics=not include_topics, max_results=max_results
         )
         results = search_results.get(query, [])
 
         topics = []
         variables = []
-        # Track variables to avoid duplicates when expanding topics to variables in lookup mode.
+        # Track variables to avoid duplicates when expanding topics to variables.
         variable_set: set[str] = set()
 
         for result in results:
@@ -467,12 +468,10 @@ class DCClient:
             if "/topic/" in sv_dcid:
                 # Only include topics that exist in the topic store
                 if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
-                    # In lookup mode, expand topics to variables.
-                    if mode == SearchMode.LOOKUP:
-                        for variable in self.topic_store.get_topic_variables(sv_dcid):
-                            if variable not in variable_set:
-                                variables.append(variable)
-                                variable_set.add(variable)
+                    for variable in self.topic_store.get_topic_variables(sv_dcid):
+                        if variable not in variable_set:
+                            variables.append(variable)
+                            variable_set.add(variable)
                     else:
                         topics.append(sv_dcid)
             else:
