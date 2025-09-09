@@ -446,7 +446,7 @@ async def search_indicators(
         **If `include_topics = False`**: Returns only variables
 
     **Processing the Response:**
-    * **Topics**: Collections of variables and sub-topics (browse mode only). Use the dcid_name_mappings to get readable names.
+    * **Topics**: Collections of variables and sub-topics. Use the dcid_name_mappings to get readable names.
     * **Variables**: Individual data indicators. Use the dcid_name_mappings to get readable names.
     * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
     * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
