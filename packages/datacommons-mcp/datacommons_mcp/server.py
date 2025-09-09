@@ -43,6 +43,8 @@ from datacommons_mcp.data_models.search import (
 )
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
+)
+from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
 
@@ -206,7 +208,7 @@ async def validate_child_place_types(
     return dict(zip(child_place_types, results, strict=False))
 
 
-@mcp.tool()
+# TODO(clincoln8): Add to optional visualization toolset
 async def get_datacommons_chart_config(
     chart_type: str,
     chart_title: str,
