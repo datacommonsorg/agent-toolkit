@@ -124,14 +124,14 @@ async def get_observations(
 async def search_indicators(
     client: DCClient,
     query: str,
-    mode: SearchModeType | None = None,
     places: list[str] | None = None,
+    include_topics: bool = True,
     maybe_bilateral: bool = False,
     per_search_limit: int = 10,
 ) -> SearchResponse:
-    """Search for topics and/or variables based on mode."""
-    # Validate parameters and convert mode to enum
-    search_mode = _validate_search_parameters(mode, per_search_limit)
+    """Search for topics and/or variables."""
+    # Validate parameters
+    _validate_search_parameters(per_search_limit)
 
     # Resolve place names to DCIDs
     place_dcids_map = await _resolve_places(client, places)
@@ -140,7 +140,10 @@ async def search_indicators(
     search_tasks = _create_search_tasks(query, places, maybe_bilateral, place_dcids_map)
 
     search_result = await _search_indicators(
-        client, search_mode, search_tasks, per_search_limit
+        client=client,
+        include_topics=include_topics,
+        search_tasks=search_tasks,
+        per_search_limit=per_search_limit,
     )
 
     # Collect all DCIDs for lookups
@@ -207,37 +210,19 @@ def _create_search_tasks(
 
 
 def _validate_search_parameters(
-    mode: SearchModeType | None,
     per_search_limit: int,
-) -> SearchMode:
-    """Validate search parameters and convert mode to enum.
+) -> None:
+    """Validate search parameters
 
     Args:
-        mode: Search mode string or None
         per_search_limit: Maximum results per search
-
-    Returns:
-        SearchMode enum value
 
     Raises:
         ValueError: If any parameter validation fails
     """
-    # Convert string mode to enum for validation and comparison, defaulting to browse if not specified
-    if not mode:
-        search_mode = SearchMode.BROWSE
-    else:
-        try:
-            search_mode = SearchMode(mode)
-        except ValueError as e:
-            raise ValueError(
-                f"mode must be either '{SearchMode.BROWSE.value}' or '{SearchMode.LOOKUP.value}'"
-            ) from e
-
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
         raise ValueError("per_search_limit must be between 1 and 100")
-
-    return search_mode
 
 
 async def _resolve_places(
@@ -300,8 +285,8 @@ def _collect_all_dcids(
 
 async def _search_indicators(
     client: DCClient,
-    mode: SearchMode,
     search_tasks: list[SearchTask],
+    include_topics: bool,
     per_search_limit: int = 10,
 ) -> SearchResult:
     """Search for indicators matching a query, optionally filtered by place existence.
@@ -314,8 +299,8 @@ async def _search_indicators(
     for search_task in search_tasks:
         task = client.fetch_indicators(
             query=search_task.query,
-            mode=mode,
             place_dcids=search_task.place_dcids,
+            include_topics=include_topics,
             max_results=per_search_limit,
         )
         tasks.append(task)
