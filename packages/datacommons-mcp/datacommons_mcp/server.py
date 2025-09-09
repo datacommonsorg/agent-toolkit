@@ -390,8 +390,7 @@ async def search_indicators(
         - between multiple places like "trade exports from USA, Germany and UK to France":
           + Call with `query="trade exports"`, `places=["USA", "Germany", "UK", "France"]`, and `maybe_bilateral=True`
         - The tool will match indicators and perform existence checks for the specified places
-        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while
-          the other place (e.g., "USA", "Germany", "UK") is where we have observations
+        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA", "Germany", "UK") is where we have observations
         - Use `places_with_data` to identify which place has observations
 
     * **For child entity sampling** like "population of Indian states":
@@ -409,14 +408,13 @@ async def search_indicators(
 
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
-            Examples: "health grants", "carbon emissions", "unemployment rate", "share of government spending on health"
+            Examples: "health grants", "carbon emissions", "unemployment rate"
         places (list[str], optional): List of place names for filtering and existence checks.
             Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
         include_topics (bool, optional): Whether to search for Topics (collections of variables) or
             just variables. Default: True
         maybe_bilateral (bool, optional): Whether this query could represent bilateral relationships.
-            Set to True for queries which may involve more than one entity/place (e.g., `to` or `from`
-            like trade between countries, aid to a country, loans from an entity to another)
+            Set to True for queries that could be bilateral (e.g., "trade exports to france").
             Set to False for queries about properties of places (e.g., "population of france").
             Default: False
         per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
