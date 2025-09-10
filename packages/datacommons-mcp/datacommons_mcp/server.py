@@ -39,8 +39,6 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.data_models.search import (
     SearchResponse,
-    SearchTopic,
-    SearchVariable,
 )
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
