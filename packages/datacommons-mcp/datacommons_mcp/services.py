@@ -88,7 +88,6 @@ async def _validate_and_build_request(
         resolved_place_dcid = results.get(place_name)
         if not resolved_place_dcid:
             raise DataLookupError(f"No place found matching '{place_name}'.")
-    logger.error(date_filter)
     return ObservationRequest(
         variable_dcid=variable_dcid,
         place_dcid=resolved_place_dcid,
