@@ -16,6 +16,7 @@ Clients module for interacting with Data Commons instances.
 Provides classes for managing connections to both base and custom Data Commons instances.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -23,6 +24,7 @@ import re
 import requests
 from datacommons_client.client import DataCommonsClient
 
+from datacommons_mcp._constrained_vars import place_statvar_constraint_mapping
 from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
@@ -49,6 +51,7 @@ class DCClient:
         custom_index: str | None = None,
         sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
+        _place_like_constraints: list[str] | None = None,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -60,6 +63,9 @@ class DCClient:
             custom_index: Index to use for custom DC searches (None for base DC)
             sv_search_base_url: Base URL for SV search endpoint
             topic_store: Optional TopicStore for caching
+
+            # TODO(@jm-rivera): Remove this parameter once new endpoint is live.
+            _place_like_constraints: Optional list of place-like constraints
         """
         self.dc = dc
         self.search_scope = search_scope
@@ -73,6 +79,11 @@ class DCClient:
         if topic_store is None:
             topic_store = TopicStore(topics_by_dcid={}, all_variables=set())
         self.topic_store = topic_store
+
+        if _place_like_constraints:
+            self._compute_place_like_statvar_store(constraints=_place_like_constraints)
+        else:
+            self._place_like_statvar_store = dict()
 
     def _compute_search_indices(self) -> list[str]:
         """Compute and validate search indices based on the configured search_scope.
@@ -94,6 +105,14 @@ class DCClient:
             indices.append(self.base_index)
 
         return indices
+
+    def _compute_place_like_statvar_store(self, constraints: list[str]):
+        """Compute and cache place-like to statistical variable mappings.
+        # TODO (@jm-rivera): Remove once new endpoint is live.
+        """
+        self._place_like_statvar_store = place_statvar_constraint_mapping(
+            client=self.dc, place_like_constraints=constraints
+        )
 
     async def fetch_obs(self, request: ObservationRequest) -> ObservationApiResponse:
         # Get the raw API response
@@ -199,14 +218,12 @@ class DCClient:
     async def fetch_indicators(
         self,
         query: str,
-        mode: SearchMode,
         place_dcids: list[str] = None,
+        include_topics: bool = True,
         max_results: int = 10,
     ) -> dict:
         """
         Search for indicators matching a query, optionally filtered by place existence.
-        When mode is SearchMode.LOOKUP, return variables only.
-        When mode is SearchMode.BROWSE, return both topics and variables.
         When place_dcids are specified, filter the results by place existence.
 
         Returns:
@@ -215,8 +232,12 @@ class DCClient:
         # Search for more results than we need to ensure we get enough topics and variables.
         # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
         max_search_results = max_results * 2
-        # Search for indicators - it returns topics and / or variables based on the mode.
-        search_results = await self._search_indicators(query, mode, max_search_results)
+        # Search for indicators - it returns topics and / or variables.
+        search_results = await self._search_indicators(
+            query=query,
+            include_topics=include_topics,
+            max_results=max_search_results,
+        )
 
         # Separate topics and variables
         topics = search_results.get("topics", [])
@@ -224,9 +245,13 @@ class DCClient:
 
         # Apply existence filtering if places are specified
         if place_dcids:
-            # Ensure place variables are cached for all places
-            for place_dcid in place_dcids:
-                self._ensure_place_variables_cached(place_dcid)
+            # Ensure place variables are cached for all places in parallel
+            await asyncio.gather(
+                *(
+                    asyncio.to_thread(self._ensure_place_variables_cached, place_dcid)
+                    for place_dcid in place_dcids
+                )
+            )
 
             # Filter topics and variables by existence (OR logic)
             topics = self._filter_topics_by_existence(topics, place_dcids)
@@ -280,21 +305,20 @@ class DCClient:
         }
 
     async def _search_indicators(
-        self, query: str, mode: SearchMode, max_results: int = 10
+        self, query: str, include_topics: bool = True, max_results: int = 10
     ) -> dict:
         """
         Search for topics and variables using search_svs.
-        When mode is SearchMode.LOOKUP, expand topics to variables.
         """
-        logger.info("Searching for indicators with query: %s and mode: %s", query, mode)
+        logger.info(f"Searching for indicators with query: {query}")
         search_results = await self.search_svs(
-            [query], skip_topics=False, max_results=max_results
+            [query], skip_topics=not include_topics, max_results=max_results
         )
         results = search_results.get(query, [])
 
         topics = []
         variables = []
-        # Track variables to avoid duplicates when expanding topics to variables in lookup mode.
+        # Track variables to avoid duplicates when expanding topics to variables.
         variable_set: set[str] = set()
 
         for result in results:
@@ -306,8 +330,8 @@ class DCClient:
             if "/topic/" in sv_dcid:
                 # Only include topics that exist in the topic store
                 if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
-                    # In lookup mode, expand topics to variables.
-                    if mode == SearchMode.LOOKUP:
+                    # If topics are not included, expand topics to variables.
+                    if not include_topics:
                         for variable in self.topic_store.get_topic_variables(sv_dcid):
                             if variable not in variable_set:
                                 variables.append(variable)
@@ -349,7 +373,10 @@ class DCClient:
         for var in variable_dcids:
             places_with_data = []
             for place_dcid in place_dcids:
-                place_variables = self.variable_cache.get(place_dcid)
+                # TODO (@jm-rivera): Remove place-like check once new search endpoint is live.
+                place_variables = self.variable_cache.get(
+                    place_dcid
+                ) | self._place_like_statvar_store.get(place_dcid, set())
                 if place_variables is not None and var in place_variables:
                     places_with_data.append(place_dcid)
 
@@ -418,7 +445,10 @@ class DCClient:
 
         # Check direct variables
         for place_dcid in place_dcids:
-            place_variables = self.variable_cache.get(place_dcid)
+            # TODO (@jm-rivera): Remove place-like check once new search endpoint is live.
+            place_variables = self.variable_cache.get(
+                place_dcid
+            ) | self._place_like_statvar_store.get(place_dcid, set())
             if place_variables is not None:
                 matching_vars = [
                     var for var in topic_data.variables if var in place_variables
@@ -559,4 +589,6 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         custom_index=settings.custom_index,
         sv_search_base_url=settings.custom_dc_url,  # Use custom_dc_url as sv_search_base_url
         topic_store=topic_store,
+        # TODO (@jm-rivera): Remove place-like parameter new search endpoint is live.
+        _place_like_constraints=settings.place_like_constraints,
     )
