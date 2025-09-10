@@ -78,6 +78,7 @@ class ObservationDate(BaseModel):
         except ValueError as e:
             raise InvalidDateFormatError(f"for date '{date_str}': {e}") from e
 
+
 class DateRange(BaseModel):
     "Accepted formats: YYYY or YYYY-MM or YYYY-MM-DD"
 
