@@ -805,6 +805,7 @@ class TestGetObservations:
         # Assert
         assert result.source_metadata.source_id == expected_primary_source
 
+
 @pytest.mark.asyncio
 class TestSearchIndicators:
     """Tests for the search_indicators service function."""

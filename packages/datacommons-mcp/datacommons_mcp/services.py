@@ -138,6 +138,7 @@ async def _fetch_all_metadata(
         )
     return metadata_map
 
+
 # Streamlined helper method for selecting the primary source
 def _process_sources_and_filter_observations(
     variable_data: ByVariable, request: ObservationRequest, source_override: str | None
