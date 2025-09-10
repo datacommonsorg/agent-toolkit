@@ -138,7 +138,6 @@ async def _fetch_all_metadata(
         )
     return metadata_map
 
-
 # Streamlined helper method for selecting the primary source
 def _process_sources_and_filter_observations(
     variable_data: ByVariable, request: ObservationRequest, source_override: str | None
@@ -175,16 +174,20 @@ def _process_sources_and_filter_observations(
     source_place_counts = defaultdict(int)
     source_date_counts = defaultdict(int)
     source_latest_dates = defaultdict(lambda: datetime.min)
+    source_indices = defaultdict(list)
 
     # First pass: gather statistics for all available sources to rank them.
     for place_data in variable_data.byEntity.values():
-        for facet_data in place_data.orderedFacets:
+        for i, facet_data in enumerate(place_data.orderedFacets):
             source_id = facet_data.facetId
             filtered_obs = filter_by_date(facet_data.observations, request.date_filter)
             if filtered_obs:
                 source_place_counts[source_id] += 1
                 source_date_counts[source_id] += len(filtered_obs)
                 latest_date_str = max(o.date for o in filtered_obs)
+                # Store the index to calculate average rank later. Lower is better.
+                source_indices[source_id].append(i)
+
                 latest_date = DateRange.get_standardized_date(latest_date_str)
                 if latest_date > source_latest_dates[source_id]:
                     source_latest_dates[source_id] = latest_date
@@ -192,13 +195,23 @@ def _process_sources_and_filter_observations(
     if not source_place_counts:
         return SourceProcessingResult()
 
+    # Calculate the average index for each source. A lower average is better.
+    source_avg_indices = {
+        src_id: sum(indices) / len(indices)
+        for src_id, indices in source_indices.items()
+    }
+
     primary_source = max(
         source_place_counts.keys(),
         key=lambda src_id: (
             source_place_counts[src_id],
             source_date_counts[src_id],
             source_latest_dates[src_id],
-            src_id,  # Final deterministic tie-breaker
+            # Lower index in the original OrderedFacets list is better, so we
+            # negate it.
+            -source_avg_indices.get(src_id, float("inf")),
+            # Final tie-breaker
+            src_id,
         ),
     )
 

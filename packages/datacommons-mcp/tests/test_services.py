@@ -600,6 +600,135 @@ class TestGetObservations:
         # No alternatives should be listed when a source is selected
         assert len(result.alternative_sources) == 0
 
+    async def test_source_selection_tiebreaker_by_facet_order(self, mock_client):
+        """
+        Tests that the average index in orderedFacets is used as a tie-breaker.
+        Source2 should be chosen because it appears earlier on average.
+        """
+        # Arrange
+        # source1 appears at indices 1 and 1 (avg: 1)
+        # source2 appears at indices 0 and 0 (avg: 0)
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "place1": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 1}],
+                                },
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 2}],
+                                },
+                            ]
+                        },
+                        "place2": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 3}],
+                                },
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 4}],
+                                },
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {
+            "place1": "Place One",
+            "place2": "Place Two",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "place1": ["City"],
+            "place2": ["City"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client, variable_dcid="var1", place_dcid="any"
+        )
+
+        # Assert
+        assert result.source_metadata.source_id == "source2"
+
+    async def test_source_selection_tiebreaker_by_source_id(self, mock_client):
+        """
+        Tests that the source_id is used as a final tie-breaker.
+        Source1 should be chosen because it is alphabetically greater.
+        """
+        # Arrange
+        # source1 appears at indices 0 and 1 (avg: 0.5)
+        # source2 appears at indices 1 and 0 (avg: 0.5)
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "place1": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 1}],
+                                },
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 2}],
+                                },
+                            ]
+                        },
+                        "place2": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 3}],
+                                },
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 4}],
+                                },
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {
+            "place1": "Place One",
+            "place2": "Place Two",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "place1": ["City"],
+            "place2": ["City"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client, variable_dcid="var1", place_dcid="any"
+        )
+
+        # Assert
+        # Both have same avg rank (0.5), but source2 is alphabetically greater, so max() chooses it.
+        assert result.source_metadata.source_id == "source2"
+
     @pytest.mark.parametrize(
         ("date1", "date2", "expected_primary_source"),
         [
@@ -675,54 +804,6 @@ class TestGetObservations:
 
         # Assert
         assert result.source_metadata.source_id == expected_primary_source
-
-    async def test_source_selection_primary_source_tiebreaker_by_source_id(
-        self, mock_client
-    ):
-        """
-        Tests that source_id is the final tie-breaker when all other metrics
-        are equal.
-        """
-        # Arrange: Everything is identical except the source ID.
-        api_response_data = {
-            "byVariable": {
-                "var1": {
-                    "byEntity": {
-                        "geoId/01": {
-                            "orderedFacets": [
-                                {
-                                    "facetId": "sourceA",
-                                    "observations": [{"date": "2022", "value": 100}],
-                                }
-                            ]
-                        },
-                        "geoId/02": {
-                            "orderedFacets": [
-                                {
-                                    "facetId": "sourceB",
-                                    "observations": [{"date": "2022", "value": 100}],
-                                }
-                            ]
-                        },
-                    }
-                }
-            },
-            "facets": {"sourceA": {}, "sourceB": {}},
-        }
-        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
-            api_response_data
-        )
-        mock_client.fetch_entity_names.return_value = {}
-        mock_client.fetch_entity_types.return_value = {}
-
-        # Act
-        result = await get_observations(
-            client=mock_client, variable_dcid="var1", place_dcid="any"
-        )
-
-        # Assert: max() on strings "sourceA", "sourceB" will choose "sourceB"
-        assert result.source_metadata.source_id == "sourceB"
-
 
 @pytest.mark.asyncio
 class TestSearchIndicators:
