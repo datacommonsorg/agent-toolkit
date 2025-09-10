@@ -1,8 +1,20 @@
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from datacommons_client import DataCommonsClient
 
-def _fetch_statvar_constraints(client, place_like_constraints: list[str]) -> dict:
+
+def _fetch_statvar_constraints(client:DataCommonsClient, place_like_constraints: list[str]) -> dict:
+    """Return {constraint_property: [statvar_dcid, ...]}.
+
+    Args:
+        client: DataCommonsClient.
+        place_like_constraints: List of constraint property names
+        (e.g., ["lendingEntity", "DevelopmentFinanceRecipient"]).
+
+    Returns:
+        Mapping of constraint property names to lists of statvar DCIDs.
+    """
     if not place_like_constraints:
         return {}
 
@@ -17,7 +29,7 @@ def _fetch_statvar_constraints(client, place_like_constraints: list[str]) -> dic
 
 
 def _extract_place_like(
-    client,
+    client: DataCommonsClient,
     nodes: list[str],
     constraint: str,
 ) -> dict[str, list[str]]:
@@ -41,6 +53,7 @@ def _extract_place_like(
 
 
 def _merge_dicts(dicts: list[dict]) -> dict[str, set[str]]:
+    """Merge list of dicts via set union of values."""
     merged: dict[str, set[str]] = defaultdict(set)
     for d in dicts:
         for k, vs in d.items():
@@ -49,11 +62,11 @@ def _merge_dicts(dicts: list[dict]) -> dict[str, set[str]]:
 
 
 def place_statvar_constraint_mapping(
-    client,
+    client: DataCommonsClient,
     place_like_constraints: list[str],
     *,
     max_workers: int | None = None,
-) -> dict[str, list[str]]:
+) -> dict[str, set[str]]:
     """Build {place_dcid: [statvar_dcid, ...]} across constraints concurrently.
 
       1) For each constraint, find statvars that reference it.
