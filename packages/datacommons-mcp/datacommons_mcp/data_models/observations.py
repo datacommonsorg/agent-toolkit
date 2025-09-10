@@ -176,7 +176,7 @@ class ObservationRequest(BaseModel):
     child_place_type: str | None = None
 
 
-Observation = tuple[str, float]
+Observation = tuple[str, float]  # [date, value]
 
 
 class ToolResponseBaseModel(BaseModel):
@@ -237,7 +237,10 @@ class PlaceObservation(ToolResponseBaseModel):
     """Contains all observation data for a single place."""
 
     place: Node
-    time_series: list[Observation] = Field(default_factory=list)
+    time_series: list[Observation] = Field(
+        default_factory=list,
+        description="List of observation tuples with the format (date, value)",
+    )
 
 
 class ObservationToolResponse(ToolResponseBaseModel):
@@ -260,17 +263,20 @@ class ObservationToolResponse(ToolResponseBaseModel):
     child_place_type: str | None = Field(
         default=None,
         description=(
-            "The common place type for all observations in the response (e.g.,"
-            " 'State', 'County'). This is used when all returned places are of the"
-            " same type to avoid repetition. If places are of mixed types, this will"
-            " be null and the type will be specified in each `PlaceObservation`."
+            "The common place type for all observations in the response (e.g., 'State', 'County'). "
+            "This is present when a hierarchical query was made."
         ),
     )
 
     place_observations: list[PlaceObservation] = Field(
         default_factory=list,
-        description="A list of observation data, with one entry per place.",
+        description="A list of observation data, with one entry per place. This list may be empty if no data is found.",
     )
 
-    source_metadata: FacetMetadata
-    alternative_sources: list[AlternativeSource] = Field(default_factory=list)
+    source_metadata: FacetMetadata = Field(
+        description="Information about the primary data source used for the observations."
+    )
+    alternative_sources: list[AlternativeSource] = Field(
+        default_factory=list,
+        description="A list of other available data sources for the same variable and places.",
+    )

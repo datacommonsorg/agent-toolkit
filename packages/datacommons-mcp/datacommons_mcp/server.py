@@ -67,15 +67,17 @@ except Exception as e:
 mcp = FastMCP("DC MCP Server")
 
 
-@mcp.tool()
+@mcp.tool(
+    tags=["data"],
+)
 async def get_observations(
     variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    date: ObservationDateType | str | None = None,
-    date_range_start: str = "latest",
+    date: str = ObservationDateType.LATEST,
+    date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> ObservationToolResponse:
     """Fetches observations for a statistical variable from Data Commons.
@@ -128,15 +130,14 @@ async def get_observations(
       date_range_end (str, optional): The end date for a custom range. **Used only if `date` is set to'range'.**
 
     Returns:
-
-      **How to Process the Response:** The tool returns a structured object with the following key fields:
-      - `variable_dcid` and `variable_name`: Identifiers for the statistical variable.
-      - `resolved_parent_place`: If you requested data for child places, this object confirms which parent place was used.
-      - `observations_by_place`: A list where each item represents a single place and its data.
-        - Each item contains the `place`'s DCID and name.
-        - The `primary_series` object holds the main data points in its `observations` list. Each observation has a `date` and a `value`.
-        - `alternative_series_metadata`: A list of other available data sources for that place, which you can use to call the tool again with `source_override`.
-      - `source_info`: A top-level list containing detailed information about each data source, which can be looked up by the `source_id` from a data series.
+        ObservationToolResponse: A Pydantic model containing the fetched observation data.
+        The response includes:
+        - `variable_dcid`: The statistical variable requested.
+        - `place_observations`: A list of observations, one entry per place. Each entry contains:
+            - `place`: Details about the observed place (DCID, name, type).
+            - `time_series`: A list of `(date, value)` tuples, where `date` is a string (e.g., "2022-01-01") and `value` is a float.
+        - `source_metadata`: Information about the primary data source used.
+        - `alternative_sources`: Details about other available data sources.
 
     """
     # Handle the case where date is an Enum member
@@ -155,7 +156,7 @@ async def get_observations(
     )
 
 
-@mcp.tool()
+@mcp.tool(tags=["data"])
 async def validate_child_place_types(
     parent_place_name: str, child_place_types: list[str]
 ) -> dict[str, bool]:

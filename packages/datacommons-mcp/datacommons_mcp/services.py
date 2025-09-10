@@ -74,7 +74,7 @@ async def _validate_and_build_request(
         date_filter = None
         date_request_type = parsed_date.date
     else:
-        date_filter = DateRange.parse_interval(parsed_date.date)
+        date_filter = DateRange(start_date=parsed_date.date, end_date=parsed_date.date)
         date_request_type = ObservationDateType.ALL
 
     if parsed_date.date != ObservationDateType.RANGE and (
@@ -89,7 +89,7 @@ async def _validate_and_build_request(
         resolved_place_dcid = results.get(place_name)
         if not resolved_place_dcid:
             raise DataLookupError(f"No place found matching '{place_name}'.")
-
+    logger.error(date_filter)
     return ObservationRequest(
         variable_dcid=variable_dcid,
         place_dcid=resolved_place_dcid,
