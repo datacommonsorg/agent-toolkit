@@ -20,7 +20,6 @@ import asyncio
 import json
 import logging
 import re
-from typing import Optional
 
 import requests
 from datacommons_client.client import DataCommonsClient
@@ -44,7 +43,9 @@ from datacommons_mcp.data_models.settings import (
     DCSettings,
 )
 from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
-from datacommons_mcp.utils import filter_by_date, merge_dicts
+from datacommons_mcp.utils import filter_by_date
+
+from datacommons_mcp._constrained_vars import place_statvar_constraint_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class DCClient:
         custom_index: str | None = None,
         sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
-        _place_like_constraints: Optional[list[str]] = None,
+        _place_like_constraints: list[str] | None = None,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -117,16 +118,9 @@ class DCClient:
         """Compute and cache place-like to statistical variable mappings.
         # TODO (@jm-rivera): Remove once new endpoint is live.
         """
-        places_statvars: list[dict[str, list[str]]] = []
-        for constraint in constraints:
-            places_statvars.append(
-                _place_statvar_constraint_mapping(
-                    client=self.dc, place_like_constraint=constraint
-                )
-            )
-
-        # Merge all mappings into a single dictionary
-        self._place_like_statvar_store = merge_dicts(places_statvars)
+        self._place_like_statvar_store = place_statvar_constraint_mapping(
+            client=self.dc, place_like_constraints=constraints
+        )
 
     async def fetch_obs(
         self, request: ObservationToolRequest
@@ -754,37 +748,3 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         # TODO (@jm-rivera): Remove place-like parameter new search endpoint is live.
         _place_like_constraints=settings.place_like_constraints,
     )
-
-
-def _place_statvar_constraint_mapping(
-    client: DataCommonsClient, place_like_constraint: str
-) -> dict[str, list[str]]:
-    """
-    Given a place-like constraint (e.g., "country", "state"), returns a mapping
-    from place-like DCIDs to lists of statistical variable DCIDs that have that
-    constraint.
-
-    # TODO (@jm-rivera): Remove once new endpoint is live.
-    """
-    # Get all the nodes which have the given place_like_constraint
-    statvars = client.node.fetch(
-        node_dcids=place_like_constraint, expression="<-constraintProperties"
-    ).get_properties()[place_like_constraint]["constraintProperties"]
-
-    # Extract all the DCDIDs from the nodes
-    dcids = [r.dcid for r in statvars if r.dcid]
-
-    # Get the values for the given place_like_constraint for all the nodes
-    property_nodes = client.node.fetch_property_values(
-        node_dcids=dcids, properties=[place_like_constraint]
-    ).get_properties()
-
-    result = {}
-
-    for dcid, node in property_nodes.items():
-        entity = node[place_like_constraint]
-        if not entity:
-            continue
-        result.setdefault(entity[0].dcid, []).append(dcid)
-
-    return result

@@ -98,8 +98,6 @@ class TestCustomSettings:
             assert settings.base_index == "medium_ft"
             assert settings.custom_index == "user_all_minilm_mem"
             assert settings.root_topic_dcids is None
-            # TODO (@jm-rivera): Remove once new endpoint is live.
-            assert settings.place_like_constraints is None
 
     def test_loads_with_env_var_overrides(self, isolated_env):
         """Tests that environment variables override defaults for CustomDCSettings."""
@@ -111,8 +109,6 @@ class TestCustomSettings:
             "DC_BASE_INDEX": "custom_base",
             "DC_CUSTOM_INDEX": "custom_custom",
             "DC_ROOT_TOPIC_DCIDS": "topic1, topic2",
-            # TODO (@jm-rivera): Remove once new endpoint is live.
-            "PLACE_LIKE_CONSTRAINTS": "prop/containedInPlace, prop/overlapsWith",
         }
         with isolated_env(env_vars):
             settings = get_dc_settings()
@@ -122,41 +118,12 @@ class TestCustomSettings:
             assert settings.base_index == "custom_base"
             assert settings.custom_index == "custom_custom"
             assert settings.root_topic_dcids == ["topic1", "topic2"]
-            # TODO (@jm-rivera): Remove once new endpoint is live.
-            assert settings.place_like_constraints == [
-                "prop/containedInPlace",
-                "prop/overlapsWith",
-            ]
 
     def test_missing_custom_url_raises_error(self, isolated_env):
         """Tests that a ValueError is raised for custom type without CUSTOM_DC_URL."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "custom"}
         with isolated_env(env_vars), pytest.raises(ValueError, match="CUSTOM_DC_URL"):
             get_dc_settings()
-
-    def test_place_like_constraints_parsing_empty_and_whitespace(self, isolated_env):
-        """PLACE_LIKE_CONSTRAINTS empty string becomes None; whitespace trimmed and empties dropped.
-        # TODO (@jm-rivera): Remove once new endpoint is live.
-        """
-        env_vars = {
-            "DC_API_KEY": "test_key",
-            "DC_TYPE": "custom",
-            "CUSTOM_DC_URL": "https://test.com",
-            "PLACE_LIKE_CONSTRAINTS": "  ,  ",
-        }
-        with isolated_env(env_vars):
-            settings = get_dc_settings()
-            assert not settings.place_like_constraints
-
-        env_vars = {
-            "DC_API_KEY": "test_key",
-            "DC_TYPE": "custom",
-            "CUSTOM_DC_URL": "https://test.com",
-            "PLACE_LIKE_CONSTRAINTS": " prop/a , ,prop/b ",
-        }
-        with isolated_env(env_vars):
-            settings = get_dc_settings()
-            assert settings.place_like_constraints == ["prop/a", "prop/b"]
 
 
 class TestSettingsValidation:
