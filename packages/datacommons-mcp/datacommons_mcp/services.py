@@ -74,7 +74,12 @@ async def _validate_and_build_request(
     date_filter = None
     observation_period = ObservationPeriod.LATEST
     if period:
-        observation_period = ObservationPeriod(period)
+        try:
+            observation_period = ObservationPeriod(period)
+        except ValueError:
+            raise ValueError(
+                "Invalid `period` value. Only 'latest' and 'all' are accepted."
+            ) from None
     elif start_date and end_date:
         observation_period = ObservationPeriod.ALL
         date_filter = DateRange(start_date=start_date, end_date=end_date)
@@ -105,22 +110,30 @@ async def _fetch_all_metadata(
 ) -> dict[str, Node]:
     """Fetches and combines names and types for all entities into a single map."""
     variable_data = api_response.byVariable.get(variable_dcid) if api_response else None
-    dcids_to_fetch = set()
+    dcids_names_to_fetch = set()
+    dcids_types_to_fetch = set()
+
     if variable_data and variable_data.byEntity:
-        dcids_to_fetch.update(variable_data.byEntity.keys())
+        # Always fetch names of all entities
+        dcids_names_to_fetch.update(variable_data.byEntity.keys())
 
-    if parent_place_dcid:
-        dcids_to_fetch.add(parent_place_dcid)
+        if not parent_place_dcid:
+            # Fetch type of single entity
+            dcids_types_to_fetch.update(variable_data.byEntity.keys())
+        else:
+            # Fetch name and type of resolved parent entity
+            dcids_types_to_fetch.add(parent_place_dcid)
+            dcids_names_to_fetch.add(parent_place_dcid)
 
-    if not dcids_to_fetch:
+    if not (dcids_types_to_fetch or dcids_names_to_fetch):
         return {}
 
-    dcids_list = list(dcids_to_fetch)
-    names_task = client.fetch_entity_names(dcids_list)  # Now an awaitable coroutine
-    types_task = client.fetch_entity_types(dcids_list)
+    names_task = client.fetch_entity_names(list(dcids_names_to_fetch))
+    types_task = client.fetch_entity_types(list(dcids_types_to_fetch))
     names_map, types_map = await asyncio.gather(names_task, types_task)
+
     metadata_map = {}
-    for dcid in dcids_list:
+    for dcid in dcids_names_to_fetch | dcids_types_to_fetch:
         metadata_map[dcid] = Node(
             dcid=dcid,
             name=names_map.get(dcid, ""),
@@ -153,6 +166,9 @@ def _select_primary_source(
                 latest_date = DateRange.get_standardized_date(latest_date_str)
                 if latest_date > source_latest_dates[source_id]:
                     source_latest_dates[source_id] = latest_date
+
+    if not source_place_counts:
+        return None, {}, {}
 
     if source_override and source_override in source_place_counts:
         primary_source = source_override
@@ -295,17 +311,6 @@ async def get_observations(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> ObservationToolResponse:
-    observation_request = await _validate_and_build_request(
-        client=client,
-        variable_dcid=variable_dcid,
-        place_dcid=place_dcid,
-        place_name=place_name,
-        child_place_type=child_place_type,
-        source_override=source_override,
-        period=period,
-        start_date=start_date,
-        end_date=end_date,
-    )
     """Fetches statistical observations from Data Commons for one or more places.
 
     This service acts as a high-level orchestrator for retrieving observation data.
@@ -399,7 +404,17 @@ async def get_observations(
       ]
     }
     """
-
+    observation_request = await _validate_and_build_request(
+        client=client,
+        variable_dcid=variable_dcid,
+        place_dcid=place_dcid,
+        place_name=place_name,
+        child_place_type=child_place_type,
+        source_override=source_override,
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+    )
     api_response = await client.fetch_obs(observation_request)
 
     metadata_map = await _fetch_all_metadata(

@@ -15,6 +15,7 @@
 import calendar
 from datetime import datetime
 from functools import lru_cache
+from typing import Any
 
 from datacommons_client.endpoints.response import ObservationResponse
 from datacommons_client.models.observation import ObservationDate
@@ -149,8 +150,24 @@ Observation = tuple[str, float]
 class ToolResponseBaseModel(BaseModel):
     """A base model to configure all tool responses to exclude None values."""
 
-    model_config = {"ser_exclude_none": True, "populate_by_name": True}
+    model_config = {"populate_by_name": True}
 
+    def model_dump(
+        self,
+        **kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Override model_dump to exclude None by default."""
+        # We call the super() method (the original BaseModel dump)
+        # passing our new default for exclude_none.
+        return super().model_dump(exclude_none=True, **kwargs)
+
+    def model_dump_json(
+        self,  # Changed default to True
+        **kwargs: dict[str, Any],
+    ) -> str:
+        """Override model_dump_json to exclude None by default."""
+        # Same logic for the JSON-specific method
+        return super().model_dump_json(exclude_none=True, **kwargs)
 
 class Node(ToolResponseBaseModel):
     """Represents a Data Commons node, with an optional name, type, and dcid."""
