@@ -801,9 +801,7 @@ class TestSearchIndicators:
             return_value={"topic/health": "Health", "Count_Person": "Population"}
         )
 
-        await search_indicators(
-            client=mock_client, query="health", per_search_limit=5
-        )
+        await search_indicators(client=mock_client, query="health", per_search_limit=5)
 
         # Verify per_search_limit was passed to client
         mock_client.fetch_indicators.assert_called_once_with(
