@@ -31,7 +31,6 @@ from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
     ObservationRequest,
 )
-from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.data_models.settings import (
     BaseDCSettings,
     CustomDCSettings,
