@@ -44,6 +44,8 @@ from datacommons_mcp.data_models.search import (
 )
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
+)
+from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
 
@@ -154,7 +156,7 @@ async def get_observations(
     )
 
 
-@mcp.tool(tags=["data"])
+@mcp.tool()
 async def validate_child_place_types(
     parent_place_name: str, child_place_types: list[str]
 ) -> dict[str, bool]:
