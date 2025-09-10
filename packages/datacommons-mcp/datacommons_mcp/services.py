@@ -16,7 +16,6 @@ import asyncio
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Any
 
 from datacommons_client.models.observation import ByVariable
 
@@ -25,17 +24,17 @@ from datacommons_mcp.data_models.observations import (
     AlternativeSource,
     DateRange,
     FacetMetadata,
-    Node,
+    Node,  # Re-import Node as it's still used directly
     ObservationApiResponse,
     ObservationDate,
     ObservationDateType,
     ObservationRequest,
     ObservationToolResponse,
     PlaceObservation,
+    SourceProcessingResult,
+    TimeSeriesPoint,
 )
 from datacommons_mcp.data_models.search import (
-    SearchMode,
-    SearchModeType,
     SearchResponse,
     SearchResult,
     SearchTask,
@@ -143,10 +142,10 @@ async def _fetch_all_metadata(
 # Streamlined helper method for selecting the primary source
 def _process_sources_and_filter_observations(
     variable_data: ByVariable, request: ObservationRequest, source_override: str | None
-) -> tuple[str | None, dict[str, int], dict[str, Any]]:
+) -> SourceProcessingResult:
     """
     Selects a primary source, ranks alternatives, and filters observations.
-    Returns: (primary_source_id, alternative_source_counts, processed_data_by_place)
+    Returns: A SourceProcessingResult object.
     """
 
     # If a specific source is requested, process only that source and return early.
@@ -159,13 +158,18 @@ def _process_sources_and_filter_observations(
                         facet_data.observations, request.date_filter
                     )
                     if filtered_obs:
-                        processed_data_by_place[place_dcid] = {
-                            "facet": facet_data,
-                            "observations": filtered_obs,
-                        }
+                        processed_data_by_place[place_dcid] = (
+                            SourceProcessingResult.ProcessedPlaceData(
+                                facet=facet_data, observations=filtered_obs
+                            )
+                        )
                     break  # Found the overridden source for this place
 
-        return source_override, {}, processed_data_by_place
+        return SourceProcessingResult(
+            primary_source_id=source_override,
+            alternative_source_counts={},
+            processed_data_by_place=processed_data_by_place,
+        )
 
     # Iterate all sources to select primary source and build metadata map
     source_place_counts = defaultdict(int)
@@ -186,7 +190,7 @@ def _process_sources_and_filter_observations(
                     source_latest_dates[source_id] = latest_date
 
     if not source_place_counts:
-        return None, {}, {}
+        return SourceProcessingResult()
 
     primary_source = max(
         source_place_counts.keys(),
@@ -213,19 +217,24 @@ def _process_sources_and_filter_observations(
                     facet_data.observations, request.date_filter
                 )
                 if filtered_obs:
-                    processed_data_by_place[place_dcid] = {
-                        "facet": facet_data,
-                        "observations": filtered_obs,
-                    }
+                    processed_data_by_place[place_dcid] = (
+                        SourceProcessingResult.ProcessedPlaceData(
+                            facet=facet_data, observations=filtered_obs
+                        )
+                    )
                 # Found the primary source for this place, no need to check others.
                 break
 
-    return primary_source, alternative_source_counts, processed_data_by_place
+    return SourceProcessingResult(
+        primary_source_id=primary_source,
+        alternative_source_counts=alternative_source_counts,
+        processed_data_by_place=processed_data_by_place,
+    )
 
 
 def _create_place_observation(
     obs_place_dcid: str,
-    preprocessed_data: dict[str, Any],
+    preprocessed_data: SourceProcessingResult.ProcessedPlaceData | None,
     metadata_map: dict[str, Node],
 ) -> PlaceObservation:
     """
@@ -239,9 +248,9 @@ def _create_place_observation(
             time_series=[],
         )
 
-    filtered_obs = preprocessed_data["observations"]
-
-    time_series = [(o.date, o.value) for o in filtered_obs]
+    time_series: list[TimeSeriesPoint] = [
+        (o.date, o.value) for o in preprocessed_data.observations
+    ]
 
     return PlaceObservation(
         place=place_node,
@@ -258,17 +267,17 @@ async def _build_final_response(
     Builds the final ObservationToolResponse model from API data and metadata.
     """
     variable_data = api_response.byVariable.get(request.variable_dcid, ByVariable({}))
-    (primary_source_id, alternative_source_counts, processed_data_by_place) = (
-        _process_sources_and_filter_observations(
-            variable_data, request, (request.source_ids or [None])[0]
-        )
+    source_result = _process_sources_and_filter_observations(
+        variable_data, request, (request.source_ids or [None])[0]
     )
 
     primary_source = None
-    if primary_source_id and primary_source_id in api_response.facets:
-        facet_metadata = api_response.facets[primary_source_id]
+    if source_result.primary_source_id and (
+        source_result.primary_source_id in api_response.facets
+    ):
+        facet_metadata = api_response.facets[source_result.primary_source_id]
         primary_source = FacetMetadata(
-            source_id=primary_source_id, **facet_metadata.to_dict()
+            source_id=source_result.primary_source_id, **facet_metadata.to_dict()
         )
 
     final_response = ObservationToolResponse(
@@ -288,7 +297,7 @@ async def _build_final_response(
     # the primary source.
     all_places_in_response = variable_data.byEntity.keys()
     for obs_place_dcid in all_places_in_response:
-        preprocessed_data = processed_data_by_place.get(obs_place_dcid)
+        preprocessed_data = source_result.processed_data_by_place.get(obs_place_dcid)
         place_observation = _create_place_observation(
             obs_place_dcid=obs_place_dcid,
             preprocessed_data=preprocessed_data,
@@ -296,11 +305,11 @@ async def _build_final_response(
         )
         final_response.place_observations.append(place_observation)
 
-    for alt_source_id, count in alternative_source_counts.items():
+    for alt_source_id, count in source_result.alternative_source_counts.items():
         facet_metadata = api_response.facets.get(alt_source_id)
 
         # If there's only one place in the response, set count to None
-        place_count = count if len(processed_data_by_place) > 1 else None
+        place_count = count if len(source_result.processed_data_by_place) > 1 else None
 
         if facet_metadata:
             final_response.alternative_sources.append(

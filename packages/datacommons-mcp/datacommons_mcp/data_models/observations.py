@@ -19,6 +19,7 @@ from functools import lru_cache
 from typing import Any
 
 from datacommons_client.endpoints.response import ObservationResponse
+from datacommons_client.models.observation import Observation, OrderedFacet
 from datacommons_mcp.exceptions import (
     InvalidDateFormatError,
     InvalidDateRangeError,
@@ -176,7 +177,38 @@ class ObservationRequest(BaseModel):
     child_place_type: str | None = None
 
 
-Observation = tuple[str, float]  # [date, value]
+class SourceProcessingResult(BaseModel):
+    """Intermediate model for holding the results of source processing."""
+
+    class ProcessedPlaceData(BaseModel):
+        """
+        Holds the filtered observations and facet data for a single place.
+        This is a private inner class as it's only used within SourceProcessingResult.
+        """
+
+        facet: OrderedFacet
+        observations: list[Observation]
+
+    primary_source_id: str | None = Field(
+        default=None,
+        description="The DCID of the selected primary data source (facet).",
+    )
+    alternative_source_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="A map of alternative source DCIDs to the number of places they have data for.",
+    )
+    processed_data_by_place: dict[str, "ProcessedPlaceData"] = Field(
+        default_factory=dict,
+        description="A map where keys are place DCIDs and values contain the facet and filtered observations for that place.",
+    )
+
+    @property
+    def has_data(self) -> bool:
+        """Returns True if any data was processed, False otherwise."""
+        return self.primary_source_id is not None or self.processed_data_by_place
+
+
+TimeSeriesPoint = tuple[str, float]  # [date, value]
 
 
 class ToolResponseBaseModel(BaseModel):
@@ -237,7 +269,7 @@ class PlaceObservation(ToolResponseBaseModel):
     """Contains all observation data for a single place."""
 
     place: Node
-    time_series: list[Observation] = Field(
+    time_series: list[TimeSeriesPoint] = Field(
         default_factory=list,
         description="List of observation tuples with the format (date, value)",
     )
