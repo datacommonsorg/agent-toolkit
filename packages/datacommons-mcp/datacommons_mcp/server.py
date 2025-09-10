@@ -401,7 +401,7 @@ async def search_indicators(
     **places Parameter Guidelines:**
 
     Always use the human-readable place names in English (e.g., 'California', 'Canada'),
-    not their DCIDs (e.g., 'geoId/06', 'country/CAN' or 'wikidataId/Q1979').
+    not their DCIDs (e.g., 'geoId/06', 'country/CAN', or 'wikidataId/Q1979').
     If you obtain place information from another tool, ensure you extract and use place names only for search_indicators.
 
     * **For place-constrained queries** like "population of France":
