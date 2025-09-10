@@ -4,7 +4,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datacommons_client import DataCommonsClient
 
 
-def _fetch_statvar_constraints(client:DataCommonsClient, place_like_constraints: list[str]) -> dict:
+def _fetch_statvar_constraints(
+    client: DataCommonsClient, place_like_constraints: list[str]
+) -> dict:
     """Return {constraint_property: [statvar_dcid, ...]}.
 
     Args:
