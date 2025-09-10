@@ -29,7 +29,7 @@ from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
-    ObservationPeriod,
+    ObservationDateType,
     ObservationRequest,
 )
 from datacommons_mcp.data_models.search import SearchMode
@@ -255,7 +255,7 @@ class TestDCClientFetchObs:
         request = ObservationRequest(
             variable_dcid="var1",
             place_dcid="place1",
-            observation_period=ObservationPeriod.LATEST,
+            date_type=ObservationDateType.LATEST,
             child_place_type=None,  # Explicitly None for single place query
         )
 
@@ -267,7 +267,7 @@ class TestDCClientFetchObs:
         mocked_datacommons_client.observation.fetch.assert_called_once_with(
             variable_dcids="var1",
             entity_dcids="place1",
-            date=ObservationPeriod.LATEST,
+            date=ObservationDateType.LATEST,
             filter_facet_ids=None,
         )
         # Verify that the other method was not called
@@ -285,7 +285,7 @@ class TestDCClientFetchObs:
             variable_dcid="var1",
             place_dcid="parent_place",
             child_place_type="County",
-            observation_period=ObservationPeriod.LATEST,
+            date_type=ObservationDateType.LATEST,
         )
 
         # Act
@@ -297,7 +297,7 @@ class TestDCClientFetchObs:
             variable_dcids="var1",
             parent_entity="parent_place",
             entity_type="County",
-            date=ObservationPeriod.LATEST,
+            date=ObservationDateType.LATEST,
             filter_facet_ids=None,
         )
         # Verify that the other method was not called

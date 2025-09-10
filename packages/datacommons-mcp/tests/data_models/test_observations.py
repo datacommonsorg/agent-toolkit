@@ -15,7 +15,10 @@
 import pytest
 
 # Import the classes and functions to be tested
-from datacommons_mcp.data_models.observations import DateRange
+from datacommons_mcp.data_models.observations import (
+    DateRange,
+    ObservationDate,
+)
 from datacommons_mcp.exceptions import InvalidDateFormatError
 from pydantic import ValidationError
 
@@ -87,3 +90,41 @@ class TestDateRange:
             DateRange.parse_interval("not-a-date")
         with pytest.raises(InvalidDateFormatError):
             DateRange.parse_interval("2023-13-01")  # Invalid month
+
+
+class TestObservationDate:
+    def test_valid_constants(self):
+        """Tests that valid constants are accepted and normalized."""
+        assert ObservationDate(date="all").date == "all"
+        assert ObservationDate(date="latest").date == "latest"
+        assert ObservationDate(date="range").date == "range"
+        # Test case-insensitivity
+        assert ObservationDate(date="ALL").date == "all"
+        assert ObservationDate(date="LaTeSt").date == "latest"
+
+    def test_valid_date_formats(self):
+        """Tests that valid date string formats are accepted."""
+        assert ObservationDate(date="2023").date == "2023"
+        assert ObservationDate(date="2023-05").date == "2023-05"
+        assert ObservationDate(date="2023-05-15").date == "2023-05-15"
+
+    def test_invalid_constant_raises_error(self):
+        """Tests that an invalid constant string raises an error."""
+        with pytest.raises(
+            ValidationError,
+            match=r"Date string 'invalid_string' is not a valid constant",
+        ):
+            ObservationDate(date="invalid_string")
+
+    def test_invalid_date_format_raises_error(self):
+        """Tests that an invalid date format string raises an error."""
+        with pytest.raises(
+            ValidationError,
+            match=r"Date string '2023-13' is not a valid constant",
+        ):
+            ObservationDate(date="2023-13")  # Invalid month
+
+        with pytest.raises(ValidationError, match=r"Date string '2023/01/01'"):
+            ObservationDate(
+                date="2023/01/01"
+            )  # Invalid format (slashes instead of dashes)

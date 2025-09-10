@@ -27,7 +27,8 @@ from datacommons_mcp.data_models.observations import (
     FacetMetadata,
     Node,
     ObservationApiResponse,
-    ObservationPeriod,
+    ObservationDate,
+    ObservationDateType,
     ObservationRequest,
     ObservationToolResponse,
     PlaceObservation,
@@ -54,9 +55,9 @@ async def _validate_and_build_request(
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    period: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    date: str = ObservationDateType.LATEST,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
 ) -> ObservationRequest:
     """Validates inputs and builds an ObservationRequest, resolving place names."""
     if not variable_dcid:
@@ -65,24 +66,21 @@ async def _validate_and_build_request(
     if not (place_name or place_dcid):
         raise ValueError("Specify either 'place_name' or 'place_dcid'.")
 
-    if not period and (start_date is None) != (end_date is None):
-        raise ValueError(
-            "Both 'start_date' and 'end_date' are required for a date range."
-        )
+    parsed_date = ObservationDate(date=date)
+    if parsed_date.date == ObservationDateType.RANGE:
+        date_filter = DateRange(start_date=date_range_start, end_date=date_range_end)
+        date_request_type = ObservationDateType.ALL
+    elif parsed_date.date in [member.value for member in ObservationDateType]:
+        date_filter = None
+        date_request_type = parsed_date.date
+    else:
+        date_filter = DateRange.parse_interval(parsed_date.date)
+        date_request_type = ObservationDateType.ALL
 
-    # Determine the observation period and date filter
-    date_filter = None
-    observation_period = ObservationPeriod.LATEST
-    if period:
-        try:
-            observation_period = ObservationPeriod(period)
-        except ValueError:
-            raise ValueError(
-                "Invalid `period` value. Only 'latest' and 'all' are accepted."
-            ) from None
-    elif start_date and end_date:
-        observation_period = ObservationPeriod.ALL
-        date_filter = DateRange(start_date=start_date, end_date=end_date)
+    if parsed_date.date != ObservationDateType.RANGE and (
+        date_range_start or date_range_end
+    ):
+        raise ValueError("To specificy a date range, set `date` to 'range'.")
 
     resolved_place_dcid = place_dcid
     if not resolved_place_dcid:
@@ -97,7 +95,7 @@ async def _validate_and_build_request(
         place_dcid=resolved_place_dcid,
         child_place_type=child_place_type,
         source_ids=[source_override] if source_override else None,
-        observation_period=observation_period,
+        date_type=date_request_type,
         date_filter=date_filter,
     )
 
@@ -307,9 +305,9 @@ async def get_observations(
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    period: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    date: str = ObservationDateType.LATEST,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
 ) -> ObservationToolResponse:
     """Fetches statistical observations from Data Commons for one or more places.
 
@@ -411,9 +409,9 @@ async def get_observations(
         place_name=place_name,
         child_place_type=child_place_type,
         source_override=source_override,
-        period=period,
-        start_date=start_date,
-        end_date=end_date,
+        date=date,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
     )
     api_response = await client.fetch_obs(observation_request)
 

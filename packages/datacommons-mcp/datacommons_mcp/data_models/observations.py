@@ -14,20 +14,17 @@
 
 import calendar
 from datetime import datetime
+from enum import Enum
 from functools import lru_cache
 from typing import Any
 
 from datacommons_client.endpoints.response import ObservationResponse
-from datacommons_client.models.observation import ObservationDate
 from datacommons_mcp.exceptions import (
     InvalidDateFormatError,
     InvalidDateRangeError,
 )
 from dateutil.parser import parse
-from pydantic import BaseModel, Field, model_validator
-
-# Wrapper to rename datacommons_client object to avoid confusion.
-ObservationPeriod = ObservationDate
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Wrapper to rename datacommons_client ObservationResponse to avoid confusion.
 ObservationApiResponse = ObservationResponse
@@ -36,11 +33,39 @@ STANDARDIZED_DATE_FORMAT = "%Y-%m-%d"
 DEFAULT_DATE = datetime(1970, 1, 1)  # UTC start date
 
 
+class ObservationDateType(str, Enum):
+    """Enumeration for special date strings in observation queries."""
+
+    ALL = "all"
+    LATEST = "latest"
+    RANGE = "range"
+
+
+class ObservationDate(BaseModel):
+    date: str
+
+    @field_validator("date")
+    def validate_date_format(cls, v: str) -> str:  # noqa: B902,N805
+        """Validates that the date is a known constant or a valid date format."""
+        if v.lower() in [member.value for member in ObservationDateType]:
+            return v.lower()
+        try:
+            # Use the existing robust parsing logic from DateRange
+            DateRange.parse_interval(v)
+            return v
+        except InvalidDateFormatError:
+            raise InvalidDateFormatError(
+                f"Date string '{v}' is not a valid constant "
+                f"{[member.value for member in ObservationDateType]} "
+                f"or in YYYY, YYYY-MM, or YYYY-MM-DD format."
+            ) from None
+
+
 class DateRange(BaseModel):
     "Accepted formats: YYYY or YYYY-MM or YYYY-MM-DD"
 
-    start_date: str
-    end_date: str
+    start_date: str | None
+    end_date: str | None
 
     @staticmethod
     def get_standardized_date(date_str: str) -> datetime:
@@ -123,10 +148,17 @@ class DateRange(BaseModel):
         original_start = self.start_date
         original_end = self.end_date
 
-        range_start, _ = DateRange.parse_interval(original_start)
-        _, range_end = DateRange.parse_interval(original_end)
+        if original_start:
+            range_start, _ = DateRange.parse_interval(original_start)
+        else:
+            range_start = None
 
-        if range_start > range_end:
+        if original_end:
+            _, range_end = DateRange.parse_interval(original_end)
+        else:
+            range_end = None
+
+        if range_start and range_end and range_start > range_end:
             raise InvalidDateRangeError(
                 f"start_date '{original_start}' cannot be after end_date '{original_end}'"
             )
@@ -139,7 +171,7 @@ class ObservationRequest(BaseModel):
     place_dcid: str
     child_place_type_dcid: str | None = None
     source_ids: list[str] | None = None
-    observation_period: ObservationPeriod | str = None
+    date_type: ObservationDateType = None
     date_filter: DateRange | None = None
     child_place_type: str | None = None
 
@@ -168,6 +200,7 @@ class ToolResponseBaseModel(BaseModel):
         """Override model_dump_json to exclude None by default."""
         # Same logic for the JSON-specific method
         return super().model_dump_json(exclude_none=True, **kwargs)
+
 
 class Node(ToolResponseBaseModel):
     """Represents a Data Commons node, with an optional name, type, and dcid."""

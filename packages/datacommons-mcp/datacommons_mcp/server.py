@@ -34,6 +34,7 @@ from datacommons_mcp.data_models.charts import (
     SingleVariableChart,
 )
 from datacommons_mcp.data_models.observations import (
+    ObservationDateType,
     ObservationToolResponse,
 )
 from datacommons_mcp.data_models.search import (
@@ -73,9 +74,9 @@ async def get_observations(
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    period: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    date: ObservationDateType | str | None = None,
+    date_range_start: str = "latest",
+    date_range_end: str | None = None,
 ) -> ObservationToolResponse:
     """Fetches observations for a statistical variable from Data Commons.
 
@@ -104,15 +105,17 @@ async def get_observations(
           Only proceed with `get_observations` if `validate_child_place_types` confirms that the `child_place_type` is valid for the specified parent place.
 
     * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
-        * Avoid requesting `'all'` data via the `period` parameter.
+        * Avoid requesting `'all'` data via the `date` parameter.
         * **Instead, you must either request the `'latest'` data or provide a specific, bounded date range.**
 
     * **Date Filtering**: The tool filters observations by date using the following priority:
-        1.  **`period`**: If you provide the `period` parameter ('all' or 'latest'), it takes top priority.
-        2.  **Date Range**: If `period` is not provided, you must specify a custom range using **both** `start_date` and `end_date`.
+        1.  **`date`**: The `date` parameter is required and can be one of the enum values 'all', 'latest', 'range', or a date string in the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'.
+        2.  **Date Range**: If `date` is set to 'range', you must specify a custom range using **either** `date_range_start` and/or `date_range_end`.
+            * If only `date_range_start` is specified, then the response will contain all observations **after** that date.
+            * If only `date_range_end` is specified, then the response will contain all observations **before** that date.
+            * If both are specified, the response contains observations within the provided range (inclusive).
             * Dates must be in `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` format.
-            * To get data for a single date, set `start_date` and `end_date` to the same value. For example, to get data for 2025, use `start_date="2025"` and `end_date="2025"`.
-        3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation.
+        3.  **Default Behavior**: If you do not provide **any** date parameters (`date`, `date_range_start`, or `date_range_end`), the tool will automatically fetch only the `'latest'` observation.
 
     Args:
       variable_dcid (str, required): The unique identifier (DCID) of the statistical variable.
@@ -120,9 +123,9 @@ async def get_observations(
       place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
       source_override (str, optional): An optional facet ID to force the use of a specific data source.
-      period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
-      start_date (str, optional): The start date for a custom range. **Used only with `end_date` and ignored if `period` is set.**
-      end_date (str, optional): The end date for a custom range. **Used only with `start_date` and ignored if `period` is set.**
+      date (str, optional): An optional date filter. Accepts 'all', 'latest', 'range', or single date values of the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. Defaults to 'latest' if no date parameters are provided.
+      date_range_start (str, optional): The start date for a custom range. **Used only if `date` is set to'range'.**
+      date_range_end (str, optional): The end date for a custom range. **Used only if `date` is set to'range'.**
 
     Returns:
 
@@ -136,6 +139,9 @@ async def get_observations(
       - `source_info`: A top-level list containing detailed information about each data source, which can be looked up by the `source_id` from a data series.
 
     """
+    # Handle the case where date is an Enum member
+    date_str = date.value if isinstance(date, ObservationDateType) else date
+
     return await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
@@ -143,9 +149,9 @@ async def get_observations(
         place_name=place_name,
         child_place_type=child_place_type,
         source_override=source_override,
-        period=period,
-        start_date=start_date,
-        end_date=end_date,
+        date=date_str,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
     )
 
 

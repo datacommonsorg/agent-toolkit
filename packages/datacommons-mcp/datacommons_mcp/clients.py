@@ -102,13 +102,13 @@ class DCClient:
                 variable_dcids=request.variable_dcid,
                 parent_entity=request.place_dcid,
                 entity_type=request.child_place_type,
-                date=request.observation_period,
+                date=request.date_type,
                 filter_facet_ids=request.source_ids,
             )
         return self.dc.observation.fetch(
             variable_dcids=request.variable_dcid,
             entity_dcids=request.place_dcid,
-            date=request.observation_period,
+            date=request.date_type,
             filter_facet_ids=request.source_ids,
         )
 

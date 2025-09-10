@@ -37,7 +37,10 @@ def filter_by_date(
         obs_date = DateRange.get_standardized_date_str(obs.date)
 
         # Lexicographical comparison is correct for YYYY-MM-DD format.
-        if range_start <= obs_date and obs_date <= range_end:
-            filtered_list.append(obs)
+        if range_start and obs_date < range_start:
+            continue
+        if range_end and obs_date > range_end:
+            continue
+        filtered_list.append(obs)
 
     return filtered_list

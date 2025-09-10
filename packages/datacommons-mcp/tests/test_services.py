@@ -18,7 +18,7 @@ import pytest
 from datacommons_mcp.clients import DCClient
 from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
-    ObservationPeriod,
+    ObservationDateType,
     ObservationToolResponse,
 )
 from datacommons_mcp.data_models.search import SearchMode
@@ -61,22 +61,15 @@ class TestGetObservations:
             await _validate_and_build_request(client=mock_client, variable_dcid="var1")
 
     async def test_input_validation_date_validation(self, mock_client):
-        # Incomplete date range
-        with pytest.raises(
-            ValueError, match="Both 'start_date' and 'end_date' are required"
-        ):
-            await _validate_and_build_request(
-                mock_client, variable_dcid="var1", place_name="USA", start_date="2022"
-            )
-
         # Invalid date format
         with pytest.raises(ValidationError):
             await _validate_and_build_request(
                 client=mock_client,
                 variable_dcid="var1",
                 place_name="USA",
-                start_date="2022-a",
-                end_date="2023",
+                date=ObservationDateType.RANGE,
+                date_range_start="2022-a",
+                date_range_end="2023",
             )
 
         # Invalid date range
@@ -85,8 +78,9 @@ class TestGetObservations:
                 client=mock_client,
                 variable_dcid="var1",
                 place_name="USA",
-                start_date="2023",
-                end_date="2022",
+                date=ObservationDateType.RANGE,
+                date_range_start="2023",
+                date_range_end="2022",
             )
 
     async def test_request_building_with_dcids(self, mock_client):
@@ -95,7 +89,7 @@ class TestGetObservations:
         )
         assert request.variable_dcid == "var1"
         assert request.place_dcid == "country/USA"
-        assert request.observation_period == ObservationPeriod.LATEST
+        assert request.date_type == ObservationDateType.LATEST
         mock_client.search_places.assert_not_called()
 
     async def test_request_building_with_resolution_success(self, mock_client):
@@ -105,14 +99,15 @@ class TestGetObservations:
             client=mock_client,
             variable_dcid="Count_Person",
             place_name="USA",
-            start_date="2022",
-            end_date="2023",
+            date=ObservationDateType.RANGE,
+            date_range_start="2022",
+            date_range_end="2023",
         )
 
         mock_client.search_places.assert_awaited_once_with(["USA"])
         assert request.variable_dcid == "Count_Person"
         assert request.place_dcid == "country/USA"
-        assert request.observation_period == ObservationPeriod.ALL
+        assert request.date_type == ObservationDateType.ALL
         assert request.date_filter.start_date == "2022-01-01"
         assert request.date_filter.end_date == "2023-12-31"
 
@@ -210,8 +205,9 @@ class TestGetObservations:
             client=mock_client,
             variable_dcid="var1",
             place_name="USA",
-            start_date="2021",
-            end_date="2022",
+            date=ObservationDateType.RANGE,
+            date_range_start="2021",
+            date_range_end="2022",
         )
 
         # Assert
@@ -300,7 +296,7 @@ class TestGetObservations:
             variable_dcid="var1",
             place_name="California",
             child_place_type="County",
-            period="latest",
+            date="latest",
         )
 
         # Assert
@@ -326,7 +322,7 @@ class TestGetObservations:
         assert alt_source.place_count == 1
 
     async def test_data_fetching_unit_field(self, mock_client):
-        """Tests that period='latest' fetches only the latest observation."""
+        """Tests that date='latest' fetches only the latest observation."""
         # Arrange
         mock_client.search_places.return_value = {"USA": "country/USA"}
         mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
@@ -364,8 +360,8 @@ class TestGetObservations:
         # Assert
         assert result.source_metadata.unit == "USDollar"
 
-    async def test_data_fetching_date_filtering_period_latest(self, mock_client):
-        """Tests that period='latest' fetches only the latest observation."""
+    async def test_data_fetching_date_filtering_date_latest(self, mock_client):
+        """Tests that date='latest' fetches only the latest observation."""
         # Arrange
         mock_client.search_places.return_value = {"USA": "country/USA"}
         mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
@@ -397,7 +393,7 @@ class TestGetObservations:
             client=mock_client,
             variable_dcid="var1",
             place_name="USA",
-            period="latest",
+            date="latest",
         )
 
         # Assert
@@ -408,8 +404,8 @@ class TestGetObservations:
         # Verify the correct API call was made
         mock_client.fetch_obs.assert_called_once()
         assert (
-            mock_client.fetch_obs.call_args[0][0].observation_period
-            == ObservationPeriod.LATEST
+            mock_client.fetch_obs.call_args[0][0].date_type
+            == ObservationDateType.LATEST
         )
 
     async def test_source_selection_primary_source_selection(self, mock_client):
