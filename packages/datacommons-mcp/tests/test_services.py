@@ -618,7 +618,7 @@ class TestGetObservations:
                                     "observations": [{"date": "2022", "value": 1}],
                                 },
                                 {
-                                    "facetId": "source2",
+                                    "facetId": "source1",
                                     "observations": [{"date": "2022", "value": 2}],
                                 },
                             ]
