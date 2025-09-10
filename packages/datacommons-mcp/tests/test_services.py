@@ -597,9 +597,8 @@ class TestGetObservations:
         # Assert
         assert result.source_metadata.source_id == "source2"
         assert result.place_observations[0].time_series[0] == ("2022", 200)
-        # The other source should be listed as an alternative
-        assert len(result.alternative_sources) == 1
-        assert result.alternative_sources[0].source_id == "source1"
+        # No alternatives should be listed when a source is selected
+        assert len(result.alternative_sources) == 0
 
     @pytest.mark.parametrize(
         ("date1", "date2", "expected_primary_source"),

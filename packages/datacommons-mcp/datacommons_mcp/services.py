@@ -141,13 +141,33 @@ async def _fetch_all_metadata(
 
 
 # Streamlined helper method for selecting the primary source
-def _select_primary_source(
+def _process_sources_and_filter_observations(
     variable_data: ByVariable, request: ObservationRequest, source_override: str | None
 ) -> tuple[str | None, dict[str, int], dict[str, Any]]:
     """
-    Selects the primary source and returns pre-processed data for each place.
-    Returns: (primary_source_id, alt_source_counts, processed_data_by_place)
+    Selects a primary source, ranks alternatives, and filters observations.
+    Returns: (primary_source_id, alternative_source_counts, processed_data_by_place)
     """
+
+    # If a specific source is requested, process only that source and return early.
+    if source_override:
+        processed_data_by_place = {}
+        for place_dcid, place_data in variable_data.byEntity.items():
+            for facet_data in place_data.orderedFacets:
+                if facet_data.facetId == source_override:
+                    filtered_obs = filter_by_date(
+                        facet_data.observations, request.date_filter
+                    )
+                    if filtered_obs:
+                        processed_data_by_place[place_dcid] = {
+                            "facet": facet_data,
+                            "observations": filtered_obs,
+                        }
+                    break  # Found the overridden source for this place
+
+        return source_override, {}, processed_data_by_place
+
+    # Iterate all sources to select primary source and build metadata map
     source_place_counts = defaultdict(int)
     source_date_counts = defaultdict(int)
     source_latest_dates = defaultdict(lambda: datetime.min)
@@ -168,18 +188,15 @@ def _select_primary_source(
     if not source_place_counts:
         return None, {}, {}
 
-    if source_override and source_override in source_place_counts:
-        primary_source = source_override
-    else:
-        primary_source = max(
-            source_place_counts.keys(),
-            key=lambda src_id: (
-                source_place_counts[src_id],
-                source_date_counts[src_id],
-                source_latest_dates[src_id],
-                src_id,  # Final deterministic tie-breaker
-            ),
-        )
+    primary_source = max(
+        source_place_counts.keys(),
+        key=lambda src_id: (
+            source_place_counts[src_id],
+            source_date_counts[src_id],
+            source_latest_dates[src_id],
+            src_id,  # Final deterministic tie-breaker
+        ),
+    )
 
     alternative_source_counts = {
         src_id: count
@@ -241,8 +258,8 @@ async def _build_final_response(
     Builds the final ObservationToolResponse model from API data and metadata.
     """
     variable_data = api_response.byVariable.get(request.variable_dcid, ByVariable({}))
-    primary_source_id, alternative_source_counts, processed_data_by_place = (
-        _select_primary_source(
+    (primary_source_id, alternative_source_counts, processed_data_by_place) = (
+        _process_sources_and_filter_observations(
             variable_data, request, (request.source_ids or [None])[0]
         )
     )
