@@ -23,13 +23,14 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.exceptions import (
     DataLookupError,
+    InvalidDateFormatError,
+    InvalidDateRangeError,
 )
 from datacommons_mcp.services import (
     _validate_and_build_request,
     get_observations,
     search_indicators,
 )
-from pydantic import ValidationError
 
 
 @pytest.mark.asyncio
@@ -61,7 +62,7 @@ class TestGetObservations:
 
     async def test_input_validation_date_validation(self, mock_client):
         # Invalid date format
-        with pytest.raises(ValidationError):
+        with pytest.raises(InvalidDateFormatError):
             await _validate_and_build_request(
                 client=mock_client,
                 variable_dcid="var1",
@@ -72,7 +73,7 @@ class TestGetObservations:
             )
 
         # Invalid date range
-        with pytest.raises(ValidationError):
+        with pytest.raises(InvalidDateRangeError):
             await _validate_and_build_request(
                 client=mock_client,
                 variable_dcid="var1",
@@ -107,8 +108,8 @@ class TestGetObservations:
         assert request.variable_dcid == "Count_Person"
         assert request.place_dcid == "country/USA"
         assert request.date_type == ObservationDateType.ALL
-        assert request.date_filter.start_date == "2022-01-01"
-        assert request.date_filter.end_date == "2023-12-31"
+        assert request.date_filter.start_date_str == "2022-01-01"
+        assert request.date_filter.end_date_str == "2023-12-31"
 
     async def test_request_building_with_single_date_string(self, mock_client):
         """Tests that a single date string creates a valid DateRange object."""
@@ -125,8 +126,8 @@ class TestGetObservations:
         assert request.variable_dcid == "Count_Person"
         assert request.place_dcid == "country/USA"
         assert request.date_type == ObservationDateType.ALL
-        assert request.date_filter.start_date == "2022-05-15"
-        assert request.date_filter.end_date == "2022-05-15"
+        assert request.date_filter.start_date_str == "2022-05-15"
+        assert request.date_filter.end_date_str == "2022-05-15"
 
     async def test_request_building_resolution_failure(self, mock_client):
         mock_client.search_places.return_value = {}  # No place found

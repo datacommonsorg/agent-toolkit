@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import calendar
+import re
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
@@ -25,7 +26,7 @@ from datacommons_mcp.exceptions import (
     InvalidDateRangeError,
 )
 from dateutil.parser import parse
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 # Wrapper to rename datacommons_client ObservationResponse to avoid confusion.
 ObservationApiResponse = ObservationResponse
@@ -42,6 +43,10 @@ class ObservationDateType(str, Enum):
     RANGE = "range"
 
 
+# Regex to validate that a string is in YYYY, YYYY-MM, or YYYY-MM-DD format.
+DATE_FORMAT_REGEX = re.compile(r"^\d{4}(-\d{2})?(-\d{2})?$")
+
+
 class ObservationDate(BaseModel):
     date: str
 
@@ -50,40 +55,141 @@ class ObservationDate(BaseModel):
         """Validates that the date is a known constant or a valid date format."""
         if v.lower() in [member.value for member in ObservationDateType]:
             return v.lower()
-        try:
-            # Use the existing robust parsing logic from DateRange
-            DateRange.parse_interval(v)
-            return v
-        except InvalidDateFormatError:
-            raise InvalidDateFormatError(
-                f"Date string '{v}' is not a valid constant "
-                f"{[member.value for member in ObservationDateType]} "
-                f"or in YYYY, YYYY-MM, or YYYY-MM-DD format."
-            ) from None
 
+        if not DATE_FORMAT_REGEX.match(v):
+            raise InvalidDateFormatError(
+                f"Date string '{v}' is not one of the valid constants nor in YYYY, YYYY-MM, or YYYY-MM-DD format."
+            )
+
+        try:
+            # After regex validation, parse to catch invalid values like '2023-99'.
+            ObservationDate.parse_date(v)
+            return v
+        except ValueError as e:
+            # This will catch errors from dateutil.parser for invalid dates.
+            raise InvalidDateFormatError(
+                f"Date string '{v}' contains an invalid value"
+            ) from e
+
+    @staticmethod
+    def parse_date(date_str: str) -> datetime:
+        try:
+            return parse(date_str, default=DEFAULT_DATE)
+        except ValueError as e:
+            raise InvalidDateFormatError(f"for date '{date_str}': {e}") from e
 
 class DateRange(BaseModel):
     "Accepted formats: YYYY or YYYY-MM or YYYY-MM-DD"
 
-    start_date: str | None
-    end_date: str | None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+
+    def __init__(
+        self,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initializes and validates the date range from string inputs."""
+        super().__init__(**kwargs)
+
+        range_start = DateRange.get_start_date(start_date) if start_date else None
+        range_end = DateRange.get_end_date(end_date) if end_date else None
+
+        if range_start and range_end and range_start > range_end:
+            raise InvalidDateRangeError(
+                f"start_date '{start_date}' cannot be after end_date '{end_date}'"
+            )
+
+        self.start_date = range_start
+        self.end_date = range_end
+
+    @property
+    def start_date_str(self) -> str | None:
+        """Returns the start_date as a standardized 'YYYY-MM-DD' string, or None."""
+        if not self.start_date:
+            return None
+        return self.start_date.strftime(STANDARDIZED_DATE_FORMAT)
+
+    @property
+    def end_date_str(self) -> str | None:
+        """Returns the end_date as a standardized 'YYYY-MM-DD' string, or None."""
+        if not self.end_date:
+            return None
+        return self.end_date.strftime(STANDARDIZED_DATE_FORMAT)
 
     @staticmethod
-    def get_standardized_date(date_str: str) -> datetime:
+    def get_start_date(date_str: str) -> datetime:
+        """
+        Converts a partial date string into a full start date.
+        Caches results to avoid re-calculating for the same input string.
+
+        Examples:
+            >>> DateRange.parse_interval("2022")
+            ('2022-01-01')
+
+            >>> DateRange.parse_interval("2023-05")
+            ('2023-05-01')
+
+            >>> DateRange.parse_interval("2024-01-15")
+            ('2024-01-15')
+
+        Raises:
+            InvalidDateFormatError: If the date string format is invalid.
+        """
+        return ObservationDate.parse_date(date_str)
+
+    @staticmethod
+    def get_end_date(date_str: str) -> datetime:
+        """
+        Converts a partial date string into a full (start, end) date tuple.
+        Caches results to avoid re-calculating for the same input string.
+
+        Examples:
+            >>> DateRange.parse_interval("2022")
+            ('2022-12-31')
+
+            >>> DateRange.parse_interval("2023-05")
+            ('2023-05-31')
+
+            >>> DateRange.parse_interval("2024-01-15")
+            ('2024-01-15')
+
+        Raises:
+            InvalidDateFormatError: If the date string format is invalid.
+        """
         try:
-            return datetime.fromisoformat(date_str)
-        except ValueError:
-            return parse(date_str, default=DEFAULT_DATE)
+            parts = date_str.split("-")
+            num_parts = len(parts)
 
-    @staticmethod
-    def get_standardized_date_str(date_str: str) -> str:
-        return DateRange.get_standardized_date(date_str).strftime(
-            STANDARDIZED_DATE_FORMAT
-        )
+            if num_parts == 1:
+                year = int(parts[0])
+                return datetime(year=year, month=12, day=31)
+
+            if num_parts == 2:
+                year, month = map(int, parts)
+                # This will raise ValueError for an invalid month.
+                datetime(year=year, month=month, day=1)
+                _, last_day = calendar.monthrange(year, month)
+                return datetime(year=year, month=month, day=last_day)
+
+            if num_parts == 3:
+                year, month, day = map(int, parts)
+                # This will raise ValueError for an invalid year, month, or day.
+                return datetime(year=year, month=month, day=day)
+
+            # If we reach here, the number of parts is not 1, 2, or 3.
+            raise ValueError(
+                "Date string must be in YYYY, YYYY-MM, or YYYY-MM-DD format."
+            )
+
+        except ValueError as e:
+            # Catch multiple potential errors and raise a single, clear custom exception.
+            raise InvalidDateFormatError(f"for date '{date_str}': {e}") from e
 
     @staticmethod
     @lru_cache(maxsize=128)
-    def parse_interval(date_str: str) -> tuple[str, str]:
+    def parse_interval(date_str: str) -> tuple[datetime, datetime]:
         """
         Converts a partial date string into a full (start, end) date tuple.
         Caches results to avoid re-calculating for the same input string.
@@ -101,70 +207,7 @@ class DateRange(BaseModel):
         Raises:
             InvalidDateFormatError: If the date string format is invalid.
         """
-        try:
-            parts = date_str.split("-")
-            num_parts = len(parts)
-
-            if num_parts == 1:
-                year = int(parts[0])
-                # Validate the year is reasonable, though int() handles non-numerics.
-                datetime(year=year, month=1, day=1)
-                return f"{year:04d}-01-01", f"{year:04d}-12-31"
-
-            if num_parts == 2:
-                year, month = map(int, parts)
-                # This will raise ValueError for an invalid month.
-                datetime(year=year, month=month, day=1)
-                _, last_day = calendar.monthrange(year, month)
-                return (
-                    f"{year:04d}-{month:02d}-01",
-                    f"{year:04d}-{month:02d}-{last_day:02d}",
-                )
-
-            if num_parts == 3:
-                year, month, day = map(int, parts)
-                # This will raise ValueError for an invalid year, month, or day.
-                date_str = datetime(year=year, month=month, day=day).strftime(
-                    STANDARDIZED_DATE_FORMAT
-                )
-                return date_str, date_str
-
-            # If we reach here, the number of parts is not 1, 2, or 3.
-            raise ValueError(
-                "Date string must be in YYYY, YYYY-MM, or YYYY-MM-DD format."
-            )
-
-        except ValueError as e:
-            # Catch multiple potential errors and raise a single, clear custom exception.
-            raise InvalidDateFormatError(f"for date '{date_str}': {e}") from e
-
-    @model_validator(mode="after")
-    def validate_and_normalize_dates(self) -> "DateRange":
-        """
-        Validates that start_date is not after end_date and normalizes
-        both to the full YYYY-MM-DD format representing the interval.
-        """
-        # The fields are guaranteed to be present because of the validator mode.
-        # Keep original values for potential error messages
-        original_start = self.start_date
-        original_end = self.end_date
-
-        if original_start:
-            range_start, _ = DateRange.parse_interval(original_start)
-        else:
-            range_start = None
-
-        if original_end:
-            _, range_end = DateRange.parse_interval(original_end)
-        else:
-            range_end = None
-
-        if range_start and range_end and range_start > range_end:
-            raise InvalidDateRangeError(
-                f"start_date '{original_start}' cannot be after end_date '{original_end}'"
-            )
-        self.start_date, self.end_date = range_start, range_end
-        return self
+        return DateRange.get_start_date(date_str), DateRange.get_end_date(date_str)
 
 
 class ObservationRequest(BaseModel):

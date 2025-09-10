@@ -188,7 +188,7 @@ def _process_sources_and_filter_observations(
                 # Store the index to calculate average rank later. Lower is better.
                 source_indices[source_id].append(i)
 
-                latest_date = DateRange.get_standardized_date(latest_date_str)
+                latest_date = ObservationDate.parse_date(latest_date_str)
                 if latest_date > source_latest_dates[source_id]:
                     source_latest_dates[source_id] = latest_date
 
