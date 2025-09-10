@@ -111,6 +111,24 @@ class TestGetObservations:
         assert request.date_filter.start_date == "2022-01-01"
         assert request.date_filter.end_date == "2023-12-31"
 
+    async def test_request_building_with_single_date_string(self, mock_client):
+        """Tests that a single date string creates a valid DateRange object."""
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+
+        request = await _validate_and_build_request(
+            client=mock_client,
+            variable_dcid="Count_Person",
+            place_name="USA",
+            date="2022-05-15",
+        )
+
+        mock_client.search_places.assert_awaited_once_with(["USA"])
+        assert request.variable_dcid == "Count_Person"
+        assert request.place_dcid == "country/USA"
+        assert request.date_type == ObservationDateType.ALL
+        assert request.date_filter.start_date == "2022-05-15"
+        assert request.date_filter.end_date == "2022-05-15"
+
     async def test_request_building_resolution_failure(self, mock_client):
         mock_client.search_places.return_value = {}  # No place found
         with pytest.raises(DataLookupError, match="DataLookupError: No place found"):
