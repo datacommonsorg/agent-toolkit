@@ -62,7 +62,10 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP("DC MCP Server")
+mcp = FastMCP(
+    "DC MCP Server",
+    stateless_http=True,
+)
 
 
 @mcp.tool()
@@ -381,6 +384,34 @@ async def search_indicators(
 
     **How to Use This Tool:**
 
+    **include_topics Parameter Guidelines:**
+
+    **Primary Rule**: If a user explicitly states what the parameter should be, use it as requested.
+
+    **include_topics = True (default)**
+        - **Purpose**: Explore topic hierarchy and find related variables
+        - **Use when**: You want to understand the structure of data categories and discover related variables
+        - **Returns**: Both topics (categories) and variables with hierarchical structure
+        - **Example use cases**:
+            - "what basic health data do you have"
+            - "Show me health data categories and what variables are available"
+            - "What economic indicators are available and how are they organized?"
+
+    **include_topics = False**
+        - **Purpose**: Direct variable search for specific data needs
+        - **Use when**: The goal is to fetch specific data, rather than to explore or present data categories to the user
+        - **Returns**: Variables only (no topic hierarchy)
+        - **Example use cases**:
+            - "Find unemployment rate variables for United States"
+            - "Get population data variables for India"
+            - "Search for carbon emission variables in NYC"
+
+    **places Parameter Guidelines:**
+
+    Always use the human-readable place names in English (e.g., 'California', 'Canada'),
+    not their DCIDs (e.g., 'geoId/06', 'country/CAN', or 'wikidataId/Q1979').
+    If you obtain place information from another tool, ensure you extract and use place names only for search_indicators.
+
     * **For place-constrained queries** like "population of France":
         - Call with `query="population"`, `places=["France"]`, and `maybe_bilateral=False`
         - The tool will match indicators and perform existence checks for the specified place
@@ -410,6 +441,9 @@ async def search_indicators(
     * **For non-place-constrained queries** like "what trade data do you have":
         - Call with `query="trade"`
         - No place existence checks are performed
+
+    * **When place results don't match user intent** (e.g., user asks for "Scotland" but gets Scotland County, USA instead of Scotland, UK in the response):
+        - Add a qualifier: `places=["Scotland, UK"]` or `places=["Scotland, United Kingdom"]`
 
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
@@ -458,6 +492,7 @@ async def search_indicators(
     **Best Practices:**
     - Include topics if you want to understand data organization and discover collections of variables (topics) or related variables
     - Exclude topics only when you have a specific query.
+    - For places, provide English place names only.
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
     """
     # Call the real search_indicators service
@@ -465,6 +500,7 @@ async def search_indicators(
         client=dc_client,
         query=query,
         places=places,
+        include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
         per_search_limit=per_search_limit,
     )
