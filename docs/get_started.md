@@ -74,7 +74,7 @@ Both Gemini CLI and the sample Data Commons agent automatically spawn a local MC
 
 If you're using a different agent and/or want to connect from a remote client, you can start up the server independently instead, as described in [Start the server in standalone mode](#standalone).
 
-#### Using Gemini CLI
+#### Use Gemini CLI
 
 To install Gemini CLI, see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
 We recommend that you use the Gemini API key [authentication option](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#-authentication-options) if you already have a Google Cloud Platform project, so you don't have to log in for every session. To do so, go to https://aistudio.google.com/ and create a key.
@@ -110,7 +110,7 @@ You can now run the `gemini` command from any directory and it will automaticall
 
 Once Gemini CLI has started up, you can immediately begin sending natural-language queries! 
 
-### Using the sample agent
+#### Use the sample agent
 
 xxx is a basic agent for interacting with the MCP Server.
 
