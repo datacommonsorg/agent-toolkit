@@ -133,7 +133,7 @@ To install packages from PyPi:
 To install packages from local code (cloned from Github):
 1. Go to the server project directory:
    ```
-   cd agent-toolkit/packages/datacommons-client
+   cd agent-toolkit/packages/datacommons-mcp
    ```
 1. Ensure a copy of your `.env` file is present in the directory.
 1. Run the following command:
