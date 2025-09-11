@@ -339,7 +339,7 @@ class TestGetObservations:
         assert len(result.alternative_sources) == 1
         alt_source = result.alternative_sources[0]
         assert alt_source.source_id == "source2"
-        assert alt_source.place_count == 1
+        assert alt_source.places_found_count == 1
 
     async def test_data_fetching_unit_field(self, mock_client):
         """Tests that date='latest' fetches only the latest observation."""
@@ -498,14 +498,14 @@ class TestGetObservations:
         assert len(result.alternative_sources) == 1
         alt_source = result.alternative_sources[0]
         assert alt_source.source_id == "source2"
-        assert alt_source.place_count == 1
+        assert alt_source.places_found_count == 1
 
     async def test_source_selection_single_place_with_alternative_source(
         self, mock_client
     ):
         """
         Tests that for a single place response, alternative sources have
-        place_count set to None.
+        places_found_count set to None.
         """
         # Arrange
         # Mock API response with two sources for a single place
@@ -552,7 +552,7 @@ class TestGetObservations:
         assert len(result.alternative_sources) == 1
         alt_source = result.alternative_sources[0]
         assert alt_source.source_id == "source2"
-        assert alt_source.place_count is None
+        assert alt_source.places_found_count is None
 
     async def test_source_selection_source_override(self, mock_client):
         """Tests that source_override forces the use of a specific source."""

@@ -171,7 +171,7 @@ def _process_sources_and_filter_observations(
         )
 
     # Iterate all sources to select primary source and build metadata map
-    source_place_counts = defaultdict(int)
+    source_places_found_counts = defaultdict(int)
     source_date_counts = defaultdict(int)
     source_latest_dates = defaultdict(lambda: datetime.min)
     source_indices = defaultdict(list)
@@ -182,7 +182,7 @@ def _process_sources_and_filter_observations(
             source_id = facet_data.facetId
             filtered_obs = filter_by_date(facet_data.observations, request.date_filter)
             if filtered_obs:
-                source_place_counts[source_id] += 1
+                source_places_found_counts[source_id] += 1
                 source_date_counts[source_id] += len(filtered_obs)
                 latest_date_str = max(o.date for o in filtered_obs)
                 # Store the index to calculate average rank later. Lower is better.
@@ -192,7 +192,7 @@ def _process_sources_and_filter_observations(
                 if latest_date > source_latest_dates[source_id]:
                     source_latest_dates[source_id] = latest_date
 
-    if not source_place_counts:
+    if not source_places_found_counts:
         return SourceProcessingResult()
 
     # Calculate the average index for each source. A lower average is better.
@@ -202,9 +202,9 @@ def _process_sources_and_filter_observations(
     }
 
     primary_source = max(
-        source_place_counts.keys(),
+        source_places_found_counts.keys(),
         key=lambda src_id: (
-            source_place_counts[src_id],
+            source_places_found_counts[src_id],
             source_date_counts[src_id],
             source_latest_dates[src_id],
             # Lower index in the original OrderedFacets list is better, so we
@@ -217,7 +217,7 @@ def _process_sources_and_filter_observations(
 
     alternative_source_counts = {
         src_id: count
-        for src_id, count in source_place_counts.items()
+        for src_id, count in source_places_found_counts.items()
         if src_id != primary_source
     }
 
@@ -324,13 +324,15 @@ async def _build_final_response(
         facet_metadata = api_response.facets.get(alt_source_id)
 
         # If there's only one place in the response, set count to None
-        place_count = count if len(source_result.processed_data_by_place) > 1 else None
+        places_found_count = (
+            count if len(source_result.processed_data_by_place) > 1 else None
+        )
 
         if facet_metadata:
             final_response.alternative_sources.append(
                 AlternativeSource(
                     source_id=alt_source_id,
-                    place_count=place_count,
+                    places_found_count=places_found_count,
                     **facet_metadata.to_dict(),
                 )
             )
@@ -438,7 +440,7 @@ async def get_observations(
         {
           "source_id": "source2",
           "import_name": "Another Census Source",
-          "place_count": 1
+          "places_found_count": 1
         }
       ]
     }

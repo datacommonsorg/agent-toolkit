@@ -283,7 +283,7 @@ class FacetMetadata(BaseModel):
 class AlternativeSource(FacetMetadata):
     """Represents metadata for an alternative data source."""
 
-    place_count: int | None = Field(
+    places_found_count: int | None = Field(
         default=None,
         description=(
             "The number of places within the current API response for which this"
