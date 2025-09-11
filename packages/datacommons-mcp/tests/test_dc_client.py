@@ -841,6 +841,8 @@ class TestSearchIndicatorsEndpoint:
                                     "dcid": "dc/topic/Health",
                                     "name": "Health",
                                     "typeOf": "Topic",
+                                    "description": "Health related indicators",
+                                    "search_descriptions": ["health data"],
                                 },
                                 {
                                     "dcid": "Count_Person",
@@ -854,11 +856,21 @@ class TestSearchIndicatorsEndpoint:
             ]
         }
 
-        result = client._transform_search_indicators_response(mock_api_response)
+        result, dcid_name_mappings = client._transform_search_indicators_response(
+            mock_api_response
+        )
 
-        assert result["topics"] == ["dc/topic/Health"]
-        assert result["variables"] == ["Count_Person"]
-        assert result["dcid_name_mappings"] == {
+        assert "dc/topic/Health" in result.topics
+        assert "Count_Person" in result.variables
+        assert (
+            result.topics["dc/topic/Health"].description == "Health related indicators"
+        )
+        assert result.topics["dc/topic/Health"].alternate_descriptions == [
+            "health data"
+        ]
+        assert result.variables["Count_Person"].description is None
+
+        assert dcid_name_mappings == {
             "dc/topic/Health": "Health",
             "Count_Person": "Person Count",
         }
@@ -884,11 +896,13 @@ class TestSearchIndicatorsEndpoint:
             ]
         }
 
-        result = client._transform_search_indicators_response(mock_api_response)
+        result, dcid_name_mappings = client._transform_search_indicators_response(
+            mock_api_response
+        )
 
-        assert result["topics"] == []
-        assert result["variables"] == ["Count_Person"]
-        assert result["dcid_name_mappings"] == {"Count_Person": "Person Count"}
+        assert not result.topics
+        assert "Count_Person" in result.variables
+        assert dcid_name_mappings == {"Count_Person": "Person Count"}
 
     def test_transform_response_with_only_topics(self, client):
         """Tests transformation with only topics."""
@@ -911,24 +925,28 @@ class TestSearchIndicatorsEndpoint:
             ]
         }
 
-        result = client._transform_search_indicators_response(mock_api_response)
+        result, dcid_name_mappings = client._transform_search_indicators_response(
+            mock_api_response
+        )
 
-        assert result["topics"] == ["dc/topic/Health"]
-        assert result["variables"] == []
-        assert result["dcid_name_mappings"] == {"dc/topic/Health": "Health"}
+        assert "dc/topic/Health" in result.topics
+        assert not result.variables
+        assert dcid_name_mappings == {"dc/topic/Health": "Health"}
 
     def test_transform_response_with_empty_results(self, client):
         """Tests transformation with an empty API response."""
         mock_api_response = {"queryResults": []}
-        result = client._transform_search_indicators_response(mock_api_response)
-        assert result["topics"] == []
-        assert result["variables"] == []
-        assert result["dcid_name_mappings"] == {}
+        result, dcid_name_mappings = client._transform_search_indicators_response(
+            mock_api_response
+        )
+        assert not result.topics
+        assert not result.variables
+        assert not dcid_name_mappings
 
         mock_api_response_no_results = {"queryResults": [{"indexResults": []}]}
-        result = client._transform_search_indicators_response(
+        result, dcid_name_mappings = client._transform_search_indicators_response(
             mock_api_response_no_results
         )
-        assert result["topics"] == []
-        assert result["variables"] == []
-        assert result["dcid_name_mappings"] == {}
+        assert not result.topics
+        assert not result.variables
+        assert not dcid_name_mappings

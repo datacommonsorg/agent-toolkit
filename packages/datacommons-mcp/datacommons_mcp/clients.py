@@ -31,6 +31,11 @@ from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
     ObservationRequest,
 )
+from datacommons_mcp.data_models.search import (
+    SearchResult,
+    SearchTopic,
+    SearchVariable,
+)
 from datacommons_mcp.data_models.settings import (
     BaseDCSettings,
     CustomDCSettings,
@@ -345,7 +350,9 @@ class DCClient:
 
         return {"topics": topics, "variables": variables}
 
-    def _transform_search_indicators_response(self, api_response: dict) -> dict:
+    def _transform_search_indicators_response(
+        self, api_response: dict
+    ) -> tuple[SearchResult, dict]:
         """
         Transforms the response from the /api/nl/search-indicators endpoint.
 
@@ -353,17 +360,16 @@ class DCClient:
             api_response: The JSON response from the search-indicators API.
 
         Returns:
-            A dictionary with "topics", "variables", and "dcid_name_mappings".
+            A tuple containing a SearchResult object and a dcid_name_mappings dictionary.
 
         Example Output:
-            {
-                "topics": ["dc/topic/Health"],
-                "variables": ["Count_Person", "Count_Household"],
-                "dcid_name_mappings": {
-                    "dc/topic/Health": "Health",
-                    "Count_Person": "Person Count"
-                }
-            }
+            (
+                SearchResult(
+                    topics={"dc/topic/Health": SearchTopic(dcid="dc/topic/Health", ...)},
+                    variables={"Count_Person": SearchVariable(dcid="Count_Person", ...)}
+                ),
+                {"dc/topic/Health": "Health", "Count_Person": "Person Count"}
+            )
         """
         unique_indicators = {}
         query_results = api_response.get("queryResults", [])
@@ -372,27 +378,33 @@ class DCClient:
             for index_result in query_result.get("indexResults", []):
                 for indicator in index_result.get("results", []):
                     dcid = indicator.get("dcid")
-                    if dcid and dcid not in unique_indicators:
+                    # Deduplicate based on DCID, keeping the first one found.
+                    if dcid and indicator.get("name") and dcid not in unique_indicators:
                         unique_indicators[dcid] = indicator
 
-        topics = []
-        variables = []
+        topics: dict[str, SearchTopic] = {}
+        variables: dict[str, SearchVariable] = {}
         dcid_name_mappings = {}
 
         for dcid, indicator in unique_indicators.items():
+            # Populate name mapping
+            dcid_name_mappings[dcid] = indicator["name"]
+
+            # Create the appropriate SearchIndicator model
             if indicator.get("typeOf") == "Topic":
-                topics.append(dcid)
+                topics[dcid] = SearchTopic(
+                    dcid=dcid,
+                    description=indicator.get("description"),
+                    alternate_descriptions=indicator.get("search_descriptions"),
+                )
             else:  # Default to variable if not a Topic
-                variables.append(dcid)
+                variables[dcid] = SearchVariable(
+                    dcid=dcid,
+                    description=indicator.get("description"),
+                    alternate_descriptions=indicator.get("search_descriptions"),
+                )
 
-            if "name" in indicator:
-                dcid_name_mappings[dcid] = indicator["name"]
-
-        return {
-            "topics": topics,
-            "variables": variables,
-            "dcid_name_mappings": dcid_name_mappings,
-        }
+        return SearchResult(topics=topics, variables=variables), dcid_name_mappings
 
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""
