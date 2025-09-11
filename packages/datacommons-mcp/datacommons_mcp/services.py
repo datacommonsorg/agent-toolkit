@@ -163,7 +163,7 @@ def _process_sources_and_filter_observations(
                             )
                         )
                     break  # Found the overridden source for this place
-
+        # TODO(clincoln8): Reconsider how to propagate "requested source not found" status to agent.
         return SourceProcessingResult(
             primary_source_id=source_override,
             alternative_source_counts={},
@@ -221,6 +221,8 @@ def _process_sources_and_filter_observations(
         if src_id != primary_source
     }
 
+    # TODO(clincoln8): Encapsulate _build_processed_data(source_id, ...) to be used
+    # in this case and for override logic.
     # Second pass: build the processed data using only the primary source.
     processed_data_by_place = {}
     for place_dcid, place_data in variable_data.byEntity.items():

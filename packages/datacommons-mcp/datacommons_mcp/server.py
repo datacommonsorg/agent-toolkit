@@ -65,16 +65,14 @@ except Exception as e:
 mcp = FastMCP("DC MCP Server")
 
 
-@mcp.tool(
-    tags=["data"],
-)
+@mcp.tool()
 async def get_observations(
     variable_dcid: str,
     place_dcid: str | None = None,
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    date: str = ObservationDateType.LATEST,
+    date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> ObservationToolResponse:
@@ -110,9 +108,9 @@ async def get_observations(
 
     * **Date Filtering**: The tool filters observations by date using the following priority:
         1.  **`date`**: The `date` parameter is required and can be one of the enum values 'all', 'latest', 'range', or a date string in the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'.
-        2.  **Date Range**: If `date` is set to 'range', you must specify a custom range using **either** `date_range_start` and/or `date_range_end`.
-            * If only `date_range_start` is specified, then the response will contain all observations **after** that date.
-            * If only `date_range_end` is specified, then the response will contain all observations **before** that date.
+        2.  **Date Range**: If `date` is set to 'range', you must specify a date range using `date_range_start` and/or `date_range_end`.
+            * If only `date_range_start` is specified, then the response will contain all observations starting at and after that date (inclusive).
+            * If only `date_range_end` is specified, then the response will contain all observations before and up to that date (inclusive).
             * If both are specified, the response contains observations within the provided range (inclusive).
             * Dates must be in `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` format.
         3.  **Default Behavior**: If you do not provide **any** date parameters (`date`, `date_range_start`, or `date_range_end`), the tool will automatically fetch only the `'latest'` observation.
@@ -122,15 +120,14 @@ async def get_observations(
       place_dcid (str, optional): The DCID of the place.
       place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
-      source_override (str, optional): An optional facet ID to force the use of a specific data source.
+      source_override (str, optional): An optional source ID to force the use of a specific data source.
       date (str, optional): An optional date filter. Accepts 'all', 'latest', 'range', or single date values of the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. Defaults to 'latest' if no date parameters are provided.
-      date_range_start (str, optional): The start date for a custom range. **Used only if `date` is set to'range'.**
-      date_range_end (str, optional): The end date for a custom range. **Used only if `date` is set to'range'.**
+      date_range_start (str, optional): The start date for a range (inclusive). **Used only if `date` is set to'range'.**
+      date_range_end (str, optional): The end date for a range (inclusive). **Used only if `date` is set to'range'.**
 
     Returns:
-        ObservationToolResponse: A Pydantic model containing the fetched observation data.
-        The response includes:
-        - `variable_dcid`: The statistical variable requested.
+        The fetched observation data including:
+        - `variable`: Details about the statistical variable requested.
         - `place_observations`: A list of observations, one entry per place. Each entry contains:
             - `place`: Details about the observed place (DCID, name, type).
             - `time_series`: A list of `(date, value)` tuples, where `date` is a string (e.g., "2022-01-01") and `value` is a float.
@@ -138,9 +135,6 @@ async def get_observations(
         - `alternative_sources`: Details about other available data sources.
 
     """
-    # Handle the case where date is an Enum member
-    date_str = date.value if isinstance(date, ObservationDateType) else date
-
     return await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
@@ -148,7 +142,7 @@ async def get_observations(
         place_name=place_name,
         child_place_type=child_place_type,
         source_override=source_override,
-        date=date_str,
+        date=date,
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
