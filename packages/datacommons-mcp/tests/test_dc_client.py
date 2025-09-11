@@ -818,3 +818,117 @@ class TestCreateDCClient:
             # Should compute api_base_url by adding /core/api/v2/
             expected_api_url = "https://example.com/core/api/v2/"
             mock_dc_client.assert_called_with(url=expected_api_url)
+
+
+class TestSearchIndicatorsEndpoint:
+    """Tests related to the /api/nl/search-indicators endpoint logic."""
+
+    @pytest.fixture
+    def client(self, mocked_datacommons_client):
+        """Provides a DCClient instance for testing."""
+        return DCClient(dc=mocked_datacommons_client)
+
+    def test_transform_response_with_mixed_results(self, client):
+        """Tests transformation with a mix of topics and variables."""
+        mock_api_response = {
+            "queryResults": [
+                {
+                    "query": "test query",
+                    "indexResults": [
+                        {
+                            "results": [
+                                {
+                                    "dcid": "dc/topic/Health",
+                                    "name": "Health",
+                                    "typeOf": "Topic",
+                                },
+                                {
+                                    "dcid": "Count_Person",
+                                    "name": "Person Count",
+                                    "typeOf": "StatisticalVariable",
+                                },
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+
+        result = client._transform_search_indicators_response(mock_api_response)
+
+        assert result["topics"] == ["dc/topic/Health"]
+        assert result["variables"] == ["Count_Person"]
+        assert result["dcid_name_mappings"] == {
+            "dc/topic/Health": "Health",
+            "Count_Person": "Person Count",
+        }
+
+    def test_transform_response_with_only_variables(self, client):
+        """Tests transformation with only statistical variables."""
+        mock_api_response = {
+            "queryResults": [
+                {
+                    "query": "test query",
+                    "indexResults": [
+                        {
+                            "results": [
+                                {
+                                    "dcid": "Count_Person",
+                                    "name": "Person Count",
+                                    "typeOf": "StatisticalVariable",
+                                }
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+
+        result = client._transform_search_indicators_response(mock_api_response)
+
+        assert result["topics"] == []
+        assert result["variables"] == ["Count_Person"]
+        assert result["dcid_name_mappings"] == {"Count_Person": "Person Count"}
+
+    def test_transform_response_with_only_topics(self, client):
+        """Tests transformation with only topics."""
+        mock_api_response = {
+            "queryResults": [
+                {
+                    "query": "test query",
+                    "indexResults": [
+                        {
+                            "results": [
+                                {
+                                    "dcid": "dc/topic/Health",
+                                    "name": "Health",
+                                    "typeOf": "Topic",
+                                }
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+
+        result = client._transform_search_indicators_response(mock_api_response)
+
+        assert result["topics"] == ["dc/topic/Health"]
+        assert result["variables"] == []
+        assert result["dcid_name_mappings"] == {"dc/topic/Health": "Health"}
+
+    def test_transform_response_with_empty_results(self, client):
+        """Tests transformation with an empty API response."""
+        mock_api_response = {"queryResults": []}
+        result = client._transform_search_indicators_response(mock_api_response)
+        assert result["topics"] == []
+        assert result["variables"] == []
+        assert result["dcid_name_mappings"] == {}
+
+        mock_api_response_no_results = {"queryResults": [{"indexResults": []}]}
+        result = client._transform_search_indicators_response(
+            mock_api_response_no_results
+        )
+        assert result["topics"] == []
+        assert result["variables"] == []
+        assert result["dcid_name_mappings"] == {}

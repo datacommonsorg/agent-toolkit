@@ -345,6 +345,55 @@ class DCClient:
 
         return {"topics": topics, "variables": variables}
 
+    def _transform_search_indicators_response(self, api_response: dict) -> dict:
+        """
+        Transforms the response from the /api/nl/search-indicators endpoint.
+
+        Args:
+            api_response: The JSON response from the search-indicators API.
+
+        Returns:
+            A dictionary with "topics", "variables", and "dcid_name_mappings".
+
+        Example Output:
+            {
+                "topics": ["dc/topic/Health"],
+                "variables": ["Count_Person", "Count_Household"],
+                "dcid_name_mappings": {
+                    "dc/topic/Health": "Health",
+                    "Count_Person": "Person Count"
+                }
+            }
+        """
+        unique_indicators = {}
+        query_results = api_response.get("queryResults", [])
+
+        for query_result in query_results:
+            for index_result in query_result.get("indexResults", []):
+                for indicator in index_result.get("results", []):
+                    dcid = indicator.get("dcid")
+                    if dcid and dcid not in unique_indicators:
+                        unique_indicators[dcid] = indicator
+
+        topics = []
+        variables = []
+        dcid_name_mappings = {}
+
+        for dcid, indicator in unique_indicators.items():
+            if indicator.get("typeOf") == "Topic":
+                topics.append(dcid)
+            else:  # Default to variable if not a Topic
+                variables.append(dcid)
+
+            if "name" in indicator:
+                dcid_name_mappings[dcid] = indicator["name"]
+
+        return {
+            "topics": topics,
+            "variables": variables,
+            "dcid_name_mappings": dcid_name_mappings,
+        }
+
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""
         if self.variable_cache.get(place_dcid) is None:
