@@ -51,7 +51,8 @@ class ObservationDate(BaseModel):
     date: str
 
     @field_validator("date")
-    def validate_date_format(cls, v: str) -> str:  # noqa: B902,N805
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
         """Validates that the date is a known constant or a valid date format."""
         if v.lower() in [member.value for member in ObservationDateType]:
             return v.lower()
