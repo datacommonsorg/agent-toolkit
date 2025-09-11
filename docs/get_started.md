@@ -133,7 +133,7 @@ To install packages from local code (cloned from Github):
 1. Ensure a copy of your `.env` file is present in the directory.
 1. Run the following command:
    ```
-   uv datacommons-mcp serve <PROTOCOL>
+   uv run datacommons-mcp serve <PROTOCOL>
    ```
 The _PROTOCOL_ is one of:
 - `stdio`: suitable for most locally running clients
