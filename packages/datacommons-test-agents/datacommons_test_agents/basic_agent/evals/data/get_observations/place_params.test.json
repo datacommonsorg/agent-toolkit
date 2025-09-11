@@ -1,0 +1,53 @@
+[
+    {
+        "query": "What is the population of India",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "latest",
+                    "place_name": "India",
+                    "variable_dcid": "Count_Person"
+                }
+            }
+        ],
+        "reference": "The total population of India"
+    },
+    {
+        "query": "What about for states in India?",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "latest",
+                    "place_name": "India",
+                    "variable_dcid": "Count_Person",
+                    "child_place_type": "AdministrativeArea1"
+                }
+            }
+        ],
+        "reference": "The population of states in India"
+    },
+    {
+        "query": "how has the population of the top 2 most populated states changed over time",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "all",
+                    "place_name": "Uttar Pradesh",
+                    "variable_dcid": "Count_Person"
+                }
+            },
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "all",
+                    "place_name": "Maharashtra",
+                    "variable_dcid": "Count_Person"
+                }
+            }
+        ],
+        "reference": ""
+    }
+]

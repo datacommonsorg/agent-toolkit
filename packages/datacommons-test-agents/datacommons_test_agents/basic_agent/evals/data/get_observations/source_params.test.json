@@ -1,0 +1,33 @@
+[
+    {
+        "query": "What is the population of Indian states",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "latest",
+                    "place_name": "India",
+                    "variable_dcid": "Count_Person",
+                    "child_place_type": "AdministrativeArea1"
+                }
+            }
+        ],
+        "reference": "The population of states in India"
+    },
+    {
+        "query": "How do those numbers compare to the Indian Census",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "latest",
+                    "place_name": "India",
+                    "variable_dcid": "Count_Person",
+                    "child_place_type": "AdministrativeArea1",
+                    "source_override": "2123271870"
+                }
+            }
+        ],
+        "reference": "The population of states in India"
+    }
+]
