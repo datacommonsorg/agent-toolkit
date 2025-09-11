@@ -212,6 +212,7 @@ class TestGetObservations:
         mock_client.fetch_entity_names.return_value = {
             "country/USA": "United States",
             "country/CAN": "Canada",
+            "var1": "Variable 1",
         }
         mock_client.fetch_entity_types.return_value = {
             "country/USA": ["Country"],
@@ -230,7 +231,8 @@ class TestGetObservations:
 
         # Assert
         assert isinstance(result, ObservationToolResponse)
-        assert result.variable_dcid == "var1"
+        assert result.variable.dcid == "var1"
+        assert result.variable.name == "Variable 1"
         assert result.resolved_parent_place is None
         assert result.child_place_type is None
 
@@ -667,7 +669,7 @@ class TestGetObservations:
     async def test_source_selection_tiebreaker_by_source_id(self, mock_client):
         """
         Tests that the source_id is used as a final tie-breaker.
-        Source1 should be chosen because it is alphabetically greater.
+        Source2 should be chosen because it is alphabetically greater.
         """
         # Arrange
         # source1 appears at indices 0 and 1 (avg: 0.5)

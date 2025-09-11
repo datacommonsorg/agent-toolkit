@@ -260,23 +260,6 @@ class ToolResponseBaseModel(BaseModel):
 
     model_config = {"populate_by_name": True}
 
-    def model_dump(
-        self,
-        **kwargs: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Override model_dump to exclude None by default."""
-        # We call the super() method (the original BaseModel dump)
-        # passing our new default for exclude_none.
-        return super().model_dump(exclude_none=True, **kwargs)
-
-    def model_dump_json(
-        self,  # Changed default to True
-        **kwargs: dict[str, Any],
-    ) -> str:
-        """Override model_dump_json to exclude None by default."""
-        # Same logic for the JSON-specific method
-        return super().model_dump_json(exclude_none=True, **kwargs)
-
 
 class Node(ToolResponseBaseModel):
     """Represents a Data Commons node, with an optional name, type, and dcid."""
@@ -304,7 +287,7 @@ class AlternativeSource(FacetMetadata):
         default=None,
         description=(
             "The number of places within the current API response for which this"
-            " alternative source has data."
+            " alternative source has data. Used only in child-place type responses."
         ),
     )
 
@@ -326,7 +309,7 @@ class ObservationToolResponse(ToolResponseBaseModel):
     source information is normalized into a top-level `source_info` dictionary.
     """
 
-    variable_dcid: str
+    variable: Node
 
     resolved_parent_place: Node | None = Field(
         default=None,
@@ -339,7 +322,7 @@ class ObservationToolResponse(ToolResponseBaseModel):
     child_place_type: str | None = Field(
         default=None,
         description=(
-            "The common place type for all observations in the response (e.g., 'State', 'County'). "
+            "The common place type for all observations in the response (e.g., 'State', 'County', 'AdministrativeArea2'). "
             "This is present when a hierarchical query was made."
         ),
     )

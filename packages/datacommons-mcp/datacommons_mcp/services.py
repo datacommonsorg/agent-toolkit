@@ -106,7 +106,7 @@ async def _fetch_all_metadata(
 ) -> dict[str, Node]:
     """Fetches and combines names and types for all entities into a single map."""
     variable_data = api_response.byVariable.get(variable_dcid) if api_response else None
-    dcids_names_to_fetch = set()
+    dcids_names_to_fetch = {variable_dcid}
     dcids_types_to_fetch = set()
 
     if variable_data and variable_data.byEntity:
@@ -132,7 +132,7 @@ async def _fetch_all_metadata(
     for dcid in dcids_names_to_fetch | dcids_types_to_fetch:
         metadata_map[dcid] = Node(
             dcid=dcid,
-            name=names_map.get(dcid, ""),
+            name=names_map.get(dcid),
             type_of=types_map.get(dcid),
         )
     return metadata_map
@@ -294,7 +294,7 @@ async def _build_final_response(
         )
 
     final_response = ObservationToolResponse(
-        variable_dcid=request.variable_dcid,
+        variable=metadata_map.get(request.variable_dcid),
         child_place_type=request.child_place_type,
         source_metadata=primary_source
         if primary_source
