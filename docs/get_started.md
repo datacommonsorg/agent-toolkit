@@ -18,7 +18,7 @@ At this time, there is no centrally deployed server; you run your own server, an
 
 ### Clients
 
-You can use any available AI application to connect to to the Data Commons MCP Server, or your own custom agent. 
+You can use any available AI application to connect to the Data Commons MCP Server, or your own custom agent. 
 
 The server supports both standard MCP transport protocols:
 - Stdio: For clients that connect directly using local processes
