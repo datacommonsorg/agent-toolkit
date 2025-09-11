@@ -55,9 +55,10 @@ class DCClient:
         base_index: str = "base_uae_mem",
         custom_index: str | None = None,
         sv_search_base_url: str = "https://datacommons.org",
-        use_search_indicators_endpoint: bool = True,
         topic_store: TopicStore | None = None,
         _place_like_constraints: list[str] | None = None,
+        *,
+        use_search_indicators_endpoint: bool = True,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -425,13 +426,17 @@ class DCClient:
         Returns:
             A tuple containing a SearchResult object and a dcid_name_mappings dictionary.
         """
-        # Collect unique queries from all search tasks
+        # Collect unique queries and place DCIDs from all search tasks
         unique_queries = sorted({task.query for task in search_tasks})
+        all_place_dcids = sorted(
+            {pd for task in search_tasks for pd in task.place_dcids}
+        )
+        max_search_results = max_results * 2
 
         # Prepare request parameters
         params = {
             "queries": unique_queries,
-            "limit_per_index": max_results,
+            "limit_per_index": max_search_results,
         }
         if not include_topics:
             params["include_types"] = ["StatisticalVariable"]
@@ -450,11 +455,39 @@ class DCClient:
             )
             response.raise_for_status()
             api_response = response.json()
-            return self._transform_search_indicators_response(api_response)
+            search_result, dcid_name_mappings = (
+                self._transform_search_indicators_response(api_response)
+            )
         except Exception as e:
             logger.error("Error calling /api/nl/search-indicators: %s", e)
             # Return empty results on failure
             return SearchResult(), {}
+
+        # Apply existence filtering if places are specified
+        if all_place_dcids:
+            # Ensure place variables are cached for all places in parallel
+            await asyncio.gather(
+                *(
+                    asyncio.to_thread(self._ensure_place_variables_cached, place_dcid)
+                    for place_dcid in all_place_dcids
+                )
+            )
+
+            # Filter topics and variables by existence (OR logic)
+            search_result.topics = self._filter_topics_by_existence_new(
+                search_result.topics, all_place_dcids
+            )
+            search_result.variables = self._filter_variables_by_existence_new(
+                search_result.variables, all_place_dcids
+            )
+
+        # Get member information for topics
+        if search_result.topics:
+            self._get_topics_members_with_existence_new(
+                search_result.topics, all_place_dcids
+            )
+
+        return search_result, dcid_name_mappings
 
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""
@@ -498,6 +531,50 @@ class DCClient:
                 )
 
         return existing_variables
+
+    def _filter_variables_by_existence_new(
+        self, variables: dict[str, SearchVariable], place_dcids: list[str]
+    ) -> dict[str, SearchVariable]:
+        """
+        Filter SearchVariable objects by existence for the given places (OR logic).
+
+        Note: This has the same logic as _filter_variables_by_existence but operates on SearchVariable objects.
+        """
+        if not variables or not place_dcids:
+            return {}
+
+        existing_variables = {}
+        for var_dcid, var_obj in variables.items():
+            places_with_data = []
+            for place_dcid in place_dcids:
+                place_variables = self.variable_cache.get(
+                    place_dcid
+                ) | self._place_like_statvar_store.get(place_dcid, set())
+                if place_variables is not None and var_dcid in place_variables:
+                    places_with_data.append(place_dcid)
+
+            if places_with_data:
+                var_obj.places_with_data = places_with_data
+                existing_variables[var_dcid] = var_obj
+
+        return existing_variables
+
+    def _filter_topics_by_existence_new(
+        self, topics: dict[str, SearchTopic], place_dcids: list[str]
+    ) -> dict[str, SearchTopic]:
+        """
+        Filter SearchTopic objects by existence using recursive checks.
+
+        Note: This has the same logic as _filter_topics_by_existence but operates on SearchTopic objects.
+        """
+        if not topics or not place_dcids:
+            return {}
+
+        return {
+            dcid: topic
+            for dcid, topic in topics.items()
+            if self._check_topic_exists_recursive(dcid, place_dcids)
+        }
 
     def _filter_topics_by_existence(
         self, topic_dcids: list[str], place_dcids: list[str]
@@ -617,6 +694,42 @@ class DCClient:
             }
 
         return result
+
+    def _get_topics_members_with_existence_new(
+        self, topics: dict[str, SearchTopic], place_dcids: list[str] | None
+    ) -> None:
+        """
+        Get and set member topics and variables for SearchTopic objects,
+        filtered by existence if places are specified. This method modifies
+        the SearchTopic objects in place.
+
+        Note: This has the same logic as _get_topics_members_with_existence but operates on SearchTopic objects.
+        """
+        if not topics or not self.topic_store:
+            return
+
+        for topic_dcid, topic_obj in topics.items():
+            topic_data = self.topic_store.topics_by_dcid.get(topic_dcid)
+            if not topic_data:
+                continue
+
+            member_topics = topic_data.member_topics
+            member_variables = topic_data.variables
+
+            # Filter by existence if places are specified
+            if place_dcids:
+                filtered_variables = self._filter_variables_by_existence(
+                    member_variables, place_dcids
+                )
+                member_variables = [var["dcid"] for var in filtered_variables]
+
+                filtered_topics = self._filter_topics_by_existence(
+                    member_topics, place_dcids
+                )
+                member_topics = [topic["dcid"] for topic in filtered_topics]
+
+            topic_obj.member_topics = member_topics
+            topic_obj.member_variables = member_variables
 
     def _build_lookups(self, entities: list[str]) -> dict:
         """Build DCID-to-name mappings using TopicStore."""
