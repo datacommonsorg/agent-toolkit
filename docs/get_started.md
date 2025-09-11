@@ -1,6 +1,6 @@
 # Introducing Data Commons MCP server
 
-[TOC]
+* TOC
 
 ## Overview
 
