@@ -54,7 +54,7 @@ async def _validate_and_build_request(
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    date: str = ObservationDateType.LATEST,
+    date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> ObservationRequest:
@@ -347,7 +347,7 @@ async def get_observations(
     place_name: str | None = None,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    date: str = ObservationDateType.LATEST,
+    date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> ObservationToolResponse:
