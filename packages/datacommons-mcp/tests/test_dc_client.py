@@ -22,9 +22,11 @@ without making actual network calls.
 """
 
 import os
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+import requests
 from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
@@ -942,6 +944,115 @@ class TestSearchIndicatorsEndpoint:
         assert not result.topics
         assert not result.variables
         assert not dcid_name_mappings
+
+    @pytest.mark.asyncio
+    @patch("datacommons_mcp.clients.requests.get")
+    async def test_fetch_indicators_new_constructs_request_with_topics(
+        self, mock_get, client
+    ):
+        """Tests that _fetch_indicators_new constructs the correct request when including topics."""
+        # Arrange
+        mock_api_response: dict[str, Any] = {"queryResults": []}
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = mock_api_response
+        mock_get.return_value = mock_response
+
+        search_tasks = [Mock(query="health"), Mock(query="economy")]
+
+        # Act
+        await client._fetch_indicators_new(
+            search_tasks=search_tasks, include_topics=True, max_results=15
+        )
+
+        # Assert
+        mock_get.assert_called_once()
+        call_args, call_kwargs = mock_get.call_args
+        # Verify URL and headers
+        assert "api/nl/search-indicators" in call_args[0]
+        assert call_kwargs["headers"] == {"Content-Type": "application/json"}
+
+        # Verify params
+        params = call_kwargs["params"]
+        assert params["queries"] == ["economy", "health"]  # Sorted unique queries
+        assert params["limit_per_index"] == 15
+        assert "include_types" not in params  # Topics are included by default
+
+    @pytest.mark.asyncio
+    @patch("datacommons_mcp.clients.requests.get")
+    async def test_fetch_indicators_new_exclude_topics(self, mock_get, client):
+        """Tests that include_types is set when include_topics is False."""
+        # Arrange
+        mock_api_response: dict[str, Any] = {"queryResults": []}
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = mock_api_response
+        mock_get.return_value = mock_response
+
+        search_tasks = [Mock(query="population")]
+
+        # Act
+        await client._fetch_indicators_new(
+            search_tasks=search_tasks, include_topics=False, max_results=10
+        )
+
+        # Assert
+        mock_get.assert_called_once()
+        _, call_kwargs = mock_get.call_args
+        params = call_kwargs["params"]
+        assert params["include_types"] == ["StatisticalVariable"]
+
+    @pytest.mark.asyncio
+    @patch("datacommons_mcp.clients.requests.get")
+    async def test_fetch_indicators_new_handles_api_error(self, mock_get, client):
+        """Tests that an empty result is returned on API failure."""
+        # Arrange
+        mock_get.side_effect = requests.exceptions.RequestException("API Error")
+
+        search_tasks = [Mock(query="test")]
+
+        # Act
+        search_result, dcid_name_mappings = await client._fetch_indicators_new(
+            search_tasks=search_tasks, include_topics=True, max_results=10
+        )
+
+        # Assert
+        assert not search_result.topics
+        assert not search_result.variables
+        assert not dcid_name_mappings
+
+    @pytest.mark.asyncio
+    @patch("datacommons_mcp.clients.requests.get")
+    async def test_fetch_indicators_new_passes_response_to_transform(
+        self, mock_get, client
+    ):
+        """Tests that the API response is correctly passed to the transform helper."""
+        # Arrange
+        mock_api_response = {
+            "queryResults": [
+                {"indexResults": [{"results": [{"dcid": "Count_Person"}]}]}
+            ]
+        }
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = mock_api_response
+        mock_get.return_value = mock_response
+
+        # Patch the transform method to spy on it
+        with patch.object(
+            client,
+            "_transform_search_indicators_response",
+            wraps=client._transform_search_indicators_response,
+        ) as mock_transform:
+            search_tasks = [Mock(query="population")]
+
+            # Act
+            await client._fetch_indicators_new(
+                search_tasks=search_tasks, include_topics=False, max_results=10
+            )
+
+            # Assert
+            mock_transform.assert_called_once_with(mock_api_response)
 
         mock_api_response_no_results = {"queryResults": [{"indexResults": []}]}
         result, dcid_name_mappings = client._transform_search_indicators_response(

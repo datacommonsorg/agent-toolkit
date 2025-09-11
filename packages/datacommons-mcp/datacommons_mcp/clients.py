@@ -33,6 +33,7 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.data_models.search import (
     SearchResult,
+    SearchTask,
     SearchTopic,
     SearchVariable,
 )
@@ -405,6 +406,55 @@ class DCClient:
                 )
 
         return SearchResult(topics=topics, variables=variables), dcid_name_mappings
+
+    async def _fetch_indicators_new(
+        self,
+        search_tasks: list[SearchTask],
+        max_results: int,
+        *,
+        include_topics: bool,
+    ) -> tuple[SearchResult, dict]:
+        """
+        Calls the new /api/nl/search-indicators endpoint and transforms the response.
+
+        Args:
+            search_tasks: A list of SearchTask objects.
+            include_topics: Whether to include topics in the search.
+            max_results: The maximum number of results to return.
+
+        Returns:
+            A tuple containing a SearchResult object and a dcid_name_mappings dictionary.
+        """
+        # Collect unique queries from all search tasks
+        unique_queries = sorted({task.query for task in search_tasks})
+
+        # Prepare request parameters
+        params = {
+            "queries": unique_queries,
+            "limit_per_index": max_results,
+        }
+        if not include_topics:
+            params["include_types"] = ["StatisticalVariable"]
+
+        # Use precomputed indices based on configured search scope
+        indices = self.search_indices
+        indices_param = ",".join(indices)
+        endpoint_url = (
+            f"{self.sv_search_base_url}/api/nl/search-indicators?idx={indices_param}"
+        )
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.get(  # noqa: S113
+                endpoint_url, params=params, headers=headers
+            )
+            response.raise_for_status()
+            api_response = response.json()
+            return self._transform_search_indicators_response(api_response)
+        except Exception as e:
+            logger.error("Error calling /api/nl/search-indicators: %s", e)
+            # Return empty results on failure
+            return SearchResult(), {}
 
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""
