@@ -104,7 +104,7 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
 If desired, you can modify the following settings:
 - `selectedAuthType`: If you don't have a GCP project and want to use OAuth with your Google account, set to `oauth-personal`.
 - `command`: Set to `uv` if you want to run packages from locally stored Python code.
-- `args`: Set `stdio` to `http` if you want to use streaming HTTP as the transport protcol.
+- `args`: Set `stdio` to `http` if you want to use streaming HTTP as the transport protocol.
 
 You can now run the `gemini` command from any directory and it will automatically kick off the MCP server, with the correct environment variables.
 
