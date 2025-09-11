@@ -238,15 +238,16 @@ class DCClient:
             Dictionary with topics, variables, and lookups
         """
         if self.use_search_indicators_endpoint:
+            logger.info("Calling search-indicators endpoint")
             return await self._fetch_indicators_new_path(
                 query, place_dcids, max_results, include_topics=include_topics
             )
-
+        logger.info("Calling search-vector endpoint")
         # Old path using /api/nl/search-vector
         # Search for more results than we need to ensure we get enough topics and variables.
         # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
         max_search_results = max_results * 2
-        search_results = await self._search_indicators(
+        search_results = await self._search_vector(
             query=query,
             include_topics=include_topics,
             max_results=max_search_results,
@@ -317,7 +318,7 @@ class DCClient:
             ),
         }
 
-    async def _search_indicators(
+    async def _search_vector(
         self, query: str, include_topics: bool = True, max_results: int = 10
     ) -> dict:
         """
@@ -497,7 +498,6 @@ class DCClient:
             f"{self.sv_search_base_url}/api/nl/search-indicators?idx={indices_param}"
         )
         headers = {"Content-Type": "application/json"}
-
         try:
             response = requests.get(  # noqa: S113
                 endpoint_url, params=params, headers=headers

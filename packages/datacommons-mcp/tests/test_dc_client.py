@@ -634,7 +634,7 @@ class TestDCClientFetchIndicators:
         }
 
         # Act: Call the method
-        result = await client_under_test._search_indicators(
+        result = await client_under_test._search_vector(
             "test query", include_topics=True
         )
 
@@ -675,7 +675,7 @@ class TestDCClientFetchIndicators:
         client_under_test.topic_store = None
 
         # Act: Call the method
-        result = await client_under_test._search_indicators(
+        result = await client_under_test._search_vector(
             "test query", include_topics=True
         )
 
@@ -708,7 +708,7 @@ class TestDCClientFetchIndicators:
         }
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
 
-        result = await client_under_test._search_indicators(
+        result = await client_under_test._search_vector(
             "test query", include_topics=True, max_results=2
         )
 
