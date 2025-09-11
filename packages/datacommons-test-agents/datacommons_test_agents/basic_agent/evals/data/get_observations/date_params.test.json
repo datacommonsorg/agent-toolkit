@@ -1,6 +1,6 @@
 [
   {
-    "query": "What is the population of California??",
+    "query": "What is the population (dcid=Count_Person) of California??",
     "expected_tool_use": [
       {
         "tool_name": "get_observations",
@@ -11,7 +11,7 @@
         }
       }
     ],
-    "reference": "The total population of California was 39,431,263 in 2024 (Source: U.S. Census Bureau).\n"
+    "reference": "A data analyst could use this data to identify the most recent population"
   },
   {
     "query": "What was the population of California in 2023?",
@@ -25,7 +25,7 @@
         }
       }
     ],
-    "reference": "The population of California was 39,198,693 in 2023 (U.S. Census Bureau).\n"
+    "reference": "A data analyst can use the fetched data to report California's population"
   },
   {
     "query": "What was the population of California in between may 2002 and november 2005?",
@@ -41,7 +41,7 @@
         }
       }
     ],
-    "reference": "The population of California"
+    "reference": "A data analyst could present the population data for California"
   },
   {
     "query": "how has the population changed over time?",
@@ -55,6 +55,6 @@
         }
       }
     ],
-    "reference": "The population of California"
+    "reference": "A data analyst can use this time-series data to analyze the population changes in California"
   }
 ]

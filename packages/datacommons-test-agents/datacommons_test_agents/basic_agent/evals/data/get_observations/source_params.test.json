@@ -1,6 +1,6 @@
 [
     {
-        "query": "What is the population of Indian states",
+        "query": "What is the population (dcid=Count_Person) of Indian states (child_place_type=AdministrativeArea1)?",
         "expected_tool_use": [
             {
                 "tool_name": "get_observations",
@@ -12,7 +12,7 @@
                 }
             }
         ],
-        "reference": "The population of states in India"
+        "reference": "The data analyst could use the fetched population data for each Indian state from the OECD Regional Demography"
     },
     {
         "query": "How do those numbers compare to the Indian Census",
@@ -28,6 +28,6 @@
                 }
             }
         ],
-        "reference": "The population of states in India"
+        "reference": "The data analyst can use the fetched latest total population data for Indian states from the India Census to compare with the previous OECD data."
     }
 ]
