@@ -35,7 +35,10 @@ from datacommons_mcp.data_models.observations import (
     ObservationRequest,
 )
 from datacommons_mcp.data_models.search import (
+    SearchResult,
     SearchTask,
+    SearchTopic,
+    SearchVariable,
 )
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
 
@@ -316,8 +319,10 @@ class TestDCClientFetchIndicators:
         self, mocked_datacommons_client
     ):
         """Test basic functionality without place filtering."""
-        # Arrange: Create client and mock search results
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock search results
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -383,8 +388,10 @@ class TestDCClientFetchIndicators:
         self, mocked_datacommons_client
     ):
         """Test basic functionality without place filtering."""
-        # Arrange: Create client and mock search results
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock search results
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -444,8 +451,10 @@ class TestDCClientFetchIndicators:
         self, mocked_datacommons_client
     ):
         """Test functionality with place filtering."""
-        # Arrange: Create client and mock search results
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock search results
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -493,8 +502,10 @@ class TestDCClientFetchIndicators:
 
     def test_filter_variables_by_existence(self, mocked_datacommons_client):
         """Test variable filtering by existence."""
-        # Arrange: Create client and mock variable cache
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock variable cache
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
         client_under_test.variable_cache = Mock()
         client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
             "geoId/06": {"dc/variable/Count_Person", "dc/variable/Count_Household"},
@@ -526,8 +537,10 @@ class TestDCClientFetchIndicators:
 
     def test_filter_topics_by_existence(self, mocked_datacommons_client):
         """Test topic filtering by existence."""
-        # Arrange: Create client and mock topic store
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock topic store
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
@@ -555,8 +568,10 @@ class TestDCClientFetchIndicators:
 
     def test_get_topics_members_with_existence(self, mocked_datacommons_client):
         """Test member retrieval with existence filtering."""
-        # Arrange: Create client and mock topic store
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock topic store
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
@@ -589,8 +604,10 @@ class TestDCClientFetchIndicators:
         self, mocked_datacommons_client
     ):
         """Test that _search_entities filters out topics that don't exist in the topic store."""
-        # Arrange: Create client and mock search results
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Arrange: Create client for the old path and mock search results
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
 
         # Mock search_svs to return topics (some valid, some invalid) and variables
         mock_search_results = {
@@ -678,7 +695,9 @@ class TestDCClientFetchIndicators:
         self, mocked_datacommons_client
     ):
         """Test _search_entities with per_search_limit parameter."""
-        client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=False
+        )
 
         # Mock search_svs to return results
         mock_search_results = {
@@ -1216,3 +1235,92 @@ class TestSearchIndicatorsEndpoint:
         # Without place filtering, all members should be present
         assert health_topic.member_variables == ["Count_Person", "Count_Household"]
         assert health_topic.member_topics == ["dc/topic/HeartDisease"]
+
+
+@pytest.mark.asyncio
+class TestFetchIndicatorsNewPath:
+    """Tests for the _fetch_indicators_new_path helper method."""
+
+    @pytest.fixture
+    def client(self, mocked_datacommons_client):
+        """Provides a DCClient instance for testing the new path."""
+        return DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=True
+        )
+
+    async def test_fetch_indicators_new_path_calls_dependencies(self, client):
+        """Tests that the new path helper calls _fetch_indicators_new and _build_lookups."""
+        # Arrange
+        # Mock the dependencies that will be called
+        client._fetch_indicators_new = AsyncMock(
+            return_value=(SearchResult(), {"Count_Person": "Person Count"})
+        )
+        client._build_lookups = Mock(return_value={})
+
+        # Act
+        await client._fetch_indicators_new_path(
+            query="population",
+            place_dcids=["geoId/06"],
+            include_topics=True,
+            max_results=10,
+        )
+
+        # Assert
+        # 1. Verify _fetch_indicators_new was called correctly
+        client._fetch_indicators_new.assert_awaited_once()
+        call_args = client._fetch_indicators_new.call_args
+        assert call_args.kwargs["include_topics"] is True
+        assert call_args.kwargs["max_results"] == 10
+        # Check the SearchTask object passed
+        search_task = call_args.kwargs["search_tasks"][0]
+        assert search_task.query == "population"
+        assert search_task.place_dcids == ["geoId/06"]
+
+        # 2. Verify _build_lookups was called (even if with an empty list)
+        client._build_lookups.assert_called_once()
+
+    async def test_fetch_indicators_new_path_formats_response(self, client):
+        """Tests that the new path helper correctly formats the final dictionary."""
+        # Arrange
+        # Prepare a mock SearchResult to be returned by the underlying fetch method
+        mock_search_result = SearchResult(
+            topics={
+                "dc/topic/Health": SearchTopic(
+                    dcid="dc/topic/Health",
+                    member_topics=["dc/topic/SubHealth"],
+                    member_variables=["Count_Person"],
+                )
+            },
+            variables={"Count_Person": SearchVariable(dcid="Count_Person")},
+        )
+        mock_dcid_names = {
+            "dc/topic/Health": "Health",
+            "Count_Person": "Person Count",
+        }
+        client._fetch_indicators_new = AsyncMock(
+            return_value=(mock_search_result, mock_dcid_names)
+        )
+        # Mock the lookup for member entities
+        client._build_lookups = Mock(
+            return_value={"dc/topic/SubHealth": "Sub-Health Topic"}
+        )
+
+        # Act
+        result = await client._fetch_indicators_new_path(
+            query="health", place_dcids=None, include_topics=True, max_results=10
+        )
+
+        # Assert
+        assert "topics" in result
+        assert "variables" in result
+        assert "lookups" in result
+        assert len(result["topics"]) == 1
+        assert result["topics"][0]["dcid"] == "dc/topic/Health"
+        assert len(result["variables"]) == 1
+        assert result["variables"][0]["dcid"] == "Count_Person"
+        # Check that lookups from both sources were merged
+        assert result["lookups"] == {
+            "dc/topic/Health": "Health",
+            "Count_Person": "Person Count",
+            "dc/topic/SubHealth": "Sub-Health Topic",
+        }
