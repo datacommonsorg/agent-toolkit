@@ -298,7 +298,7 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
         TopicStore loaded from cache
     """
 
-    with open(cache_file_path, "r") as f:
+    with open(cache_file_path) as f:
         cache_data = json.load(f)
 
     # Reconstruct TopicStore from cache data
