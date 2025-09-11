@@ -1239,7 +1239,7 @@ class TestSearchIndicatorsEndpoint:
 
 @pytest.mark.asyncio
 class TestFetchIndicatorsNewPath:
-    """Tests for the _fetch_indicators_new_path helper method."""
+    """Tests for the _search_indicators helper method."""
 
     @pytest.fixture
     def client(self, mocked_datacommons_client):
@@ -1248,7 +1248,7 @@ class TestFetchIndicatorsNewPath:
             dc=mocked_datacommons_client, use_search_indicators_endpoint=True
         )
 
-    async def test_fetch_indicators_new_path_calls_dependencies(self, client):
+    async def test_search_indicators_calls_dependencies(self, client):
         """Tests that the new path helper calls _fetch_indicators_new and _build_lookups."""
         # Arrange
         # Mock the dependencies that will be called
@@ -1258,7 +1258,7 @@ class TestFetchIndicatorsNewPath:
         client._build_lookups = Mock(return_value={})
 
         # Act
-        await client._fetch_indicators_new_path(
+        await client._search_indicators(
             query="population",
             place_dcids=["geoId/06"],
             include_topics=True,
@@ -1279,7 +1279,7 @@ class TestFetchIndicatorsNewPath:
         # 2. Verify _build_lookups was called (even if with an empty list)
         client._build_lookups.assert_called_once()
 
-    async def test_fetch_indicators_new_path_formats_response(self, client):
+    async def test_search_indicators_formats_response(self, client):
         """Tests that the new path helper correctly formats the final dictionary."""
         # Arrange
         # Prepare a mock SearchResult to be returned by the underlying fetch method
@@ -1306,7 +1306,7 @@ class TestFetchIndicatorsNewPath:
         )
 
         # Act
-        result = await client._fetch_indicators_new_path(
+        result = await client._search_indicators(
             query="health", place_dcids=None, include_topics=True, max_results=10
         )
 

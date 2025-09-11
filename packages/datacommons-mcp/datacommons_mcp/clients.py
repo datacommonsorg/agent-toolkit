@@ -239,7 +239,7 @@ class DCClient:
         """
         if self.use_search_indicators_endpoint:
             logger.info("Calling search-indicators endpoint")
-            return await self._fetch_indicators_new_path(
+            return await self._search_indicators(
                 query, place_dcids, max_results, include_topics=include_topics
             )
         logger.info("Calling search-vector endpoint")
@@ -414,7 +414,7 @@ class DCClient:
 
         return SearchResult(topics=topics, variables=variables), dcid_name_mappings
 
-    async def _fetch_indicators_new_path(
+    async def _search_indicators(
         self,
         query: str,
         place_dcids: list[str] | None,
