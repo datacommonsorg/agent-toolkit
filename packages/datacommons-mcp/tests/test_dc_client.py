@@ -726,6 +726,7 @@ class TestCreateDCClient:
             assert result.search_scope == SearchScope.BASE_ONLY
             assert result.base_index == "base_uae_mem"
             assert result.custom_index is None
+            assert result.use_search_indicators_endpoint is True  # Default value
             mock_dc_client.assert_called_once_with(api_key="test_api_key")
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
@@ -762,9 +763,37 @@ class TestCreateDCClient:
                 result.sv_search_base_url
                 == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
             )
+            assert result.use_search_indicators_endpoint is True  # Default value
             # Should have called DataCommonsClient with computed api_base_url
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
             mock_dc_client.assert_called_with(url=expected_api_url)
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients.create_topic_store")
+    def test_create_dc_client_custom_dc_uses_search_vector(
+        self, mock_create_store: Mock, mock_dc_client: Mock
+    ):
+        """Test custom DC creation with use_search_indicators_endpoint set to false (uses search_vector)."""
+        # Arrange
+        with patch.dict(
+            os.environ,
+            {
+                "DC_API_KEY": "test_api_key",
+                "DC_TYPE": "custom",
+                "CUSTOM_DC_URL": "https://example.com",
+                "DC_USE_SEARCH_INDICATORS_ENDPOINT": "false",
+            },
+        ):
+            settings = CustomDCSettings()
+            mock_dc_instance = Mock()
+            mock_dc_client.return_value = mock_dc_instance
+            mock_create_store.return_value = Mock()
+
+            # Act
+            result = create_dc_client(settings)
+
+            # Assert
+            assert result.use_search_indicators_endpoint is False
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     def test_create_dc_client_url_computation(self, mock_dc_client):

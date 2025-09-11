@@ -35,10 +35,22 @@ class DCSettingsSelector(BaseSettings):
     )
 
 
-class BaseDCSettings(BaseSettings):
+class DCSettings(BaseSettings):
     """Settings for base Data Commons instance."""
 
     model_config = _MODEL_CONFIG
+
+    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
+
+    use_search_indicators_endpoint: bool = Field(
+        default=True,
+        alias="DC_USE_SEARCH_INDICATORS_ENDPOINT",
+        description="Path to topic cache file",
+    )
+
+
+class BaseDCSettings(DCSettings):
+    """Settings for base Data Commons instance."""
 
     def __init__(self, **kwargs: dict[str, Any]) -> None:
         super().__init__(**kwargs)
@@ -48,7 +60,6 @@ class BaseDCSettings(BaseSettings):
         alias="DC_TYPE",
         description="Type of Data Commons (must be 'base')",
     )
-    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
     sv_search_base_url: str = Field(
         default="https://datacommons.org",
         alias="DC_SV_SEARCH_BASE_URL",
@@ -66,7 +77,7 @@ class BaseDCSettings(BaseSettings):
     )
 
 
-class CustomDCSettings(BaseSettings):
+class CustomDCSettings(DCSettings):
     """Settings for custom Data Commons instance."""
 
     model_config = _MODEL_CONFIG
@@ -79,7 +90,6 @@ class CustomDCSettings(BaseSettings):
         alias="DC_TYPE",
         description="Type of Data Commons (must be 'custom')",
     )
-    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
     custom_dc_url: str = Field(
         alias="CUSTOM_DC_URL", description="Base URL for custom Data Commons instance"
     )

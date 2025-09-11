@@ -49,6 +49,7 @@ class DCClient:
         base_index: str = "base_uae_mem",
         custom_index: str | None = None,
         sv_search_base_url: str = "https://datacommons.org",
+        use_search_indicators_endpoint: bool = True,
         topic_store: TopicStore | None = None,
         _place_like_constraints: list[str] | None = None,
     ) -> None:
@@ -73,6 +74,7 @@ class DCClient:
         # Precompute search indices to validate configuration at instantiation time
         self.search_indices = self._compute_search_indices()
         self.sv_search_base_url = sv_search_base_url
+        self.use_search_indicators_endpoint = use_search_indicators_endpoint
         self.variable_cache = LruCache(128)
 
         if topic_store is None:
@@ -563,6 +565,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         base_index=settings.base_index,
         custom_index=None,
         sv_search_base_url=settings.sv_search_base_url,
+        use_search_indicators_endpoint=settings.use_search_indicators_endpoint,
         topic_store=topic_store,
     )
 
@@ -587,6 +590,7 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         base_index=settings.base_index,
         custom_index=settings.custom_index,
         sv_search_base_url=settings.custom_dc_url,  # Use custom_dc_url as sv_search_base_url
+        use_search_indicators_endpoint=settings.use_search_indicators_endpoint,
         topic_store=topic_store,
         # TODO (@jm-rivera): Remove place-like parameter new search endpoint is live.
         _place_like_constraints=settings.place_like_constraints,
