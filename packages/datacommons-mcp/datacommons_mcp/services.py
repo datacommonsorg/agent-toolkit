@@ -340,7 +340,6 @@ async def _build_final_response(
     return final_response
 
 
-# Main function to get observations
 async def get_observations(
     client: DCClient,
     variable_dcid: str,
@@ -352,35 +351,50 @@ async def get_observations(
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> ObservationToolResponse:
-    """Fetches statistical observations from Data Commons for one or more places.
+    """Fetches statistical observations from Data Commons.
 
-    This service acts as a high-level orchestrator for retrieving observation data.
-    It handles input validation, place resolution, data fetching, source selection,
-    and metadata enrichment to provide a clean and consistent response.
+    This service orchestrates the retrieval of observation data by handling
+    input validation, place name resolution, data fetching from the client,
+    source selection, and metadata enrichment to produce a structured response.
 
-    The function can be called in two modes:
-    1.  **Single Place Mode**: Fetches data for a single, specific place.
-        - Invoked by providing `variable_dcid` and a place identifier (`place_dcid`
-          or `place_name`).
-    2.  **Hierarchy Mode**: Fetches data for all child places of a specific type
-        within a parent place (e.g., all counties in a state).
-        - Invoked by also providing `child_place_type`.
+    **Core Logic & Rules**
 
-    A key feature is the source selection logic. When multiple data sources (facets)
-    are available for a variable, this function determines a single "primary source"
-    based on which source provides the most comprehensive data across the requested
-    places. Data from other sources is reported in `alternative_sources`.
+    - **Mode Selection**:
+        - **Single Place Mode**: Fetches data for a single place by providing
+          `variable_dcid` and a place identifier (`place_dcid` or `place_name`).
+        - **Hierarchy Mode**: Fetches data for all child places of a specific
+          type within a parent place (e.g., all counties in a state) by also
+          providing `child_place_type`.
+
+    - **Date Filtering**: The tool filters observations by date using the
+      following priority:
+        1.  **`date` parameter**: This is the primary filter. It can be:
+            - A specific date string like '2023', '2023-05', or '2023-05-15'.
+              The tool fetches data for the interval represented by the string.
+            - A special keyword:
+                - `'latest'`: Fetches only the most recent observation.
+                - `'all'`: Fetches all available observations.
+                - `'range'`: Requires `date_range_start` and/or `date_range_end`.
+        2.  **Date Range**: If `date` is set to `'range'`, you must specify a
+            date range using `date_range_start` and/or `date_range_end`.
+        3.  **Default**: If no date parameters are provided, the tool defaults
+            to fetching the `'latest'` observation.
+
+    - **Source Selection**: If multiple data sources (facets) exist for a
+      variable, the service automatically selects a "primary source" based on
+      which one provides the most comprehensive data. Other sources are listed
+      in `alternative_sources`. This can be overridden with `source_override`.
 
     Args:
         client: An instance of `DCClient` for interacting with Data Commons.
         variable_dcid: The DCID of the statistical variable to fetch.
         place_dcid: The DCID of the place. Takes precedence over `place_name`.
         place_name: The common name of the place (e.g., "California").
-        child_place_type: The type of child places to fetch data for (e.g., "County").
+        child_place_type: The type of child places to fetch data for.
         source_override: A facet ID to force the use of a specific data source.
-        period: A special filter for "latest" or "all" observations.
-        start_date: The start of a custom date range (e.g., "2022", "2022-01").
-        end_date: The end of a custom date range (e.g., "2023", "2023-12").
+        date: A date filter. Accepts 'all', 'latest', 'range', or a date string.
+        date_range_start: The start date for a range (inclusive).
+        date_range_end: The end date for a range (inclusive).
 
     Returns:
         An `ObservationToolResponse` object containing the structured data.
