@@ -10,7 +10,7 @@ The MCP Server returns data from the "base" instance (in datacommons.org) or, if
 
 The server is a Python binary based on the [FastMCP 2.0 framework](https://gofastmcp.com). It runs in a Python virtual environment. A prebuilt package is available at https://pypi.org/project/datacommons-mcp/.
 
-At this time, there is no centrally deployed server; you run your own server, and any client you want to connect to it. Initially, only local usage is supported. 
+At this time, there is no centrally deployed server; you run your own server, and any client you want to connect to it.
 
 ![alt text](mcp.png)
 
@@ -18,7 +18,7 @@ At this time, there is no centrally deployed server; you run your own server, an
 
 ### Clients
 
-You can use any available AI application to connect to to the Data Commons MCP Server, or your own custom agent. 
+You can use any available AI application that supports MCP servers to connect to to the Data Commons MCP Server, or your own custom agent. 
 
 The server supports both standard MCP transport protocols:
 - Stdio: For clients that connect directly using local processes
@@ -34,9 +34,9 @@ To build your own Data Commons MCP client, see ...
 
 The server currently supports the following tools:
 
-- `search_indicators`: Searches for available variables and/or topics for a given place or metric. Topics are only relevant for custom Data Commons instances that have implemented them.
-- `validate_child_place_types`: Validates child place types for a given parent place.
+- `search_indicators`: Searches for available variables and/or topics for a given place or metric. Topics are only relevant for Custom Data Commons instances that have implemented them.
 - `get_observations`: Fetches statistical data for a given variable and place.
+- `validate_child_place_types`: Validates child place types for a given parent place.
 
 ### Unsupported features
 
@@ -45,7 +45,7 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
-## Install and run the server locally
+## Basic usage
 
 ### Prerequisites
 
@@ -55,9 +55,11 @@ At the current time, the following are not supported:
 
 ### Configure environment variables
 
-You configure the server using environment variables. For local development, you can set variables on the command line, but we recommend using a `.env` file to save the settings between sessions. To do so:
+You configure the server using environment variables. All supported options are documented in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample. For local development, you can set the required (`DC_API_KEY`) and optional variables in your shell/startup script (e.g. `.bashrc`). If you don't set any optional variables, or only very few, this might be the easiest approach. 
 
-1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. The file provides complete documentation on all available options.
+If you're setting several variables, we recommend using an `.env` file, which the server locates automatically, to keep all the settings in one place. To do so:
+
+1. From Github, download the file [`.env.sample`]() to the desired directory. 
 
     > Tip: If you regularly use Git and want to run packages from local code, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
@@ -70,16 +72,20 @@ You configure the server using environment variables. For local development, you
 
 ### Start and connect to the server
 
-Both Gemini CLI and the sample Data Commons agent automatically spawn a local MCP server when you run them.
-
-If you're using a different agent and/or want to connect from a remote client, you can start up the server independently instead, as described in [Start the server in standalone mode](#standalone).
+If you're using a different agent and/or want to connect from a remote client, start up the server independently instead, as described in [Start the server in standalone mode](#standalone).
 
 #### Use Gemini CLI
 
 To install Gemini CLI, see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
-We recommend that you use the Gemini API key [authentication option](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#-authentication-options) if you already have a Google Cloud Platform project, so you don't have to log in for every session. To do so, go to https://aistudio.google.com/ and create a key.
 
-To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file.  Add the following configuration:
+We recommend that you use the Gemini API key [authentication option](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#-authentication-options) if you already have a Google Cloud Platform project, so you don't have to log in for every session. To do so:
+1. Go to https://aistudio.google.com/ and create a key. 
+1. Set the follwing environment variable:
+   ```
+   export GEMINI_API_KEY=<YOUR KEY>
+   ```
+
+To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file to add the following:
 
 ```json
 {
@@ -102,9 +108,8 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
 ```
 
 If desired, you can modify the following settings:
-- `selectedAuthType`: If you don't have a GCP project and want to use OAuth with your Google account, set to `oauth-personal`.
+- `selectedAuthType`: If you don't have a GCP project and want to use OAuth with your Google account, set this to `oauth-personal`.
 - `command`: Set to `uv` if you want to run packages from locally stored Python code.
-- `args`: Set `stdio` to `http` if you want to use streaming HTTP as the transport protcol.
 
 You can now run the `gemini` command from any directory and it will automatically kick off the MCP server, with the correct environment variables.
 
@@ -114,7 +119,7 @@ Once Gemini CLI has started up, you can immediately begin sending natural-langua
 
 xxx is a basic agent for interacting with the MCP Server.
 
-TODO: Write this when a PyPi package is created. 
+TODO: Write this when a package is available
 
 {: #standalone}
 ## Start the server in standalone mode
@@ -133,7 +138,7 @@ To install packages from local code (cloned from Github):
 1. Ensure a copy of your `.env` file is present in the directory.
 1. Run the following command:
    ```
-   uv datacommons-mcp serve <PROTOCOL>
+   uv run datacommons-mcp serve <PROTOCOL>
    ```
 The _PROTOCOL_ is one of:
 - `stdio`: suitable for most locally running clients
