@@ -718,15 +718,20 @@ class DCClient:
 
             # Filter by existence if places are specified
             if place_dcids:
-                filtered_variables = self._filter_variables_by_existence(
-                    member_variables, place_dcids
+                # Create temporary SearchVariable objects for filtering
+                temp_vars = {
+                    dcid: SearchVariable(dcid=dcid) for dcid in member_variables
+                }
+                filtered_variables = self._filter_variables_by_existence_new(
+                    temp_vars, place_dcids
                 )
-                member_variables = [var["dcid"] for var in filtered_variables]
+                member_variables = list(filtered_variables.keys())
 
-                filtered_topics = self._filter_topics_by_existence(
-                    member_topics, place_dcids
-                )
-                member_topics = [topic["dcid"] for topic in filtered_topics]
+                member_topics = [
+                    dcid
+                    for dcid in member_topics
+                    if self._check_topic_exists_recursive(dcid, place_dcids)
+                ]
 
             topic_obj.member_topics = member_topics
             topic_obj.member_variables = member_variables

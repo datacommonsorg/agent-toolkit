@@ -1,3 +1,4 @@
+# Copyright 2025 Google LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1059,6 +1060,14 @@ class TestSearchIndicatorsEndpoint:
             # Assert
             mock_transform.assert_called_once_with(mock_api_response)
 
+        mock_api_response_no_results = {"queryResults": [{"indexResults": []}]}
+        result, dcid_name_mappings = client._transform_search_indicators_response(
+            mock_api_response_no_results
+        )
+        assert not result.topics
+        assert not result.variables
+        assert not dcid_name_mappings
+
     @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.requests.get")
     async def test_fetch_indicators_new_with_place_filtering(self, mock_get, client):
@@ -1106,32 +1115,59 @@ class TestSearchIndicatorsEndpoint:
             mock_dc_response
         )
 
-        # Mock topic store for topic filtering
+        # Mock topic store to provide member variables for the topic
         mock_topic_data = Mock()
-        mock_topic_data.variables = ["Count_Person"]  # Health topic has Count_Person
+        mock_topic_data.variables = [
+            "Count_Person",
+            "Count_Household",
+        ]  # Health topic has two members
         mock_topic_data.member_topics = []
         client.topic_store = Mock()
         client.topic_store.topics_by_dcid = {"dc/topic/Health": mock_topic_data}
+        # This mock is for the recursive topic existence check
         client.topic_store.has_variable.return_value = True
 
         search_tasks = [SearchTask(query="test", place_dcids=["geoId/06", "geoId/36"])]
 
         # Act
-        search_result, _ = await client._fetch_indicators_new(
-            search_tasks=search_tasks, include_topics=True, max_results=10
-        )
+        # Spy on the new helper functions to ensure they are called correctly
+        with (
+            patch.object(
+                client,
+                "_filter_variables_by_existence_new",
+                wraps=client._filter_variables_by_existence_new,
+            ) as mock_filter_vars,
+            patch.object(
+                client,
+                "_filter_topics_by_existence_new",
+                wraps=client._filter_topics_by_existence_new,
+            ) as mock_filter_topics,
+        ):
+            search_result, _ = await client._fetch_indicators_new(
+                search_tasks=search_tasks, include_topics=True, max_results=10
+            )
 
         # Assert
-        # Both variables should exist in at least one of the places
+        # 1. Assert that the correct high-level filtering functions were called
+        mock_filter_vars.assert_called()
+        mock_filter_topics.assert_called()
+
+        # 2. Assert the final state of the search_result object
         assert "Count_Person" in search_result.variables
         assert "Count_Household" in search_result.variables
         assert search_result.variables["Count_Person"].places_with_data == ["geoId/06"]
         assert search_result.variables["Count_Household"].places_with_data == [
             "geoId/36"
         ]
-
-        # The topic should exist because its member (Count_Person) exists in geoId/06
         assert "dc/topic/Health" in search_result.topics
+        # 3. Assert that the topic members were also filtered correctly
+        # The topic members should be filtered to only those that exist in the provided places.
+        health_topic = search_result.topics["dc/topic/Health"]
+        # Both Count_Person (in geoId/06) and Count_Household (in geoId/36) should be present.
+        assert sorted(health_topic.member_variables) == [
+            "Count_Household",
+            "Count_Person",
+        ]
 
     @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.requests.get")
