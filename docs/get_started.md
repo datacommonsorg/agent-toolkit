@@ -18,7 +18,7 @@ At this time, there is no centrally deployed server; you run your own server, an
 
 ### Clients
 
-To connect to the Data Commons MCP Server, can use any available AI application that supports MCP, or your own custom agent. 
+To connect to the Data Commons MCP Server, you can use any available AI application that supports MCP, or your own custom agent. 
 
 The server supports both standard MCP transport protocols:
 - Stdio: For clients that connect directly using local processes
@@ -26,7 +26,7 @@ The server supports both standard MCP transport protocols:
 
 Below we provide specific instructions for locally running agents:
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
-- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and Gemini Flash.
+- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/).
 
 To build your own Data Commons MCP client, see ...
 
@@ -59,13 +59,13 @@ You configure the server using environment variables. All supported options are 
 
 If you're setting several variables, we recommend using an `.env` file, which the server locates automatically, to keep all the settings in one place. To do so:
 
-1. From Github, download the file [`.env.sample`]() to the desired directory. 
+1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. 
 
     > Tip: If you regularly use Git and want to run packages from local code, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
 1. From the directory where you saved the sample file, copy it to a new file called `.env`. For example:
    ```
-   cd agent-toolkit/packages/datacommons-mcp
+   cd ~/agent-toolkit/packages/datacommons-mcp
    cp .env.sample .env
    ```
 1. Set the required variable `DC_API_KEY` to your Data Commons API key, and any other optional variables. If you are using a Custom Data Commons instance, be sure to set `DC_TYPE` to `custom` and uncomment and set `CUSTOM_DC_URL` to the URL of your instance. 
@@ -106,7 +106,6 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
   }
 }
 ```
-
 If desired, you can modify the following settings:
 - `selectedAuthType`: If you don't have a GCP project and want to use OAuth with your Google account, set this to `oauth-personal`.
 - `command`: Set to `uv` if you want to run packages from locally stored Python code.
@@ -135,7 +134,7 @@ To install packages from local code (cloned from Github):
    ```
    cd agent-toolkit/packages/datacommons-mcp
    ```
-1. Ensure a copy of your `.env` file is present in the directory.
+1. If using an `.env` file, ensure that it is present in the directory.
 1. Run the following command:
    ```
    uv run datacommons-mcp serve <PROTOCOL>
