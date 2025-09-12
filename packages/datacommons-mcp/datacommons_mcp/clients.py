@@ -497,8 +497,11 @@ class DCClient:
         )
         headers = {"Content-Type": "application/json"}
         try:
-            response = requests.get(  # noqa: S113
-                endpoint_url, params=params, headers=headers
+            response = await asyncio.to_thread(
+                requests.get,
+                endpoint_url,
+                params=params,
+                headers=headers,  # noqa: S113
             )
             response.raise_for_status()
             api_response = response.json()

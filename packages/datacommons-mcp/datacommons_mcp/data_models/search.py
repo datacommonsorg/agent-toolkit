@@ -34,8 +34,8 @@ class SearchTask(BaseModel):
 class SearchIndicator(BaseModel):
     """Base model for a search indicator, which can be a topic or a variable."""
 
-    dcid: str = Field(description="Variable DCID")
-    description: str | None = Field(None, description="A description of the indicator.")  # noqa: ERA001
+    dcid: str
+    description: str | None = None
     alternate_descriptions: list[str] | None = Field(
         None, description="Alternate descriptions or matched sentences."
     )

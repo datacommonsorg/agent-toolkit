@@ -45,7 +45,7 @@ class DCSettings(BaseSettings):
     use_search_indicators_endpoint: bool = Field(
         default=True,
         alias="DC_USE_SEARCH_INDICATORS_ENDPOINT",
-        description="Path to topic cache file",
+        description=("Toggles between search-indicators and search-vector endpoint."),
     )
 
 
