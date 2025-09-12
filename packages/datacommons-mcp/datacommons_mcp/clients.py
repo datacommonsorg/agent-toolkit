@@ -518,6 +518,7 @@ class DCClient:
         unique_indicators = {}
         query_results = api_response.get("queryResults", [])
 
+        # Iterate indicators from each query + index result and merge into single dict
         for query_result in query_results:
             for index_result in query_result.get("indexResults", []):
                 for indicator in index_result.get("results", []):
@@ -530,6 +531,7 @@ class DCClient:
         variables: dict[str, SearchVariable] = {}
         dcid_name_mappings = {}
 
+        # Split indicator info between dcid-name mapping and per-indicator model.
         for dcid, indicator in unique_indicators.items():
             # Populate name mapping
             dcid_name_mappings[dcid] = indicator["name"]
