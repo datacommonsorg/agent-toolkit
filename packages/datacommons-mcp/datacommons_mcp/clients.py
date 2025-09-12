@@ -533,7 +533,18 @@ class DCClient:
                 search_result.topics, all_place_dcids
             )
 
-        return search_result, dcid_name_mappings
+        # After filtering, create a set of all remaining DCIDs
+        final_dcids = set(search_result.topics.keys()) | set(
+            search_result.variables.keys()
+        )
+
+        # Filter the original dcid_name_mappings to only include the final DCIDs
+        final_dcid_name_mappings = {
+            dcid: name
+            for dcid, name in dcid_name_mappings.items()
+            if dcid in final_dcids
+        }
+        return search_result, final_dcid_name_mappings
 
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""

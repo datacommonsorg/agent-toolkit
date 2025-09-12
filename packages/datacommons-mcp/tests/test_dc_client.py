@@ -1364,3 +1364,64 @@ class TestSearchIndicatorsNewPath:
 
         # Assert that we only called fetch_entity_names for the single missing DCID
         client.fetch_entity_names.assert_awaited_once_with(["dc/topic/SubHealth"])
+
+    @patch("datacommons_mcp.clients.requests.get")
+    async def test_fetch_indicators_new_filters_dcid_name_mappings(
+        self, mock_get, client
+    ):
+        """
+        Tests that _fetch_indicators_new correctly filters dcid_name_mappings
+        to only include indicators that survive the existence filter.
+        """
+        # Arrange
+        # 1. Mock the API response to return two variables.
+        mock_api_response = {
+            "queryResults": [
+                {
+                    "indexResults": [
+                        {
+                            "results": [
+                                {
+                                    "dcid": "Count_Person",
+                                    "name": "Person Count",
+                                    "typeOf": "StatisticalVariable",
+                                },
+                                {
+                                    "dcid": "Count_Household",
+                                    "name": "Household Count",
+                                    "typeOf": "StatisticalVariable",
+                                },
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = mock_api_response
+        mock_get.return_value = mock_response
+
+        # 2. Mock the existence check to only find data for "Count_Person".
+        #    This will cause "Count_Household" to be filtered out.
+        mock_dc_response = {"geoId/06": ["Count_Person"]}
+        client.dc.observation.fetch_available_statistical_variables.return_value = (
+            mock_dc_response
+        )
+
+        # Act
+        # Directly call the method we are testing.
+        search_result, dcid_name_mappings = await client._fetch_indicators_new(
+            [SearchTask(query="population", place_dcids=["geoId/06"])],
+            include_topics=False,
+            max_results=10,
+        )
+
+        # Assert
+        # The search_result should only contain the variable that was not filtered.
+        assert "Count_Person" in search_result.variables
+        assert "Count_Household" not in search_result.variables
+
+        # The returned dcid_name_mappings should ONLY contain the mapping for the remaining variable.
+        assert dcid_name_mappings == {"Count_Person": "Person Count"}
+        assert "Count_Household" not in dcid_name_mappings
