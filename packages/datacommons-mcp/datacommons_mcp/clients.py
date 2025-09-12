@@ -354,62 +354,6 @@ class DCClient:
 
         return {"topics": topics, "variables": variables}
 
-    def _transform_search_indicators_response(
-        self, api_response: dict
-    ) -> tuple[SearchResult, dict]:
-        """
-        Transforms the response from the /api/nl/search-indicators endpoint.
-
-        Args:
-            api_response: The JSON response from the search-indicators API.
-
-        Returns:
-            A tuple containing a SearchResult object and a dcid_name_mappings dictionary.
-
-        Example Output:
-            (
-                SearchResult(
-                    topics={"dc/topic/Health": SearchTopic(dcid="dc/topic/Health", ...)},
-                    variables={"Count_Person": SearchVariable(dcid="Count_Person", ...)}
-                ),
-                {"dc/topic/Health": "Health", "Count_Person": "Person Count"}
-            )
-        """
-        unique_indicators = {}
-        query_results = api_response.get("queryResults", [])
-
-        for query_result in query_results:
-            for index_result in query_result.get("indexResults", []):
-                for indicator in index_result.get("results", []):
-                    dcid = indicator.get("dcid")
-                    # Deduplicate based on DCID, keeping the first one found.
-                    if dcid and indicator.get("name") and dcid not in unique_indicators:
-                        unique_indicators[dcid] = indicator
-
-        topics: dict[str, SearchTopic] = {}
-        variables: dict[str, SearchVariable] = {}
-        dcid_name_mappings = {}
-
-        for dcid, indicator in unique_indicators.items():
-            # Populate name mapping
-            dcid_name_mappings[dcid] = indicator["name"]
-
-            # Create the appropriate SearchIndicator model
-            if indicator.get("typeOf") == "Topic":
-                topics[dcid] = SearchTopic(
-                    dcid=dcid,
-                    description=indicator.get("description"),
-                    alternate_descriptions=indicator.get("search_descriptions"),
-                )
-            else:  # Default to variable if not a Topic
-                variables[dcid] = SearchVariable(
-                    dcid=dcid,
-                    description=indicator.get("description"),
-                    alternate_descriptions=indicator.get("search_descriptions"),
-                )
-
-        return SearchResult(topics=topics, variables=variables), dcid_name_mappings
-
     async def search_indicators(
         self,
         search_tasks: list[SearchTask],
@@ -549,6 +493,62 @@ class DCClient:
             if dcid in final_dcids
         }
         return search_result, final_dcid_name_mappings
+
+    def _transform_search_indicators_response(
+        self, api_response: dict
+    ) -> tuple[SearchResult, dict]:
+        """
+        Transforms the response from the /api/nl/search-indicators endpoint.
+
+        Args:
+            api_response: The JSON response from the search-indicators API.
+
+        Returns:
+            A tuple containing a SearchResult object and a dcid_name_mappings dictionary.
+
+        Example Output:
+            (
+                SearchResult(
+                    topics={"dc/topic/Health": SearchTopic(dcid="dc/topic/Health", ...)},
+                    variables={"Count_Person": SearchVariable(dcid="Count_Person", ...)}
+                ),
+                {"dc/topic/Health": "Health", "Count_Person": "Person Count"}
+            )
+        """
+        unique_indicators = {}
+        query_results = api_response.get("queryResults", [])
+
+        for query_result in query_results:
+            for index_result in query_result.get("indexResults", []):
+                for indicator in index_result.get("results", []):
+                    dcid = indicator.get("dcid")
+                    # Deduplicate based on DCID, keeping the first one found.
+                    if dcid and indicator.get("name") and dcid not in unique_indicators:
+                        unique_indicators[dcid] = indicator
+
+        topics: dict[str, SearchTopic] = {}
+        variables: dict[str, SearchVariable] = {}
+        dcid_name_mappings = {}
+
+        for dcid, indicator in unique_indicators.items():
+            # Populate name mapping
+            dcid_name_mappings[dcid] = indicator["name"]
+
+            # Create the appropriate SearchIndicator model
+            if indicator.get("typeOf") == "Topic":
+                topics[dcid] = SearchTopic(
+                    dcid=dcid,
+                    description=indicator.get("description"),
+                    alternate_descriptions=indicator.get("search_descriptions"),
+                )
+            else:  # Default to variable if not a Topic
+                variables[dcid] = SearchVariable(
+                    dcid=dcid,
+                    description=indicator.get("description"),
+                    alternate_descriptions=indicator.get("search_descriptions"),
+                )
+
+        return SearchResult(topics=topics, variables=variables), dcid_name_mappings
 
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""
