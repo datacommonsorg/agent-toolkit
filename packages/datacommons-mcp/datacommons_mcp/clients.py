@@ -319,7 +319,7 @@ class DCClient:
         """
         Search for topics and variables using search_svs.
         """
-        logger.info(f"Searching for indicators with query: {query}")
+        logger.info("Querying search-vector with query: %s", query)
         search_results = await self.search_svs(
             [query], skip_topics=not include_topics, max_results=max_results
         )
@@ -421,6 +421,7 @@ class DCClient:
         This method calls the new search logic, transforms the result, and formats it
         to match the expected output structure of the public fetch_indicators method.
         """
+        logger.info("Querying search-indicators for %d task(s)", len(search_tasks))
         search_result, dcid_name_mappings = await self._fetch_indicators_new(
             search_tasks=search_tasks,
             include_topics=include_topics,
