@@ -38,9 +38,6 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import (
-    SearchResponse,
-)
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
 )
