@@ -487,9 +487,10 @@ async def search_indicators(
     client: DCClient,
     query: str,
     places: list[str] | None = None,
+    per_search_limit: int = 10,
+    *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-    per_search_limit: int = 10,
 ) -> SearchResponse:
     """Search for topics and/or variables."""
     # Validate parameters
@@ -499,7 +500,9 @@ async def search_indicators(
     place_dcids_map = await _resolve_places(client, places)
 
     # Create search tasks based on place parameters
-    search_tasks = _create_search_tasks(query, places, maybe_bilateral, place_dcids_map)
+    search_tasks = _create_search_tasks(
+        query, places, place_dcids_map, maybe_bilateral=maybe_bilateral
+    )
 
     # Use search-indicators endpoint
     if client.use_search_indicators_endpoint:
@@ -510,9 +513,9 @@ async def search_indicators(
     # Use search-vector endpoint
     search_result = await _search_vector(
         client=client,
-        include_topics=include_topics,
         search_tasks=search_tasks,
         per_search_limit=per_search_limit,
+        include_topics=include_topics,
     )
 
     # Collect all DCIDs for lookups
@@ -533,8 +536,9 @@ async def search_indicators(
 def _create_search_tasks(
     query: str,
     places: list[str] | None,
-    maybe_bilateral: bool,
     place_dcids_map: dict[str, str],
+    *,
+    maybe_bilateral: bool,
 ) -> list[SearchTask]:
     """Create search tasks based on place parameters.
 
@@ -655,8 +659,9 @@ def _collect_all_dcids(
 async def _search_vector(
     client: DCClient,
     search_tasks: list[SearchTask],
-    include_topics: bool,
     per_search_limit: int = 10,
+    *,
+    include_topics: bool,
 ) -> SearchResult:
     """Search for indicators matching a query, optionally filtered by place existence.
 
@@ -670,8 +675,8 @@ async def _search_vector(
         task = client.fetch_indicators(
             query=search_task.query,
             place_dcids=search_task.place_dcids,
-            include_topics=include_topics,
             max_results=per_search_limit,
+            include_topics=include_topics,
         )
         tasks.append(task)
 

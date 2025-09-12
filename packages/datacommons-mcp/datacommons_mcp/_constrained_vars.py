@@ -91,15 +91,13 @@ def place_statvar_constraint_mapping(
         return {}
 
     workers = max_workers or min(2, len(constraint_to_svs))
-    results = []
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
             pool.submit(_extract_place_like, client, svs, constraint): constraint
             for constraint, svs in constraint_to_svs.items()
         }
-        for fut in as_completed(futures):
-            results.append(fut.result())
+        results = [fut.result() for fut in as_completed(futures)]
 
     # Merge per-constraint dicts via set union.
     return _merge_dicts(results)

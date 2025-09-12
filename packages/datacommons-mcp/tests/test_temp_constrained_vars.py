@@ -1,4 +1,4 @@
-# TODO: https://github.com/datacommonsorg/agent-toolkit/issues/47 - Remove once the new endpoint is live.
+# TODO(https://github.com/datacommonsorg/agent-toolkit/issues/47): Remove once the new endpoint is live.
 import os
 from unittest.mock import Mock, patch
 
@@ -6,7 +6,7 @@ import pytest
 from datacommons_client.client import DataCommonsClient
 from datacommons_mcp._constrained_vars import _merge_dicts
 from datacommons_mcp.clients import DCClient, create_dc_client
-from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
+from datacommons_mcp.data_models.settings import CustomDCSettings
 from datacommons_mcp.settings import get_dc_settings
 
 
@@ -65,7 +65,7 @@ def test_filter_variables_includes_place_like_store(mocked_datacommons_client):
     client_under_test = DCClient(dc=mocked_datacommons_client)
     # Variable cache has no variables for the place
     client_under_test.variable_cache = Mock()
-    client_under_test.variable_cache.get.side_effect = lambda p: set()
+    client_under_test.variable_cache.get.side_effect = lambda _: set()
     # Place-like store provides the variable for the place
     client_under_test._place_like_statvar_store = {
         "geoId/06": {"dc/variable/Count_Person"}
@@ -93,7 +93,7 @@ def test_get_topic_places_with_data_includes_place_like_store(
 
     # Variable cache does not list the variable for the place
     client_under_test.variable_cache = Mock()
-    client_under_test.variable_cache.get.side_effect = lambda p: set()
+    client_under_test.variable_cache.get.side_effect = lambda _: set()
 
     # Place-like store provides the variable for the place
     client_under_test._place_like_statvar_store = {"geoId/06": {var_dcid}}
@@ -108,7 +108,8 @@ def test_get_topic_places_with_data_includes_place_like_store(
 @patch("datacommons_mcp.clients.DCClient._compute_place_like_statvar_store")
 @patch("datacommons_mcp.clients.DataCommonsClient")
 def test_create_custom_client_passes_place_like_constraints(
-    mock_dc_client, mock_compute_store
+    mock_dc_client,  # noqa: ARG001 -- Required for test to pass
+    mock_compute_store,
 ):
     """Ensure PLACE_LIKE_CONSTRAINTS are forwarded to DCClient constructor logic."""
     with patch.dict(

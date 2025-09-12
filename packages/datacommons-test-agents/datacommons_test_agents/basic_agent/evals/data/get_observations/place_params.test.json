@@ -1,0 +1,53 @@
+[
+    {
+        "query": "What is the population (dcid=Count_Person) of India",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "latest",
+                    "place_name": "India",
+                    "variable_dcid": "Count_Person"
+                }
+            }
+        ],
+        "reference": "A data analyst would state that the population of India"
+    },
+    {
+        "query": "What about for states in India?",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "latest",
+                    "place_name": "India",
+                    "variable_dcid": "Count_Person",
+                    "child_place_type": "AdministrativeArea1"
+                }
+            }
+        ],
+        "reference": "A data analyst would present the latest available population data for the administrative areas"
+    },
+    {
+        "query": "how has the population of the top 2 most populated states changed over time",
+        "expected_tool_use": [
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "all",
+                    "place_name": "Uttar Pradesh",
+                    "variable_dcid": "Count_Person"
+                }
+            },
+            {
+                "tool_name": "get_observations",
+                "tool_input": {
+                    "date": "all",
+                    "place_name": "Maharashtra",
+                    "variable_dcid": "Count_Person"
+                }
+            }
+        ],
+        "reference": "A data analyst would use the population time series data for Uttar Pradesh and Maharashtra from the OECD Regional Demography"
+    }
+]

@@ -372,9 +372,10 @@ async def get_datacommons_chart_config(
 async def search_indicators(
     query: str,
     places: list[str] | None = None,
+    per_search_limit: int = 10,
+    *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-    per_search_limit: int = 10,
 ) -> ToolResult:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
@@ -451,13 +452,13 @@ async def search_indicators(
             Examples: "health grants", "carbon emissions", "unemployment rate"
         places (list[str], optional): List of place names for filtering and existence checks.
             Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
+        per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
         include_topics (bool, optional): Whether to search for Topics (collections of variables) or
             just variables. Default: True
         maybe_bilateral (bool, optional): Whether this query could represent bilateral relationships.
             Set to True for queries that could be bilateral (e.g., "trade exports to france").
             Set to False for queries about properties of places (e.g., "population of france").
             Default: False
-        per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
         dict: A dictionary containing candidate indicators with the following structure:
@@ -501,9 +502,9 @@ async def search_indicators(
         client=dc_client,
         query=query,
         places=places,
+        per_search_limit=per_search_limit,
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
-        per_search_limit=per_search_limit,
     )
     return ToolResult(
         content=[],

@@ -92,7 +92,7 @@ class DCClient:
         if _place_like_constraints:
             self._compute_place_like_statvar_store(constraints=_place_like_constraints)
         else:
-            self._place_like_statvar_store = dict()
+            self._place_like_statvar_store = {}
 
     def _compute_search_indices(self) -> list[str]:
         """Compute and validate search indices based on the configured search_scope.
@@ -115,7 +115,7 @@ class DCClient:
 
         return indices
 
-    def _compute_place_like_statvar_store(self, constraints: list[str]):
+    def _compute_place_like_statvar_store(self, constraints: list[str]) -> None:
         """Compute and cache place-like to statistical variable mappings.
         # TODO (@jm-rivera): Remove once new endpoint is live.
         """
@@ -228,8 +228,9 @@ class DCClient:
         self,
         query: str,
         place_dcids: list[str] = None,
-        include_topics: bool = True,
         max_results: int = 10,
+        *,
+        include_topics: bool = True,
     ) -> dict:
         """
         Search for indicators matching a query, optionally filtered by place existence.
@@ -244,8 +245,8 @@ class DCClient:
         max_search_results = max_results * 2
         search_results = await self._search_vector(
             query=query,
-            include_topics=include_topics,
             max_results=max_search_results,
+            include_topics=include_topics,
         )
 
         # Separate topics and variables
@@ -314,7 +315,7 @@ class DCClient:
         }
 
     async def _search_vector(
-        self, query: str, include_topics: bool = True, max_results: int = 10
+        self, query: str, max_results: int = 10, *, include_topics: bool = True
     ) -> dict:
         """
         Search for topics and variables using search_svs.
