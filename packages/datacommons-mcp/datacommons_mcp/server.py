@@ -21,6 +21,7 @@ import types
 from typing import Union, get_args, get_origin
 
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
 from pydantic import ValidationError
 
 import datacommons_mcp.settings as settings
@@ -374,7 +375,7 @@ async def search_indicators(
     include_topics: bool = True,
     maybe_bilateral: bool = False,
     per_search_limit: int = 10,
-) -> SearchResponse:
+) -> ToolResult:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
     This tool returns candidate indicators that match your query. You should treat these as
@@ -496,11 +497,15 @@ async def search_indicators(
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
     """
     # Call the real search_indicators service
-    return await search_indicators_service(
+    response = await search_indicators_service(
         client=dc_client,
         query=query,
         places=places,
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
         per_search_limit=per_search_limit,
+    )
+    return ToolResult(
+        content=[],
+        structured_content=response.model_dump(exclude_none=True, exclude_unset=True),
     )

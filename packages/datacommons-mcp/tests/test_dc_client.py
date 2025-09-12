@@ -316,7 +316,7 @@ class TestDCClientFetchIndicators:
 
     @pytest.mark.asyncio
     async def test_fetch_indicators_include_topics_true(
-        self, mocked_datacommons_client
+        self, mocked_datacommons_client: Mock
     ):
         """Test basic functionality without place filtering."""
         # Arrange: Create client for the old path and mock search results
@@ -385,7 +385,7 @@ class TestDCClientFetchIndicators:
 
     @pytest.mark.asyncio
     async def test_fetch_indicators_include_topics_false(
-        self, mocked_datacommons_client
+        self, mocked_datacommons_client: Mock
     ):
         """Test basic functionality without place filtering."""
         # Arrange: Create client for the old path and mock search results
@@ -448,7 +448,7 @@ class TestDCClientFetchIndicators:
 
     @pytest.mark.asyncio
     async def test_fetch_indicators_include_topics_with_places(
-        self, mocked_datacommons_client
+        self, mocked_datacommons_client: Mock
     ):
         """Test functionality with place filtering."""
         # Arrange: Create client for the old path and mock search results
@@ -535,7 +535,7 @@ class TestDCClientFetchIndicators:
         )
         assert count_person["places_with_data"] == ["geoId/06", "geoId/36"]
 
-    def test_filter_topics_by_existence(self, mocked_datacommons_client):
+    def test_filter_topics_by_existence(self, mocked_datacommons_client: Mock):
         """Test topic filtering by existence."""
         # Arrange: Create client for the old path and mock topic store
         client_under_test = DCClient(
@@ -566,7 +566,7 @@ class TestDCClientFetchIndicators:
         assert result[0]["dcid"] == "dc/topic/Health"
         assert result[0]["places_with_data"] == ["geoId/06"]
 
-    def test_get_topics_members_with_existence(self, mocked_datacommons_client):
+    def test_get_topics_members_with_existence(self, mocked_datacommons_client: Mock):
         """Test member retrieval with existence filtering."""
         # Arrange: Create client for the old path and mock topic store
         client_under_test = DCClient(
@@ -601,7 +601,7 @@ class TestDCClientFetchIndicators:
 
     @pytest.mark.asyncio
     async def test_search_entities_filters_invalid_topics(
-        self, mocked_datacommons_client
+        self, mocked_datacommons_client: Mock
     ):
         """Test that _search_entities filters out topics that don't exist in the topic store."""
         # Arrange: Create client for the old path and mock search results
@@ -656,7 +656,9 @@ class TestDCClientFetchIndicators:
 
     @pytest.mark.asyncio
     async def test_search_entities_with_no_topic_store(self, mocked_datacommons_client):
-        """Test that _search_entities handles case when topic store is None."""
+        """
+        Test that _search_vector handles the case when topic store is None.
+        """
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
 
@@ -675,7 +677,7 @@ class TestDCClientFetchIndicators:
         client_under_test.topic_store = None
 
         # Act: Call the method
-        result = await client_under_test._search_vector(
+        result = await client_under_test._search_vector(  # Corrected method name
             "test query", include_topics=True
         )
 
@@ -692,9 +694,11 @@ class TestDCClientFetchIndicators:
 
     @pytest.mark.asyncio
     async def test_search_entities_with_per_search_limit(
-        self, mocked_datacommons_client
+        self, mocked_datacommons_client: Mock
     ):
-        """Test _search_entities with per_search_limit parameter."""
+        """
+        Test _search_vector with per_search_limit parameter.
+        """
         client_under_test = DCClient(
             dc=mocked_datacommons_client, use_search_indicators_endpoint=False
         )
@@ -708,7 +712,7 @@ class TestDCClientFetchIndicators:
         }
         client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
 
-        result = await client_under_test._search_vector(
+        result = await client_under_test._search_vector(  # Corrected method name
             "test query", include_topics=True, max_results=2
         )
 
@@ -1238,30 +1242,29 @@ class TestSearchIndicatorsEndpoint:
 
 
 @pytest.mark.asyncio
-class TestFetchIndicatorsNewPath:
-    """Tests for the _search_indicators helper method."""
+class TestSearchIndicatorsNewPath:
+    """Tests for the client.search_indicators method (new path)."""
 
     @pytest.fixture
     def client(self, mocked_datacommons_client):
-        """Provides a DCClient instance for testing the new path."""
+        """Provides a DCClient instance for testing."""
         return DCClient(
             dc=mocked_datacommons_client, use_search_indicators_endpoint=True
         )
 
     async def test_search_indicators_calls_dependencies(self, client):
-        """Tests that the new path helper calls _fetch_indicators_new and _build_lookups."""
+        """Tests that search_indicators calls _fetch_indicators_new."""
         # Arrange
         # Mock the dependencies that will be called
         client._fetch_indicators_new = AsyncMock(
             return_value=(SearchResult(), {"Count_Person": "Person Count"})
         )
-        client._build_lookups = Mock(return_value={})
+        client.fetch_entity_names = AsyncMock(return_value={})
 
         # Act
-        await client._search_indicators(
-            query="population",
-            place_dcids=["geoId/06"],
-            include_topics=True,
+        await client.search_indicators(
+            [SearchTask(query="population", place_dcids=["geoId/06"])],
+            include_topics=False,
             max_results=10,
         )
 
@@ -1269,18 +1272,19 @@ class TestFetchIndicatorsNewPath:
         # 1. Verify _fetch_indicators_new was called correctly
         client._fetch_indicators_new.assert_awaited_once()
         call_args = client._fetch_indicators_new.call_args
-        assert call_args.kwargs["include_topics"] is True
+        assert call_args.kwargs["include_topics"] is False
         assert call_args.kwargs["max_results"] == 10
         # Check the SearchTask object passed
         search_task = call_args.kwargs["search_tasks"][0]
         assert search_task.query == "population"
         assert search_task.place_dcids == ["geoId/06"]
 
-        # 2. Verify _build_lookups was called (even if with an empty list)
-        client._build_lookups.assert_called_once()
+        # 2. Verify fetch_entity_names was not called, as the mock SearchResult
+        #    is empty and has no member DCIDs that would require a name lookup.
+        client.fetch_entity_names.assert_not_awaited()
 
     async def test_search_indicators_formats_response(self, client):
-        """Tests that the new path helper correctly formats the final dictionary."""
+        """Tests that search_indicators correctly formats the final SearchResponse."""
         # Arrange
         # Prepare a mock SearchResult to be returned by the underlying fetch method
         mock_search_result = SearchResult(
@@ -1301,26 +1305,62 @@ class TestFetchIndicatorsNewPath:
             return_value=(mock_search_result, mock_dcid_names)
         )
         # Mock the lookup for member entities
-        client._build_lookups = Mock(
+        client.fetch_entity_names = AsyncMock(
             return_value={"dc/topic/SubHealth": "Sub-Health Topic"}
         )
 
         # Act
-        result = await client._search_indicators(
-            query="health", place_dcids=None, include_topics=True, max_results=10
+        result = await client.search_indicators(
+            [SearchTask(query="health", place_dcids=[])],
+            include_topics=True,
+            max_results=10,
         )
 
         # Assert
-        assert "topics" in result
-        assert "variables" in result
-        assert "lookups" in result
-        assert len(result["topics"]) == 1
-        assert result["topics"][0]["dcid"] == "dc/topic/Health"
-        assert len(result["variables"]) == 1
-        assert result["variables"][0]["dcid"] == "Count_Person"
+        assert result.status == "SUCCESS"
+        assert len(result.topics) == 1
+        assert result.topics[0].dcid == "dc/topic/Health"
+        assert len(result.variables) == 1
+        assert result.variables[0].dcid == "Count_Person"
         # Check that lookups from both sources were merged
-        assert result["lookups"] == {
+        assert result.dcid_name_mappings == {
             "dc/topic/Health": "Health",
             "Count_Person": "Person Count",
             "dc/topic/SubHealth": "Sub-Health Topic",
         }
+
+    async def test_search_indicators_avoids_redundant_lookups(self, client):
+        """Tests that we only look up names for DCIDs we don't already have."""
+        # Arrange
+        # The initial API call returns names for the topic and one of its members.
+        mock_search_result = SearchResult(
+            topics={
+                "dc/topic/Health": SearchTopic(
+                    dcid="dc/topic/Health",
+                    member_topics=[
+                        "dc/topic/SubHealth"
+                    ],  # Name not in initial response
+                    member_variables=["Count_Person"],  # Name is in initial response
+                )
+            },
+            variables={},
+        )
+        mock_dcid_names = {
+            "dc/topic/Health": "Health",
+            "Count_Person": "Person Count",
+        }
+        client._fetch_indicators_new = AsyncMock(
+            return_value=(mock_search_result, mock_dcid_names)
+        )
+        # Mock the lookup for only the missing member entity
+        client.fetch_entity_names = AsyncMock(
+            return_value={"dc/topic/SubHealth": "Sub-Health Topic"}
+        )
+
+        # Act
+        await client.search_indicators(
+            [SearchTask(query="health")], include_topics=True, max_results=10
+        )
+
+        # Assert that we only called fetch_entity_names for the single missing DCID
+        client.fetch_entity_names.assert_awaited_once_with(["dc/topic/SubHealth"])

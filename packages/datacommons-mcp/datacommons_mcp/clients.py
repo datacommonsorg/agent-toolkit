@@ -32,6 +32,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationRequest,
 )
 from datacommons_mcp.data_models.search import (
+    SearchResponse,
     SearchResult,
     SearchTask,
     SearchTopic,
@@ -237,13 +238,7 @@ class DCClient:
         Returns:
             Dictionary with topics, variables, and lookups
         """
-        if self.use_search_indicators_endpoint:
-            logger.info("Calling search-indicators endpoint")
-            return await self._search_indicators(
-                query, place_dcids, max_results, include_topics=include_topics
-            )
-        logger.info("Calling search-vector endpoint")
-        # Old path using /api/nl/search-vector
+
         # Search for more results than we need to ensure we get enough topics and variables.
         # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
         max_search_results = max_results * 2
@@ -414,20 +409,18 @@ class DCClient:
 
         return SearchResult(topics=topics, variables=variables), dcid_name_mappings
 
-    async def _search_indicators(
+    async def search_indicators(
         self,
-        query: str,
-        place_dcids: list[str] | None,
+        search_tasks: list[SearchTask],
         max_results: int,
         *,
         include_topics: bool,
-    ) -> dict:
+    ) -> SearchResponse:
         """
         Handles the logic for fetching indicators using the new /api/nl/search-indicators endpoint.
         This method calls the new search logic, transforms the result, and formats it
         to match the expected output structure of the public fetch_indicators method.
         """
-        search_tasks = [SearchTask(query=query, place_dcids=place_dcids or [])]
         search_result, dcid_name_mappings = await self._fetch_indicators_new(
             search_tasks=search_tasks,
             include_topics=include_topics,
@@ -449,14 +442,17 @@ class DCClient:
 
         # The new endpoint provides names, but we might need to look up members
         # that weren't in the original search response.
-        member_lookups = self._build_lookups(list(all_dcids))
-        dcid_name_mappings.update(member_lookups)
+        dcids_to_lookup = [dcid for dcid in all_dcids if dcid not in dcid_name_mappings]
+        if dcids_to_lookup:
+            member_lookups = await self.fetch_entity_names(dcids_to_lookup)
+            dcid_name_mappings.update(member_lookups)
 
-        return {
-            "topics": [t.model_dump() for t in final_topics],
-            "variables": [v.model_dump() for v in final_variables],
-            "lookups": dcid_name_mappings,
-        }
+        return SearchResponse(
+            status="SUCCESS",
+            dcid_name_mappings=dcid_name_mappings,
+            topics=final_topics,
+            variables=final_variables,
+        )
 
     async def _fetch_indicators_new(
         self,

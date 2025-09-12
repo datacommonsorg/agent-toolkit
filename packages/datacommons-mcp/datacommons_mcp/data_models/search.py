@@ -35,12 +35,10 @@ class SearchIndicator(BaseModel):
     """Base model for a search indicator, which can be a topic or a variable."""
 
     dcid: str = Field(description="Variable DCID")
-
-    # TODO(clincoln8): Uncomment when these are populated and returning ToolResponse
-    # filters out null values.
-    # description: str | None = Field(None, description="A description of the indicator.")  # noqa: ERA001
-    # alternate_descriptions: list[str] | None = Field(
-    #     None, description="Alternate descriptions or matched sentences.")
+    description: str | None = Field(None, description="A description of the indicator.")  # noqa: ERA001
+    alternate_descriptions: list[str] | None = Field(
+        None, description="Alternate descriptions or matched sentences."
+    )
 
 
 class SearchVariable(SearchIndicator):
