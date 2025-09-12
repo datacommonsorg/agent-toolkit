@@ -631,11 +631,14 @@ class DCClient:
         if not topics or not place_dcids:
             return {}
 
-        return {
-            dcid: topic
-            for dcid, topic in topics.items()
-            if self._check_topic_exists_recursive(dcid, place_dcids)
-        }
+        existing_topics = {}
+        for dcid, topic in topics.items():
+            places_with_data = self._get_topic_places_with_data(dcid, place_dcids)
+            if places_with_data:
+                topic.places_with_data = places_with_data
+                existing_topics[dcid] = topic
+
+        return existing_topics
 
     def _filter_topics_by_existence(
         self, topic_dcids: list[str], place_dcids: list[str]

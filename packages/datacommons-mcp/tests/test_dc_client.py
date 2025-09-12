@@ -566,12 +566,59 @@ class TestDCClientFetchIndicators:
         assert result[0]["dcid"] == "dc/topic/Health"
         assert result[0]["places_with_data"] == ["geoId/06"]
 
+    def test_filter_topics_by_existence_new(self, mocked_datacommons_client: Mock):
+        """Test the new topic filtering logic which operates on SearchTopic objects."""
+        # Arrange
+        client = DCClient(dc=mocked_datacommons_client)
+        # Mock the helper method that gets places with data for a topic
+        client._get_topic_places_with_data = Mock(
+            side_effect=lambda topic_dcid, _: {
+                "dc/topic/Health": ["geoId/06"],  # Health exists in CA
+                "dc/topic/Economy": [],  # Economy exists nowhere
+            }.get(topic_dcid, [])
+        )
+
+        # Input topics
+        topics_to_filter = {
+            "dc/topic/Health": SearchTopic(dcid="dc/topic/Health"),
+            "dc/topic/Economy": SearchTopic(dcid="dc/topic/Economy"),
+        }
+
+        # Act
+        filtered_topics = client._filter_topics_by_existence_new(
+            topics_to_filter, ["geoId/06", "geoId/36"]
+        )
+
+        # Assert
+        # Only the 'Health' topic should remain
+        assert len(filtered_topics) == 1
+        assert "dc/topic/Health" in filtered_topics
+        assert "dc/topic/Economy" not in filtered_topics
+
+        # The remaining topic should have its 'places_with_data' attribute populated
+        health_topic = filtered_topics["dc/topic/Health"]
+        assert health_topic.places_with_data == ["geoId/06"]
+
     def test_get_topics_members_with_existence(self, mocked_datacommons_client: Mock):
-        """Test member retrieval with existence filtering."""
+        """Test topic filtering by existence."""
         # Arrange: Create client for the old path and mock topic store
         client_under_test = DCClient(
             dc=mocked_datacommons_client, use_search_indicators_endpoint=False
         )
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.topics_by_dcid = {
+            "dc/topic/Health": Mock(
+                member_topics=[], variables=["dc/variable/Count_Person"]
+            )
+        }
+
+        # Mock variable cache
+        client_under_test.variable_cache = Mock()
+        client_under_test.variable_cache.get.side_effect = lambda place_dcid: {
+            "geoId/06": {"dc/variable/Count_Person"},
+            "geoId/36": set(),
+        }.get(place_dcid, set())
+
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
