@@ -59,11 +59,16 @@ class BaseDCSettings(BaseSettings):
         alias="DC_BASE_INDEX",
         description="Search index for base DC",
     )
-    topic_cache_path: str | None = Field(
+    topic_cache_paths: list[str] | None = Field(
         default=None,
-        alias="DC_TOPIC_CACHE_PATH",
-        description="Path to topic cache file",
+        alias="DC_TOPIC_CACHE_PATHS",
+        description="Paths to topic cache files",
     )
+
+    @field_validator("topic_cache_paths", mode="before")
+    @classmethod
+    def parse_list_like_parameter(cls, v: str) -> list[str] | None:
+        return _parse_list_like_parameter(v)
 
 
 class CustomDCSettings(BaseSettings):
@@ -108,6 +113,11 @@ class CustomDCSettings(BaseSettings):
         alias="DC_ROOT_TOPIC_DCIDS",
         description="List of root topic DCIDs",
     )
+    topic_cache_paths: list[str] | None = Field(
+        default=None,
+        alias="DC_TOPIC_CACHE_PATHS",
+        description="Paths to topic cache files (unlikely to be used but could be useful for local development)",
+    )
     # TODO (@jm-rivera): Remove once new endpoint is live.
     place_like_constraints: list[str] | None = Field(
         default=None,
@@ -115,18 +125,12 @@ class CustomDCSettings(BaseSettings):
         description="List of place-like constraintProperties",
     )
 
-    @field_validator("root_topic_dcids", "place_like_constraints", mode="before")
+    @field_validator(
+        "root_topic_dcids", "place_like_constraints", "topic_cache_paths", mode="before"
+    )
     @classmethod
-    def parse_list_like_parameter(cls, v: str) -> str | None:
-        """Parse comma-separated string into list of strings."""
-        if isinstance(v, str):
-            if not v.strip():
-                return None
-            # Split by comma and strip whitespace from each item
-            items = [item.strip() for item in v.split(",")]
-            # Filter out empty items
-            return [item for item in items if item]
-        return v
+    def parse_list_like_parameter(cls, v: str) -> list[str] | None:
+        return _parse_list_like_parameter(v)
 
     @model_validator(mode="after")
     def compute_api_base_url(self) -> "CustomDCSettings":
@@ -134,6 +138,16 @@ class CustomDCSettings(BaseSettings):
         if self.api_base_url is None:
             self.api_base_url = self.custom_dc_url.rstrip("/") + "/core/api/v2/"
         return self
+
+
+def _parse_list_like_parameter(v: str) -> list[str] | None:
+    """Parse comma-separated string into list of strings."""
+    if not v or not v.strip():
+        return None
+    # Split by comma and strip whitespace from each item
+    items = [item.strip() for item in v.split(",")]
+    # Filter out empty items
+    return [item for item in items if item]
 
 
 # Union type for both settings

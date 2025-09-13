@@ -20,6 +20,7 @@ import asyncio
 import json
 import logging
 import re
+from pathlib import Path
 
 import requests
 from datacommons_client.client import DataCommonsClient
@@ -36,7 +37,7 @@ from datacommons_mcp.data_models.settings import (
     CustomDCSettings,
     DCSettings,
 )
-from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
+from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_caches
 
 logger = logging.getLogger(__name__)
 
@@ -311,8 +312,9 @@ class DCClient:
         Search for topics and variables using search_svs.
         """
         logger.info("Searching for indicators with query: %s", query)
+        # Always include topics since we need to expand topics to variables.
         search_results = await self.search_svs(
-            [query], skip_topics=not include_topics, max_results=max_results
+            [query], skip_topics=False, max_results=max_results
         )
         results = search_results.get(query, [])
 
@@ -545,14 +547,18 @@ def create_dc_client(settings: DCSettings) -> DCClient:
     )
 
 
+def _create_base_topic_store(settings: DCSettings) -> TopicStore:
+    """Create a topic store from settings."""
+    if settings.topic_cache_paths:
+        paths = [Path(path) for path in settings.topic_cache_paths]
+        return read_topic_caches(paths)
+    return read_topic_caches()
+
+
 def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     """Create a base DC client from settings."""
     # Create topic store from path if provided else use default topic cache
-    topic_store = None
-    if settings.topic_cache_path:
-        topic_store = read_topic_cache(settings.topic_cache_path)
-    else:
-        topic_store = read_topic_cache()
+    topic_store = _create_base_topic_store(settings)
 
     # Create DataCommonsClient
     dc = DataCommonsClient(api_key=settings.api_key)
@@ -577,9 +583,15 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     dc = DataCommonsClient(url=settings.api_base_url)
 
     # Create topic store if root_topic_dcids provided
-    topic_store = None
+    topic_store: TopicStore | None = None
     if settings.root_topic_dcids:
         topic_store = create_topic_store(settings.root_topic_dcids, dc)
+
+    if search_scope == SearchScope.BASE_AND_CUSTOM:
+        base_topic_store = _create_base_topic_store(settings)
+        topic_store = (
+            topic_store.merge(base_topic_store) if topic_store else base_topic_store
+        )
 
     # Create DCClient
     return DCClient(

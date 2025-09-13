@@ -705,9 +705,9 @@ class TestCreateDCClient:
     """Tests for the create_dc_client factory function."""
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
-    @patch("datacommons_mcp.clients.read_topic_cache")
+    @patch("datacommons_mcp.clients.read_topic_caches")
     def test_create_dc_client_base_dc(
-        self, mock_read_cache: Mock, mock_dc_client: Mock
+        self, mock_read_caches: Mock, mock_dc_client: Mock
     ):
         """Test base DC creation with defaults."""
         # Arrange
@@ -715,7 +715,7 @@ class TestCreateDCClient:
             settings = BaseDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
-            mock_read_cache.return_value = Mock()
+            mock_read_caches.return_value = Mock()
 
             # Act
             result = create_dc_client(settings)
@@ -789,3 +789,104 @@ class TestCreateDCClient:
             # Should compute api_base_url by adding /core/api/v2/
             expected_api_url = "https://example.com/core/api/v2/"
             mock_dc_client.assert_called_with(url=expected_api_url)
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients._create_base_topic_store")
+    @patch("datacommons_mcp.clients.create_topic_store")
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            pytest.param(
+                {
+                    "dc_type": "base",
+                    "env_vars": {"DC_API_KEY": "test_api_key", "DC_TYPE": "base"},
+                    "expected_scope": SearchScope.BASE_ONLY,
+                    "should_create_base": True,
+                    "should_create_custom": False,
+                    "should_merge": False,
+                },
+                id="base_only_scope_creates_only_base_topic_store",
+            ),
+            pytest.param(
+                {
+                    "dc_type": "custom",
+                    "env_vars": {
+                        "DC_API_KEY": "test_api_key",
+                        "DC_TYPE": "custom",
+                        "CUSTOM_DC_URL": "https://example.com",
+                        "DC_ROOT_TOPIC_DCIDS": "topic1,topic2",
+                        "DC_SEARCH_SCOPE": "custom_only",
+                    },
+                    "expected_scope": SearchScope.CUSTOM_ONLY,
+                    "should_create_base": False,
+                    "should_create_custom": True,
+                    "should_merge": False,
+                },
+                id="custom_only_scope_creates_only_custom_topic_store",
+            ),
+            pytest.param(
+                {
+                    "dc_type": "custom",
+                    "env_vars": {
+                        "DC_API_KEY": "test_api_key",
+                        "DC_TYPE": "custom",
+                        "CUSTOM_DC_URL": "https://example.com",
+                        "DC_ROOT_TOPIC_DCIDS": "topic1,topic2",
+                    },
+                    "expected_scope": SearchScope.BASE_AND_CUSTOM,
+                    "should_create_base": True,
+                    "should_create_custom": True,
+                    "should_merge": True,
+                },
+                id="base_and_custom_scope_creates_and_merges_both_topic_stores",
+            ),
+        ],
+    )
+    def test_create_dc_client_search_scope_topic_stores(
+        self,
+        mock_create_store: Mock,
+        mock_create_base_store: Mock,
+        mock_dc_client: Mock,
+        test_case: dict,
+    ):
+        """Test that topic store creation calls match search scope."""
+        # Arrange
+        with patch.dict(os.environ, test_case["env_vars"]):
+            settings = (
+                BaseDCSettings()
+                if test_case["dc_type"] == "base"
+                else CustomDCSettings()
+            )
+            mock_dc_instance = Mock()
+            mock_dc_client.return_value = mock_dc_instance
+            mock_custom_store = Mock()
+            mock_base_store = Mock()
+            mock_create_store.return_value = mock_custom_store
+            mock_create_base_store.return_value = mock_base_store
+
+            # Act
+            result = create_dc_client(settings)
+
+            # Assert
+            assert isinstance(result, DCClient)
+            assert result.search_scope == test_case["expected_scope"]
+
+            # Verify base topic store creation
+            if test_case["should_create_base"]:
+                mock_create_base_store.assert_called_once_with(settings)
+            else:
+                mock_create_base_store.assert_not_called()
+
+            # Verify custom topic store creation
+            if test_case["should_create_custom"]:
+                mock_create_store.assert_called_once_with(
+                    ["topic1", "topic2"], mock_dc_instance
+                )
+            else:
+                mock_create_store.assert_not_called()
+
+            # Verify store merging
+            if test_case["should_merge"]:
+                mock_custom_store.merge.assert_called_once_with(mock_base_store)
+            else:
+                mock_custom_store.merge.assert_not_called()
