@@ -429,18 +429,12 @@ class DCClient:
         params = {
             "queries": unique_queries,
             "limit_per_index": max_search_results,
-            # Use precomputed indices. By passing the list directly to the
-            # params dict, the HTTP client will correctly format this as
-            # repeating keys (e.g., ?index=idx1&index=idx2)
             "index": self.search_indices,
         }
 
         if not include_topics:
             params["include_types"] = ["StatisticalVariable"]
 
-        # Define the base endpoint URL without query parameters.
-        # The 'params' dictionary built above should be passed directly
-        # to your HTTP client (e.g., requests.get(endpoint_url, params=params)).
         endpoint_url = f"{self.sv_search_base_url}/api/nl/search-indicators"
         headers = {"Content-Type": "application/json"}
         try:
