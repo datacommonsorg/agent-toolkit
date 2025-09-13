@@ -901,7 +901,11 @@ class TestSearchIndicatorsEndpoint:
     @pytest.fixture
     def client(self, mocked_datacommons_client):
         """Provides a DCClient instance for testing."""
-        return DCClient(dc=mocked_datacommons_client)
+        return DCClient(
+            dc=mocked_datacommons_client,
+            custom_index="custom_ft",
+            search_scope=SearchScope.BASE_AND_CUSTOM,
+        )
 
     def test_transform_response_with_mixed_results(self, client):
         """Tests transformation with a mix of topics and variables."""
@@ -1052,6 +1056,7 @@ class TestSearchIndicatorsEndpoint:
         params = call_kwargs["params"]
         assert params["queries"] == ["economy", "health"]  # Sorted unique queries
         assert params["limit_per_index"] == 30  # max_results * 2
+        assert params["index"] == ["custom_ft", "base_uae_mem"]
         assert "include_types" not in params  # Topics are included by default
 
     @pytest.mark.asyncio
