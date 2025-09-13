@@ -31,19 +31,27 @@ class SearchTask(BaseModel):
     )
 
 
-class SearchVariable(BaseModel):
+class SearchIndicator(BaseModel):
+    """Base model for a search indicator, which can be a topic or a variable."""
+
+    dcid: str
+    description: str | None = None
+    alternate_descriptions: list[str] | None = Field(
+        None, description="Alternate descriptions or matched sentences."
+    )
+
+
+class SearchVariable(SearchIndicator):
     """Represents a variable object in search results."""
 
-    dcid: str = Field(description="Variable DCID")
     places_with_data: list[str] = Field(
         default_factory=list, description="Place DCIDs where data exists"
     )
 
 
-class SearchTopic(BaseModel):
+class SearchTopic(SearchIndicator):
     """Represents a topic object in search results."""
 
-    dcid: str = Field(description="Topic DCID")
     member_topics: list[str] = Field(
         default_factory=list, description="Direct member topic DCIDs"
     )

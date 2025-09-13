@@ -504,7 +504,14 @@ async def search_indicators(
         query, places, place_dcids_map, maybe_bilateral=maybe_bilateral
     )
 
-    search_result = await _search_indicators(
+    # Use search-indicators endpoint
+    if client.use_search_indicators_endpoint:
+        return await client.search_indicators(
+            search_tasks, per_search_limit, include_topics=include_topics
+        )
+
+    # Use search-vector endpoint
+    search_result = await _search_vector(
         client=client,
         search_tasks=search_tasks,
         per_search_limit=per_search_limit,
@@ -649,7 +656,7 @@ def _collect_all_dcids(
     return all_dcids
 
 
-async def _search_indicators(
+async def _search_vector(
     client: DCClient,
     search_tasks: list[SearchTask],
     per_search_limit: int = 10,
@@ -661,6 +668,7 @@ async def _search_indicators(
     Returns:
         SearchResult: Typed result with topics and variables dictionaries
     """
+
     # Execute parallel searches
     tasks = []
     for search_task in search_tasks:
