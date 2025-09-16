@@ -49,7 +49,7 @@ class TestBaseSettings:
             assert settings.api_key == "test_key"
             assert settings.sv_search_base_url == "https://datacommons.org"
             assert settings.base_index == "base_uae_mem"
-            assert settings.topic_cache_path is None
+            assert settings.topic_cache_paths is None
 
     def test_loads_with_env_var_overrides(self, isolated_env):
         """Tests that environment variables override defaults for BaseDCSettings."""
@@ -58,7 +58,7 @@ class TestBaseSettings:
             "DC_TYPE": "base",
             "DC_SV_SEARCH_BASE_URL": "https://custom.com",
             "DC_BASE_INDEX": "custom_index",
-            "DC_TOPIC_CACHE_PATH": "/path/to/cache.json",
+            "DC_TOPIC_CACHE_PATHS": "/path/to/cache1.json, /path/to/cache2.json",
         }
         with isolated_env(env_vars):
             settings = get_dc_settings()
@@ -66,7 +66,10 @@ class TestBaseSettings:
             assert isinstance(settings, BaseDCSettings)
             assert settings.sv_search_base_url == "https://custom.com"
             assert settings.base_index == "custom_index"
-            assert settings.topic_cache_path == "/path/to/cache.json"
+            assert settings.topic_cache_paths == [
+                "/path/to/cache1.json",
+                "/path/to/cache2.json",
+            ]
 
     @pytest.mark.parametrize(
         ("env_value", "expected"),
