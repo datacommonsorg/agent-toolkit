@@ -6,7 +6,7 @@
                 "tool_name": "get_observations",
                 "tool_input": {
                     "date": "latest",
-                    "place_name": "India",
+                    "place_dcid": "country/IND",
                     "variable_dcid": "Count_Person",
                     "child_place_type": "AdministrativeArea1"
                 }
@@ -21,7 +21,7 @@
                 "tool_name": "get_observations",
                 "tool_input": {
                     "date": "latest",
-                    "place_name": "India",
+                    "place_dcid": "country/IND",
                     "variable_dcid": "Count_Person",
                     "child_place_type": "AdministrativeArea1",
                     "source_override": "2123271870"
