@@ -142,12 +142,14 @@ class CustomDCSettings(BaseSettings):
 
 def _parse_list_like_parameter(v: Any) -> list[str] | None:  # noqa: ANN401
     """Parse comma-separated string into list of strings."""
+    if isinstance(v, list):
+        return v
     if not isinstance(v, str) or not v.strip():
         return None
-    # Split by comma and strip whitespace from each item
-    items = [item.strip() for item in v.split(",")]
+    # Split by comma and strip whitespace from each item, filtering out empty strings
+    items = [s for s in (part.strip() for part in v.split(",")) if s]
     # Filter out empty items
-    return [item for item in items if item]
+    return items
 
 
 # Union type for both settings
