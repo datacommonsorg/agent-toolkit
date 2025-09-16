@@ -141,7 +141,7 @@ class CustomDCSettings(BaseSettings):
 
 
 def _parse_list_like_parameter(v: Any) -> list[str] | None:  # noqa: ANN401
-     """Parse a comma-separated string or a list into a list of strings."""
+    """Parse a comma-separated string or a list into a list of strings."""
     if isinstance(v, list):
         return [s for s in (str(item).strip() for item in v) if s]
     if not isinstance(v, str) or not v.strip():
