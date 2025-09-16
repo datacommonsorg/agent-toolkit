@@ -834,10 +834,10 @@ class DCClient:
                 temp_vars = {
                     dcid: SearchVariable(dcid=dcid) for dcid in member_variables
                 }
-                filtered_variables = self._filter_variables_by_existence_new(
-                    temp_vars, place_dcids
+                filtered_indicators = self._filter_indicators_by_existence(
+                    list(temp_vars.values()), place_dcids
                 )
-                member_variables = list(filtered_variables.keys())
+                member_variables = [v.dcid for v in filtered_indicators]
 
                 member_topics = [
                     dcid

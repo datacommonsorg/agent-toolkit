@@ -1317,6 +1317,219 @@ class TestDCClientFetchIndicatorsNew:
         assert len(result) == 1
         assert result[0].dcid == "existing_var"
 
+    @pytest.mark.asyncio
+    @patch("datacommons_mcp.clients.asyncio.to_thread")
+    async def test_fetch_indicators_new_end_to_end(
+        self, mock_to_thread, client: DCClient
+    ):
+        """
+        Tests the full end-to-end logic of _fetch_indicators_new, including
+        API call, transformation, filtering, topic expansion, and final name lookup.
+        """
+        # Arrange
+        # 1. Mock the API response from /api/nl/search-indicators
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "queryResults": [
+                {
+                    "query": "health in california",
+                    "indexResults": [
+                        {
+                            # Results from the base index
+                            "index": "base_uae_mem",
+                            "results": [
+                                {
+                                    "dcid": "dc/topic/Health",
+                                    "name": "Health",
+                                    "typeOf": "Topic",
+                                },
+                                {
+                                    "dcid": "Count_Household",
+                                    "name": "Household Count",
+                                },
+                            ],
+                        },
+                        {
+                            # Results from a custom index
+                            "index": "custom_ft",
+                            "results": [
+                                {
+                                    "dcid": "Count_Person",
+                                    "name": "Person Count",
+                                },
+                                {
+                                    # This is a duplicate of a result in the base index,
+                                    # but it should be handled correctly.
+                                    "dcid": "Count_Household",
+                                    "name": "Household Count",
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ]
+        }
+        mock_to_thread.return_value = mock_response
+
+        # 2. Mock the topic store for member expansion
+        client.topic_store = Mock()
+        health_topic_data = Mock()
+        health_topic_data.member_topics = []
+        # This member variable will be added during expansion
+        health_topic_data.variables = ["MortalityRate_Person_MedicalCondition"]
+        client.topic_store.topics_by_dcid.get.return_value = health_topic_data
+
+        # 3. Mock the variable cache for existence checks
+        # - Count_Person exists in CA
+        # - Count_Household does NOT exist in CA
+        # - The expanded variable from the topic exists in CA
+        client.variable_cache = Mock()
+        client.variable_cache.get.return_value = {
+            "Count_Person",
+            "MortalityRate_Person_MedicalCondition",
+        }
+
+        # 4. Mock the final name lookup for the expanded variable
+        client.fetch_entity_names.return_value = {
+            "MortalityRate_Person_MedicalCondition": "Mortality Rate"
+        }
+
+        search_tasks = [
+            SearchTask(query="health in california", place_dcids=["geoId/06"])
+        ]
+
+        # Act: Call the method with include_topics=False to trigger expansion
+        search_result, dcid_name_mappings = await client._fetch_indicators_new(
+            search_tasks=search_tasks,
+            per_search_limit=10,
+            include_topics=False,
+        )
+
+        # Assert
+        # 1. Final SearchResult should contain only variables that passed existence checks
+        assert search_result.topics == {}  # include_topics=False
+        assert len(search_result.variables) == 2
+
+        final_var_dcids = search_result.variables.keys()
+        assert "Count_Person" in final_var_dcids
+        assert "MortalityRate_Person_MedicalCondition" in final_var_dcids
+        assert "Count_Household" not in final_var_dcids  # Should be filtered out
+
+        # 2. places_with_data should be populated correctly
+        assert search_result.variables["Count_Person"].places_with_data == ["geoId/06"]
+        assert search_result.variables[
+            "MortalityRate_Person_MedicalCondition"
+        ].places_with_data == ["geoId/06"]
+
+        # 3. Final name mappings should include names from API and the final lookup
+        assert dcid_name_mappings == {
+            "Count_Person": "Person Count",
+            # "Count_Household" name should be filtered out as the variable was dropped
+            "MortalityRate_Person_MedicalCondition": "Mortality Rate",
+        }
+
+    @pytest.mark.asyncio
+    @patch("datacommons_mcp.clients.asyncio.to_thread")
+    async def test_fetch_indicators_new_end_to_end_with_topics(
+        self, mock_to_thread, client: DCClient
+    ):
+        """
+        Tests the full end-to-end logic of _fetch_indicators_new when
+        include_topics is True, ensuring topics are returned with populated members.
+        """
+        # Arrange
+        # 1. Mock the API response from /api/nl/search-indicators
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "queryResults": [
+                {
+                    "query": "health in california",
+                    "indexResults": [
+                        {
+                            "index": "base_uae_mem",
+                            "results": [
+                                {
+                                    "dcid": "dc/topic/Health",
+                                    "name": "Health",
+                                    "typeOf": "Topic",
+                                },
+                                {
+                                    "dcid": "Count_Person",
+                                    "name": "Person Count",
+                                },
+                                {
+                                    "dcid": "Count_Household",  # This will be filtered out
+                                    "name": "Household Count",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        mock_to_thread.return_value = mock_response
+
+        # 2. Mock the topic store for member population
+        client.topic_store = Mock()
+        health_topic_data = Mock()
+        # The topic has one member variable that exists and one that does not.
+        health_topic_data.member_topics = []
+        health_topic_data.variables = [
+            "MortalityRate_Person_MedicalCondition",  # Exists
+            "NonExistent_Var",  # Does not exist
+        ]
+        client.topic_store.topics_by_dcid.get.return_value = health_topic_data
+
+        # 3. Mock the variable cache for existence checks
+        # - dc/topic/Health exists (via its member)
+        # - Count_Person exists
+        # - Count_Household does NOT exist
+        # - MortalityRate_Person_MedicalCondition (topic member) exists
+        client.variable_cache = Mock()
+        client.variable_cache.get.return_value = {
+            "Count_Person",
+            "MortalityRate_Person_MedicalCondition",
+        }
+
+        # 4. Mock the final name lookup for the topic member variable
+        client.fetch_entity_names.return_value = {
+            "MortalityRate_Person_MedicalCondition": "Mortality Rate"
+        }
+
+        search_tasks = [
+            SearchTask(query="health in california", place_dcids=["geoId/06"])
+        ]
+
+        # Act: Call the method with include_topics=True
+        search_result, dcid_name_mappings = await client._fetch_indicators_new(
+            search_tasks=search_tasks,
+            per_search_limit=10,
+            include_topics=True,
+        )
+
+        # Assert
+        # 1. Final SearchResult should contain the topic and the variable
+        assert len(search_result.topics) == 1
+        assert len(search_result.variables) == 1
+
+        # 2. Check the returned topic and its populated members
+        health_topic = search_result.topics["dc/topic/Health"]
+        assert health_topic.places_with_data == ["geoId/06"]
+        # Only the member variable that exists should be populated
+        assert health_topic.member_variables == [
+            "MortalityRate_Person_MedicalCondition"
+        ]
+
+        # 3. Check the returned variable
+        assert "Count_Person" in search_result.variables
+        assert search_result.variables["Count_Person"].places_with_data == ["geoId/06"]
+
+        # 4. Final name mappings should be correct
+        assert "dc/topic/Health" in dcid_name_mappings
+        assert "MortalityRate_Person_MedicalCondition" in dcid_name_mappings
+
 
 class TestCreateDCClient:
     """Tests for the create_dc_client factory function."""
