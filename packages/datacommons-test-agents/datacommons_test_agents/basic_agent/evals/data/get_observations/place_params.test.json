@@ -6,7 +6,7 @@
                 "tool_name": "get_observations",
                 "tool_input": {
                     "date": "latest",
-                    "place_name": "India",
+                    "place_dcid": "country/IND",
                     "variable_dcid": "Count_Person"
                 }
             }
@@ -20,7 +20,7 @@
                 "tool_name": "get_observations",
                 "tool_input": {
                     "date": "latest",
-                    "place_name": "India",
+                    "place_dcid": "country/IND",
                     "variable_dcid": "Count_Person",
                     "child_place_type": "AdministrativeArea1"
                 }
@@ -35,7 +35,7 @@
                 "tool_name": "get_observations",
                 "tool_input": {
                     "date": "all",
-                    "place_name": "Uttar Pradesh",
+                    "place_dcid": "wikidataId/Q1498",
                     "variable_dcid": "Count_Person"
                 }
             },
@@ -43,7 +43,7 @@
                 "tool_name": "get_observations",
                 "tool_input": {
                     "date": "all",
-                    "place_name": "Maharashtra",
+                    "place_dcid": "wikidataId/Q1191",
                     "variable_dcid": "Count_Person"
                 }
             }

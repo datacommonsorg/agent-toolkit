@@ -6,7 +6,7 @@
         "tool_name": "get_observations",
         "tool_input": {
           "date": "latest",
-          "place_name": "California",
+          "place_dcid": "geoId/06",
           "variable_dcid": "Count_Person"
         }
       }
@@ -20,7 +20,7 @@
         "tool_name": "get_observations",
         "tool_input": {
           "date": "2023",
-          "place_name": "California",
+          "place_dcid": "geoId/06",
           "variable_dcid": "Count_Person"
         }
       }
@@ -36,7 +36,7 @@
           "date": "range",
           "date_range_start": "2002-05",
           "date_range_end": "2005-11",
-          "place_name": "California",
+          "place_dcid": "geoId/06",
           "variable_dcid": "Count_Person"
         }
       }
@@ -50,7 +50,7 @@
         "tool_name": "get_observations",
         "tool_input": {
           "date": "all",
-          "place_name": "California",
+          "place_dcid": "geoId/06",
           "variable_dcid": "Count_Person"
         }
       }
