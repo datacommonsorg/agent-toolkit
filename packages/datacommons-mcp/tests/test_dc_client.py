@@ -36,6 +36,7 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.data_models.search import (
     SearchResult,
     SearchTask,
+    SearchTopic,
     SearchVariable,
 )
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
@@ -753,7 +754,6 @@ class TestDCClientFetchIndicators:
         assert "Count_Household" in result["variables"]
 
 
-@pytest.mark.asyncio
 class TestDCClientFetchIndicatorsNew:
     """Tests for the _fetch_indicators_new method of DCClient."""
 
@@ -767,6 +767,7 @@ class TestDCClientFetchIndicatorsNew:
         client.fetch_entity_names = AsyncMock(return_value={})
         return client
 
+    @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.asyncio.to_thread")
     async def test_api_call_construction(self, mock_to_thread, client: DCClient):
         """
@@ -802,6 +803,7 @@ class TestDCClientFetchIndicatorsNew:
         assert params["limit_per_index"] == 30
         assert params["index"] == ["base_uae_mem"]
 
+    @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.asyncio.to_thread")
     async def test_api_error_handling(self, mock_to_thread, client: DCClient):
         """
@@ -820,6 +822,7 @@ class TestDCClientFetchIndicatorsNew:
         assert search_result == SearchResult()
         assert dcid_name_mappings == {}
 
+    @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.asyncio.to_thread")
     async def test_processing_flow(self, mock_to_thread, client: DCClient):
         """
@@ -875,6 +878,7 @@ class TestDCClientFetchIndicatorsNew:
         client._get_topics_members_with_existence_new.assert_called_once()
         client._expand_topics_to_variables.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.asyncio.to_thread")
     async def test_final_name_lookup(self, mock_to_thread, client: DCClient):
         """
@@ -943,6 +947,375 @@ class TestDCClientFetchIndicatorsNew:
         client.fetch_entity_names.assert_awaited_once_with(
             sorted(["dc/topic/SubHealth", "Count_Person_Health"])
         )
+
+    def test_transform_response_basic_mixed_types(self, client: DCClient):
+        """
+        Tests transformation of a standard API response with mixed indicator types.
+        """
+        # Arrange
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "health",
+                    "indexResults": [
+                        {
+                            "index": "base_uae_mem",
+                            "results": [
+                                {
+                                    "dcid": "dc/topic/Health",
+                                    "name": "Health",
+                                    "typeOf": "Topic",
+                                },
+                                {
+                                    "dcid": "Count_Person",
+                                    "name": "Person Count",
+                                    "typeOf": "StatisticalVariable",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        # Act
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+
+        # Assert
+        # Check results_by_search structure
+        assert "health-base_uae_mem" in results_by_search
+        indicators = results_by_search["health-base_uae_mem"]
+        assert len(indicators) == 2
+        assert isinstance(indicators[0], SearchTopic)
+        assert indicators[0].dcid == "dc/topic/Health"
+        assert isinstance(indicators[1], SearchVariable)
+        assert indicators[1].dcid == "Count_Person"
+
+        # Check name mappings
+        assert dcid_name_mappings == {
+            "dc/topic/Health": "Health",
+            "Count_Person": "Person Count",
+        }
+
+    def test_transform_response_topic_with_null_type(self, client: DCClient):
+        """
+        Tests that a dcid with a topic prefix is classified as a topic
+        even if the typeOf field is null or missing.
+        """
+        # Arrange
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "health",
+                    "indexResults": [
+                        {
+                            "index": "base_uae_mem",
+                            "results": [
+                                {
+                                    "dcid": "dc/topic/Health",
+                                    "name": "Health",
+                                    "typeOf": None,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        # Act
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+
+        # Assert
+        assert "health-base_uae_mem" in results_by_search
+        indicators = results_by_search["health-base_uae_mem"]
+        assert len(indicators) == 1
+        assert isinstance(indicators[0], SearchTopic)
+        assert indicators[0].dcid == "dc/topic/Health"
+        assert dcid_name_mappings == {"dc/topic/Health": "Health"}
+
+    def test_transform_response_empty(self, client: DCClient):
+        """Tests transformation with an empty API response."""
+        api_response = {"queryResults": []}
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+        assert results_by_search == {}
+        assert dcid_name_mappings == {}
+
+    def test_transform_response_missing_dcid(self, client: DCClient):
+        """Tests that indicators missing a dcid are skipped."""
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "test",
+                    "indexResults": [
+                        {"index": "test_idx", "results": [{"name": "No DCID"}]}
+                    ],
+                }
+            ]
+        }
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+        assert results_by_search == {}
+        assert dcid_name_mappings == {}
+
+    def test_transform_response_missing_name(self, client: DCClient):
+        """Tests that indicators missing a name are still processed."""
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "test",
+                    "indexResults": [
+                        {"index": "test_idx", "results": [{"dcid": "var1"}]}
+                    ],
+                }
+            ]
+        }
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+        assert "test-test_idx" in results_by_search
+        assert len(results_by_search["test-test_idx"]) == 1
+        assert results_by_search["test-test_idx"][0].dcid == "var1"
+        assert dcid_name_mappings == {}  # No name was provided
+
+    def test_transform_response_only_variables(self, client: DCClient):
+        """Tests a response containing only variables."""
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "vars",
+                    "indexResults": [
+                        {
+                            "index": "idx1",
+                            "results": [
+                                {"dcid": "var1", "name": "Var 1"},
+                                {"dcid": "var2", "name": "Var 2"},
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+        assert "vars-idx1" in results_by_search
+        indicators = results_by_search["vars-idx1"]
+        assert len(indicators) == 2
+        assert all(isinstance(i, SearchVariable) for i in indicators)
+        assert dcid_name_mappings == {"var1": "Var 1", "var2": "Var 2"}
+
+    def test_transform_response_only_topics(self, client: DCClient):
+        """Tests a response containing only topics."""
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "topics",
+                    "indexResults": [
+                        {
+                            "index": "idx1",
+                            "results": [
+                                {
+                                    "dcid": "topic1",
+                                    "name": "Topic 1",
+                                    "typeOf": "Topic",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+        assert "topics-idx1" in results_by_search
+        indicators = results_by_search["topics-idx1"]
+        assert len(indicators) == 1
+        assert isinstance(indicators[0], SearchTopic)
+        assert dcid_name_mappings == {"topic1": "Topic 1"}
+
+    def test_transform_response_multiple_queries(self, client: DCClient):
+        """Tests a response with multiple query results."""
+        api_response = {
+            "queryResults": [
+                {
+                    "query": "q1",
+                    "indexResults": [
+                        {
+                            "index": "idx1",
+                            "results": [{"dcid": "var1", "name": "Var 1"}],
+                        }
+                    ],
+                },
+                {
+                    "query": "q2",
+                    "indexResults": [
+                        {
+                            "index": "idx2",
+                            "results": [{"dcid": "var2", "name": "Var 2"}],
+                        }
+                    ],
+                },
+            ]
+        }
+        results_by_search, dcid_name_mappings = (
+            client._transform_search_indicators_response(api_response)
+        )
+        assert len(results_by_search) == 2
+        assert "q1-idx1" in results_by_search
+        assert "q2-idx2" in results_by_search
+        assert len(results_by_search["q1-idx1"]) == 1
+        assert len(results_by_search["q2-idx2"]) == 1
+        assert dcid_name_mappings == {"var1": "Var 1", "var2": "Var 2"}
+
+    def test_filter_indicators_by_existence_mixed_types(self, client: DCClient):
+        """
+        Tests that _filter_indicators_by_existence correctly filters a mix of
+        SearchTopic and SearchVariable objects.
+        """
+        # Arrange
+        indicators = [
+            SearchTopic(dcid="dc/topic/Health"),  # Has data
+            SearchVariable(dcid="Count_Person"),  # Has data
+            SearchTopic(dcid="dc/topic/Economy"),  # No data
+            SearchVariable(dcid="Count_Household"),  # No data
+        ]
+        place_dcids = ["geoId/06"]
+
+        # Mock the underlying existence check methods
+        client._get_topic_places_with_data = Mock(
+            side_effect=lambda dcid, _: ["geoId/06"]
+            if dcid == "dc/topic/Health"
+            else []
+        )
+        client._get_variable_places_with_data = Mock(
+            side_effect=lambda dcid, _: ["geoId/06"] if dcid == "Count_Person" else []
+        )
+
+        # Act
+        filtered_indicators = client._filter_indicators_by_existence(
+            indicators, place_dcids
+        )
+
+        # Assert
+        assert len(filtered_indicators) == 2
+        filtered_dcids = {i.dcid for i in filtered_indicators}
+        assert "dc/topic/Health" in filtered_dcids
+        assert "Count_Person" in filtered_dcids
+
+        # Check that places_with_data is populated
+        health_topic = next(
+            i for i in filtered_indicators if i.dcid == "dc/topic/Health"
+        )
+        assert health_topic.places_with_data == ["geoId/06"]
+
+    def test_filter_indicators_by_existence_empty_indicators(self, client: DCClient):
+        """Tests filtering with an empty list of indicators."""
+        result = client._filter_indicators_by_existence([], ["geoId/06"])
+        assert result == []
+
+    def test_filter_indicators_by_existence_empty_places(self, client: DCClient):
+        """
+        Tests that filtering with an empty list of place_dcids returns all
+        indicators, as no filtering should be applied.
+        """
+        indicators = [
+            SearchTopic(dcid="dc/topic/Health"),
+            SearchVariable(dcid="Count_Person"),
+        ]
+        result = client._filter_indicators_by_existence(indicators, [])
+        assert result == indicators
+        # Verify places_with_data is not populated
+        for indicator in result:
+            if isinstance(indicator, SearchVariable):
+                assert indicator.places_with_data == []
+            else:
+                assert indicator.places_with_data is None
+
+    def test_expand_topics_to_variables_basic_expansion(self, client: DCClient):
+        """
+        Tests that a topic is correctly expanded into its member variables.
+        """
+        # Arrange
+        topic = SearchTopic(dcid="dc/topic/Health")
+        topic.member_variables = ["var_from_topic_1", "var_from_topic_2"]
+        indicators = [
+            topic,
+            SearchVariable(dcid="original_var"),
+        ]
+        place_dcids = ["geoId/06"]
+
+        # Mock existence check to assume all variables exist
+        client._get_variable_places_with_data = Mock(return_value=place_dcids)
+
+        # Act
+        result = client._expand_topics_to_variables(indicators, place_dcids)
+
+        # Assert
+        assert len(result) == 3
+        result_dcids = {v.dcid for v in result}
+        assert "original_var" in result_dcids
+        assert "var_from_topic_1" in result_dcids
+        assert "var_from_topic_2" in result_dcids
+        # The topic should no longer be present
+        assert not any(isinstance(i, SearchTopic) for i in result)
+
+    def test_expand_topics_to_variables_deduplication(self, client: DCClient):
+        """
+        Tests that if a topic's member variable is already in the list,
+        it is not duplicated.
+        """
+        # Arrange
+        topic = SearchTopic(dcid="dc/topic/Health")
+        topic.member_variables = ["var_from_topic", "duplicate_var"]
+        indicators = [
+            topic,
+            SearchVariable(dcid="duplicate_var"),  # Already present
+        ]
+        place_dcids = ["geoId/06"]
+
+        # Mock existence check
+        client._get_variable_places_with_data = Mock(return_value=place_dcids)
+
+        # Act
+        result = client._expand_topics_to_variables(indicators, place_dcids)
+
+        # Assert
+        assert len(result) == 2
+        result_dcids = {v.dcid for v in result}
+        assert "var_from_topic" in result_dcids
+        assert "duplicate_var" in result_dcids
+
+    def test_expand_topics_to_variables_existence_check(self, client: DCClient):
+        """
+        Tests that expanded variables are only included if they pass the
+        existence check.
+        """
+        # Arrange
+        topic = SearchTopic(dcid="dc/topic/Health")
+        topic.member_variables = ["existing_var", "non_existing_var"]
+        indicators = [topic]
+        place_dcids = ["geoId/06"]
+
+        # Mock existence: only 'existing_var' has data
+        client._get_variable_places_with_data = Mock(
+            side_effect=lambda dcid, _: place_dcids if dcid == "existing_var" else []
+        )
+
+        # Act
+        result = client._expand_topics_to_variables(indicators, place_dcids)
+
+        # Assert
+        assert len(result) == 1
+        assert result[0].dcid == "existing_var"
 
 
 class TestCreateDCClient:

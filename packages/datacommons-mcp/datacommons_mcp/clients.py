@@ -641,6 +641,11 @@ class DCClient:
     def _filter_indicators_by_existence(
         self, indicators: list[SearchIndicator], place_dcids: list[str]
     ) -> list[SearchIndicator]:
+        # If no places are provided, no filtering is needed. Return all indicators.
+        # Their places_with_data will remain as the default (empty list or None).
+        if not place_dcids:
+            return indicators
+
         filtered_indicators = []
 
         for indicator in indicators:
