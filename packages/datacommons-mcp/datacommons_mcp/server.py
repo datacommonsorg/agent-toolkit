@@ -71,8 +71,7 @@ mcp = FastMCP(
 @mcp.tool()
 async def get_observations(
     variable_dcid: str,
-    place_dcid: str | None = None,
-    place_name: str | None = None,
+    place_dcid: str,
     child_place_type: str | None = None,
     source_override: str | None = None,
     date: str = ObservationDateType.LATEST.value,
@@ -80,6 +79,11 @@ async def get_observations(
     date_range_end: str | None = None,
 ) -> ObservationToolResponse:
     """Fetches observations for a statistical variable from Data Commons.
+
+    **CRITICAL: Always validate variable-place combinations first**
+    - You **MUST** call `search_indicators` first to verify that the variable exists for the specified place
+    - Only use DCIDs returned by `search_indicators` - never guess or assume variable-place combinations
+    - This ensures data availability and prevents errors from invalid combinations
 
     This tool can operate in two primary modes:
     1.  **Single Place Mode**: Get data for one specific place (e.g., "Population of California").
@@ -91,19 +95,19 @@ async def get_observations(
         * Variable DCIDs are unique identifiers for statistical variables in Data Commons and are returned by prior calls to the
         `search_indicators` tool.
 
-    * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
-        * If `place_dcid` is provided, it takes priority over `place_name`.
+    * **Place Selection**: You **must** provide the `place_dcid`.
         * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., exports from one country to another),
         the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France).
-        In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
+        In such cases, the `place_dcid` parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
         (e.g., the exporter country, such as 'USA' for exports *from* USA).
-        The `search_indicators` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
+        The `search_indicators` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid`.
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
         * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
           **CRITICAL:** Before calling `get_observations` with `child_place_type`, you **MUST** first call the `validate_child_place_types` tool to find valid types.
           Only proceed with `get_observations` if `validate_child_place_types` confirms that the `child_place_type` is valid for the specified parent place.
+          **Note:** If you used child sampling in `search_indicators` to validate variable existence, you should still get data for ALL children of that type, not just the sampled subset.
 
     * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
         * Avoid requesting `'all'` data via the `date` parameter.
@@ -120,8 +124,7 @@ async def get_observations(
 
     Args:
       variable_dcid (str, required): The unique identifier (DCID) of the statistical variable.
-      place_dcid (str, optional): The DCID of the place.
-      place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
+      place_dcid (str, required): The DCID of the place.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
       source_override (str, optional): An optional source ID to force the use of a specific data source.
       date (str, optional): An optional date filter. Accepts 'all', 'latest', 'range', or single date values of the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. Defaults to 'latest' if no date parameters are provided.
@@ -138,11 +141,12 @@ async def get_observations(
         - `alternative_sources`: Details about other available data sources.
 
     """
+    # TODO(keyurs): Remove place_name parameter from the service call.
     return await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
-        place_name=place_name,
+        place_name=None,
         child_place_type=child_place_type,
         source_override=source_override,
         date=date,
