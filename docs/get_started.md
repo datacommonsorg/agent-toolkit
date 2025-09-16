@@ -44,11 +44,11 @@ At the current time, the following are not supported:
 - Exploring nodes and relationships in the graph
 
 {#basic}
-## Basic usage: run a local server
+## Basic usage: run a local agent and server
 
 Below we provide specific instructions for locally running agents:
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- best for playing with the server; requires minimal setup
-- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for running a sample ADK-based web agent; requires some additional setup
+- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup
 
 Both spawn the server in a local subprocess.
 
@@ -70,7 +70,7 @@ If you're running a against a custom Data Commons instance, or otherwise setting
 
 1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. 
 
-    > Tip: If you regularly use Git and want to run packages from local code, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
+    > Tip: If you're planning to run the sample agent, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
 1. From the directory where you saved the sample file, copy it to a new file called `.env`. For example:
    ```
@@ -79,9 +79,7 @@ If you're running a against a custom Data Commons instance, or otherwise setting
    ```
 1. Set the required variable `DC_API_KEY` to your Data Commons API key, and any other optional variables. If you are using a Custom Data Commons instance, be sure to set `DC_TYPE` to `custom` and uncomment and set `CUSTOM_DC_URL` to the URL of your instance. 
 
-### Start a local agent and server
-
-#### Use Gemini CLI
+### Use Gemini CLI
 
 To install Gemini CLI, see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
 
@@ -115,16 +113,16 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
 ```
 If desired, you can modify the following settings:
 - `selectedAuthType`: If you don't have a GCP project and want to use OAuth with your Google account, set this to `oauth-personal`.
-- `command`: Set to `uv` if you want to run packages from locally stored Python code.
+- `command`: If you want to run packages from locally cloned stored Python code, set this to `uv` and add `run` to the list of `args`, 
 
 You can now run the `gemini` command from any directory and it will automatically kick off the MCP server, with the correct environment variables.
 
 Once Gemini CLI has started up, you can immediately begin sending natural-language queries! 
 
-> **Tip!**: To ensure that Gemini CLI uses the Data Commons MCP tools, and not its own `GoogleSearch` tool, include a prompt to use Data Commons in your query. You can also add such a prompt to your [`GEMINI.md` file](https://codelabs.developers.google.com/gemini-cli-hands-on#9) so that it's persisted across sessions.
+> **Tip!**: To ensure that Gemini CLI uses the Data Commons MCP tools, and not its own `GoogleSearch` tool, include a prompt to use Data Commons in your query. For example, use a query like "Use Data Commons tools to answer the following: ..."  You can also add such a prompt to your [`GEMINI.md` file](https://codelabs.developers.google.com/gemini-cli-hands-on#9) so that it's persisted across sessions.
 
 {#sample}
-#### Use the sample agent
+### Use the sample agent
 
 xxx is a basic agent for interacting with the MCP Server. To run it locally:
 
@@ -143,7 +141,7 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
 1. Set the required variables and save the file.
 1. Run the following command to start the web agent and server:
    ```
-   uv run adk web ./datacommons_agents
+   uv run adk web ./datacommons-agents
    ```
 1. 
 
@@ -152,48 +150,7 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
 - [Building a Data Commons MCP Agent]() is a Google Colab tutorial that shows how to build an HTTP-based agent step by step. 
-- The provided [sample agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#sample) above.
-
-### Test with MCP Inspector
-
-The MCP Inspector is a useful tool for debugging potential issues data issues you may encounter while developing a Data Commons agent. It runs locally, spawns a local server, and allows you to send tool calls directly in   
-
-To use it:
-
-1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
-1. Ensure the DC_API_KEY [environment variable](#vars) is set to your API key.
-1. Go to the directory where your server `.env` file is stored (e.g. `agent-toolkit/packages/datacommons-mcp`).
-   ```
-   npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
-   ```
-1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`. 
-1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
-1. In the left pane, click **Connect**. 
-
-Option 1: run inspector + datacommons-mcp cli
-
-export DC_API_KEY=<your-key> 
-
-The following values should be automatically populated:
-
-Transport Type: STDIO
-Command: uv
-Arguments: run datacommons-mcp serve stdio
-
-Option 2: fastmcp cli
-
-export DC_API_KEY={YOUR_API_KEY}
-cd packages/datacommons-mcp # navigate to package dir
-uv run fastmcp dev datacommons_mcp/server.py
-Make sure to use the MCP Inspector URL with the prefilled session token!
-
-The connection arguments should be prefilled with:
-
-Transport Type = STDIO
-Command = uv
-Arguments = run --with mcp mcp run datacommons_mcp/server.py
-
-
+- The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#sample) above.
 
 {: #standalone}
 ## Use a remote server/client
@@ -226,7 +183,7 @@ The server is addressable with the endpoint `mcp`. For example, to point a local
 
 ### Connect to an already-running server from a remote client
 
-The way to connect to the server from a remote client is different from client to client; see your client's documentation for specific procedures. Below we provide instructions for Gemini CLI and for a Google-ADK-based agent.
+The way to connect to the server from a remote client is different from client to client; see your client's documentation for specific procedures. Below we provide instructions for Gemini CLI and for the Google-ADK-based sample agent.
 
 #### Gemini CLI
 
@@ -237,7 +194,7 @@ To configure Gemini CLI to connect to a remote Data Commons server, in your `~/.
 ...
 "mcpServers": {
     "datacommons-mcp": {
-      "httpUrl": "http://<HOST>:8080/mcp"
+      "httpUrl": "http://<HOST>:<PORT>/mcp"
     }
     ...
   }
@@ -247,5 +204,7 @@ To configure Gemini CLI to connect to a remote Data Commons server, in your `~/.
 #### Sample agent
 
 To configure the sample agent xxx to connect to a remote Data Commons server, edit the file `agent.py` 
+
+
 
 
