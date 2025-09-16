@@ -51,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 DCID_TOPIC_PREFIX = "topic/"
 
+
 class DCClient:
     def __init__(
         self,

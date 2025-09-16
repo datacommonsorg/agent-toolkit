@@ -22,8 +22,7 @@ without making actual network calls.
 """
 
 import os
-from typing import Any, cast
-from unittest.mock import ANY, AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import requests
@@ -37,7 +36,6 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.data_models.search import (
     SearchResult,
     SearchTask,
-    SearchTopic,
     SearchVariable,
 )
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
