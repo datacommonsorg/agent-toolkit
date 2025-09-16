@@ -511,7 +511,9 @@ class DCClient:
 
         # Fetch names for any member DCIDs that we don't have a name for yet.
         dcids_to_lookup = [
-            dcid for dcid in all_final_dcids if dcid not in final_dcid_name_mappings
+            dcid
+            for dcid in sorted(all_final_dcids)
+            if dcid not in final_dcid_name_mappings
         ]
         if dcids_to_lookup:
             member_names = await self.fetch_entity_names(dcids_to_lookup)

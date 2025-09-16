@@ -943,7 +943,7 @@ class TestDCClientFetchIndicatorsNew:
         }
         # 4. fetch_entity_names should have been called with only the missing DCIDs
         client.fetch_entity_names.assert_awaited_once_with(
-            ["dc/topic/SubHealth", "Count_Person_Health"]
+            sorted(["dc/topic/SubHealth", "Count_Person_Health"])
         )
 
 
