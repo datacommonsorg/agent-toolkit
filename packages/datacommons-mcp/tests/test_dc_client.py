@@ -1155,7 +1155,7 @@ class TestSearchIndicatorsEndpoint:
 
         # Act
         await client._fetch_indicators_new(
-            search_tasks=search_tasks, include_topics=True, max_results=15
+            search_tasks=search_tasks, include_topics=True, per_search_limit=15
         )
 
         # Assert
@@ -1168,7 +1168,7 @@ class TestSearchIndicatorsEndpoint:
         # Verify params
         params = call_kwargs["params"]
         assert params["queries"] == ["economy", "health"]  # Sorted unique queries
-        assert params["limit_per_index"] == 30  # max_results * 2
+        assert params["limit_per_index"] == 30  # per_search_index * 2
         assert params["index"] == ["custom_ft", "base_uae_mem"]
         assert "include_types" not in params  # Topics are included by default
 
@@ -1187,7 +1187,7 @@ class TestSearchIndicatorsEndpoint:
 
         # Act
         await client._fetch_indicators_new(
-            search_tasks=search_tasks, include_topics=False, max_results=10
+            search_tasks=search_tasks, include_topics=False, per_search_limit=10
         )
 
         # Assert
@@ -1207,7 +1207,7 @@ class TestSearchIndicatorsEndpoint:
 
         # Act
         search_result, dcid_name_mappings = await client._fetch_indicators_new(
-            search_tasks=search_tasks, include_topics=True, max_results=10
+            search_tasks=search_tasks, include_topics=True, per_search_limit=10
         )
 
         # Assert
@@ -1242,7 +1242,7 @@ class TestSearchIndicatorsEndpoint:
 
             # Act
             await client._fetch_indicators_new(
-                search_tasks=search_tasks, include_topics=False, max_results=10
+                search_tasks=search_tasks, include_topics=False, per_search_limit=10
             )
 
             # Assert
@@ -1332,7 +1332,7 @@ class TestSearchIndicatorsEndpoint:
             ) as mock_filter_topics,
         ):
             search_result, _ = await client._fetch_indicators_new(
-                search_tasks=search_tasks, include_topics=True, max_results=10
+                search_tasks=search_tasks, include_topics=True, per_search_limit=10
             )
 
         # Assert
@@ -1395,7 +1395,7 @@ class TestSearchIndicatorsEndpoint:
 
         # Act
         search_result, _ = await client._fetch_indicators_new(
-            search_tasks=search_tasks, include_topics=True, max_results=10
+            search_tasks=search_tasks, include_topics=True, per_search_limit=10
         )
 
         # Assert
@@ -1430,7 +1430,7 @@ class TestSearchIndicatorsNewPath:
         await client.search_indicators(
             [SearchTask(query="population", place_dcids=["geoId/06"])],
             include_topics=False,
-            max_results=10,
+            per_search_limit=10,
         )
 
         # Assert
@@ -1438,7 +1438,7 @@ class TestSearchIndicatorsNewPath:
         client._fetch_indicators_new.assert_awaited_once()
         call_args = client._fetch_indicators_new.call_args
         assert call_args.kwargs["include_topics"] is False
-        assert call_args.kwargs["max_results"] == 10
+        assert call_args.kwargs["per_search_limit"] == 10
         # Check the SearchTask object passed
         search_task = call_args.kwargs["search_tasks"][0]
         assert search_task.query == "population"
@@ -1478,7 +1478,7 @@ class TestSearchIndicatorsNewPath:
         result = await client.search_indicators(
             [SearchTask(query="health", place_dcids=[])],
             include_topics=True,
-            max_results=10,
+            per_search_limit=10,
         )
 
         # Assert
@@ -1524,7 +1524,7 @@ class TestSearchIndicatorsNewPath:
 
         # Act
         await client.search_indicators(
-            [SearchTask(query="health")], include_topics=True, max_results=10
+            [SearchTask(query="health")], include_topics=True, per_search_limit=10
         )
 
         # Assert that we only called fetch_entity_names for the single missing DCID
@@ -1579,7 +1579,7 @@ class TestSearchIndicatorsNewPath:
         search_result, dcid_name_mappings = await client._fetch_indicators_new(
             [SearchTask(query="population", place_dcids=["geoId/06"])],
             include_topics=False,
-            max_results=10,
+            per_search_limit=10,
         )
 
         # Assert

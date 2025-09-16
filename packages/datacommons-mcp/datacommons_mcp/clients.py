@@ -48,6 +48,7 @@ from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_ca
 
 logger = logging.getLogger(__name__)
 
+DCID_TOPIC_PREFIX = "topic/"
 
 class DCClient:
     def __init__(
@@ -339,7 +340,7 @@ class DCClient:
                 continue
 
             # Check if it's a topic (contains "/topic/")
-            if "/topic/" in sv_dcid:
+            if DCID_TOPIC_PREFIX in sv_dcid:
                 # Only include topics that exist in the topic store
                 if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
                     # If topics are not included, expand topics to variables.
@@ -359,7 +360,7 @@ class DCClient:
     async def search_indicators(
         self,
         search_tasks: list[SearchTask],
-        max_results: int,
+        per_search_limit: int,
         *,
         include_topics: bool,
     ) -> SearchResponse:
@@ -372,12 +373,18 @@ class DCClient:
         search_result, dcid_name_mappings = await self._fetch_indicators_new(
             search_tasks=search_tasks,
             include_topics=include_topics,
-            max_results=max_results,
+            per_search_limit=per_search_limit,
         )
+        final_variables = list(search_result.variables.values())
+        variable_dcids = [var.dcid for var in final_variables]
+        final_topics = list(search_result.topics.values())
+
+        if not include_topics:
+            for topic in final_topics:
+                final_variables.update(self.topic_store.get_topic_variables(topic.dcid))
+            final_topics = []
 
         # Limit results after fetching and filtering
-        final_topics = list(search_result.topics.values())[:max_results]
-        final_variables = list(search_result.variables.values())[:max_results]
 
         # Collect all DCIDs for name lookups.
         # This includes the main topics/variables and their members.
@@ -406,8 +413,7 @@ class DCClient:
         self,
         search_tasks: list[SearchTask],
         *,
-        include_topics: bool,
-        max_results: int,
+        per_search_limit: int,
     ) -> tuple[SearchResult, dict]:
         """
         Calls the new /api/nl/search-indicators endpoint and transforms the response.
@@ -415,7 +421,7 @@ class DCClient:
         Args:
             search_tasks: A list of SearchTask objects.
             include_topics: Whether to include topics in the search.
-            max_results: The maximum number of results to return.
+            per_search_limit: The maximum number of results to return per query-index search.
 
         Returns:
             A tuple containing a SearchResult object and a dcid_name_mappings dictionary.
@@ -425,17 +431,11 @@ class DCClient:
         all_place_dcids = sorted(
             {pd for task in search_tasks for pd in task.place_dcids}
         )
-        max_search_results = max_results * 2
-
-        # Prepare request parameters
         params = {
             "queries": unique_queries,
-            "limit_per_index": max_search_results,
+            "limit_per_index": per_search_limit,
             "index": self.search_indices,
         }
-
-        if not include_topics:
-            params["include_types"] = ["StatisticalVariable"]
 
         endpoint_url = f"{self.sv_search_base_url}/api/nl/search-indicators"
         headers = {"Content-Type": "application/json"}
@@ -536,7 +536,7 @@ class DCClient:
             dcid_name_mappings[dcid] = indicator["name"]
 
             # Create the appropriate SearchIndicator model
-            if indicator.get("typeOf") == "Topic":
+            if (DCID_TOPIC_PREFIX in dcid) or (indicator.get("typeOf") == "Topic"):
                 topics[dcid] = SearchTopic(
                     dcid=dcid,
                     description=indicator.get("description"),
