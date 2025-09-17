@@ -213,7 +213,7 @@ The way to connect to the server from a remote client is different from client t
 
 #### Gemini CLI
 
-To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file with the following:
+To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file) with the following:
 
 ```json
 {
