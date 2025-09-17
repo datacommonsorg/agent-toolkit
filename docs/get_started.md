@@ -57,30 +57,31 @@ For other clients/agents, see the relevant documentation; you should be able to 
 For all instances:
 
 - A Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
-- For running the sample agent or the Colab notebook (and, optionally, Gemini CLI), a Gemini-enabled API key. To obtain a Gemini API key, go to <https://aistudio.google.com/app/apikey>.
+- For running the sample agent or the Colab notebook or optionally, Gemini CLI, get a Gemini-enabled API key. To obtain a Gemini API key, go to <https://aistudio.google.com/app/apikey>.
 - For Gemini CLI, running the sample agent locally, or running the server locally in standalone mode, install `uv` to install and manage Python packages; see the instructions at <https://github.com/astral-sh/uv/blob/main/README.md>. 
 - For running the sample agent locally, install [Git](https://git-scm.com/).
 
 > **Important**: Additionally, for custom Data Commons instances:
 
-> If you have not rebuilt your Data Commons image since the stable release of 09/09/2025, you must [sync to the lastest stable release](https://docs.datacommons.org/custom_dc/build_image.html#sync-code-to-the-stable-branch), [rebuild your image](https://docs.datacommons.org/custom_dc/build_image.html#build-package) and [redeploy](https://docs.datacommons.org/custom_dc/deploy_cloud.html#manage-your-service).
+> If you have not rebuilt your Data Commons image since the stable release of 2025-09-08, you must [sync to the lastest stable release](https://docs.datacommons.org/custom_dc/build_image.html#sync-code-to-the-stable-branch), [rebuild your image](https://docs.datacommons.org/custom_dc/build_image.html#build-package) and [redeploy](https://docs.datacommons.org/custom_dc/deploy_cloud.html#manage-your-service).
 
 {: #vars}
 ### Configure environment variables
 
-You configure the server using environment variables. All supported options are documented in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample. 
-
 #### "Base" Data Commons (datacommons.org)
 
-For basic usage against datacommons.org, just set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
+For basic usage against datacommons.org, set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
+```
+export DC_API_KEY=<your API key>
+```
 
 #### Custom Data Commons
 
-If you're running a against a custom Data Commons instance, we recommend using a `.env` file, which the server locates automatically, to keep all the settings in one place. To do so:
+If you're running a against a custom Data Commons instance, we recommend using a `.env` file, which the server locates automatically, to keep all the settings in one place. All supported options are documented in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample. 
 
-1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. 
+To set variables using a `.env` file:
 
-   > Tip: If you're planning to run the sample agent or , clone the repo https://github.com/datacommonsorg/agent-toolkit/.
+1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. Or, if you plan to run the sample agent, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
 1. From the directory where you saved the sample file, copy it to a new file called `.env`. For example:
    ```
@@ -90,7 +91,8 @@ If you're running a against a custom Data Commons instance, we recommend using a
 1. Set the following variables: 
    - `DC_API_KEY`: Set to your Data Commons API key
    - `DC_TYPE`: Set to `custom`.
-   - `CUSTOM_DC_URL: Set to  If you are using a Custom Data Commons instance, be sure to set `DC_TYPE` to `custom` and uncomment and set `CUSTOM_DC_URL` to the URL of your instance. 
+   - `CUSTOM_DC_URL: Uncomment and set to the URL of your instance. 
+1. Optionally, set other variables.
 
 ### Use Gemini CLI
 
@@ -145,7 +147,7 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
    ```
    git clone https://github.com/datacommonsorg/agent-toolkit.git
    ```
-1. When the files are downloaded, navigate to the subdirectory `packages/datacommons_agents/`. For example
+1. When the files are downloaded, navigate to the subdirectory `packages/datacommons_agents/`. For example:
    ```
    cd ~/agent-toolkit/packages/datacommons_agents/
    ```
@@ -176,9 +178,13 @@ To use it:
 
 1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
 1. Ensure you've set up the relevant server [environment variables](#vars).
-1. From any directory, run:
+1. To run the server using the PyPi package, from any directory, run:
    ```
    npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
+   ```
+   To run the server using a cloned local package, from the `agent-toolkit/packages/datacommons-mcp` directory, run:
+   ```
+   npx @modelcontextprotocol/inspector uv run datacommons-mcp serve stdio
    ```
 1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session token>`. 
 1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
@@ -188,25 +194,18 @@ To use it:
 
 ### Run a standalone server
 
-To install packages from PyPi:
-1. Go to the directory where your `.env` file is stored (e.g. `agent-toolkit/packages/datacommons-mcp`).
-1. Run the following command:
+1. Ensure you've set up the relevant server [environment variables](#vars). 
+1. To run the server using the PyPi package, from any directory, run:
    ```
    uvx datacommons-mcp serve http [--port <port>]
    ```
-To install packages from local code (cloned from Github):
-1. Go to the server project directory:
-   ```
-   cd agent-toolkit/packages/datacommons-mcp
-   ```
-1. If using an `.env` file, ensure that it is present in the directory.
-1. Run the following command:
+   To run the server using a cloned local package, from the `agent-toolkit/packages/datacommons-mcp` directory, run:
    ```
    uv run datacommons-mcp serve http [--port <port>]
    ```
 By default, the port is 8080 if you don't set it explicitly.
 
-The server is addressable with the endpoint `mcp`. For example, to point a locally running client to the server, you can use `http://localhost:8080/mcp`.
+The server is addressable with the endpoint `mcp`. For example, `http://my-mcp-server:8080/mcp`.
 
 ### Connect to an already-running server from a remote client
 
