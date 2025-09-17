@@ -162,3 +162,83 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
    ```
 1. more coming...
 
+## Develop your own ADK agent
+
+We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
+
+- [Building a Data Commons MCP Agent]() is a Google Colab tutorial that shows how to build an HTTP-based agent step by step. 
+- The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#sample) above.
+
+{: #inspect}
+### Test with MCP Inspector
+
+If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector]() is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
+
+To use it:
+
+1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
+1. Ensure you've set up the relevant server [environment variables](#vars).
+1. To run the server using the PyPi package, from any directory, run:
+   ```
+   npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
+   ```
+   To run the server using a cloned local package, from the `agent-toolkit/packages/datacommons-mcp` directory, run:
+   ```
+   npx @modelcontextprotocol/inspector uv run datacommons-mcp serve stdio
+   ```
+1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session token>`. 
+1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
+1. In the left pane, click **Connect**. 
+
+## Use a remote server/client
+
+### Run a standalone server
+
+1. Ensure you've set up the relevant server [environment variables](#vars). 
+1. To run the server using the PyPi package, from any directory, run:
+   ```
+   uvx datacommons-mcp serve http [--port <port>]
+   ```
+   To run the server using a cloned local package, from the `agent-toolkit/packages/datacommons-mcp` directory, run:
+   ```
+   uv run datacommons-mcp serve http [--port <port>]
+   ```
+By default, the port is 8080 if you don't set it explicitly.
+
+The server is addressable with the endpoint `mcp`. For example, `http://my-mcp-server:8080/mcp`.
+
+### Connect to an already-running server from a remote client
+
+The way to connect to the server from a remote client is different from client to client; see your client's documentation for specific procedures. Below we provide instructions for Gemini CLI and for the Google-ADK-based sample agent.
+
+#### Gemini CLI
+
+To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file with the following:
+
+```json
+{
+...
+"mcpServers": {
+    "datacommons-mcp": {
+      "httpUrl": "http://<host>:<port>/mcp"
+    }
+    ...
+  }
+}
+```
+#### Sample agent
+
+To configure the sample agent xxx to connect to a remote Data Commons server over HTtP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-agents/sample_agents/basic_agent/agent.py` with the following:
+
+```python
+    tools=[McpToolset(
+            connection_params=StreamableHTTPConnectionParams(url=f"http://<host>:<port>/mcp")
+        )],
+    ...
+)
+```
+
+
+
+
+
