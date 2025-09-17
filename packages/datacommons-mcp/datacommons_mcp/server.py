@@ -156,9 +156,7 @@ async def get_observations(
     )
     return ToolResult(
         content=[],
-        structured_content=response.model_dump_json(
-            exclude_none=True, exclude_unset=True
-        ),
+        structured_content=response.model_dump(exclude_none=True, exclude_unset=True),
     )
 
 
@@ -518,7 +516,5 @@ async def search_indicators(
     )
     return ToolResult(
         content=[],
-        structured_content=response.model_dump_json(
-            exclude_none=True, exclude_unset=True
-        ),
+        structured_content=response.model_dump(exclude_none=True, exclude_unset=True),
     )
