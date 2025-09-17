@@ -4,7 +4,7 @@
 
 The Data Commons Model Context Protocol (MCP) Server gives AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allows end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, a user can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
 
-The MCP Server returns data from the "base" instance (in datacommons.org) or, if configured, a Custom Data Commons instance. 
+The MCP Server returns data from the "base" instance (<datacommons.org>) or, if configured, a Custom Data Commons instance. 
 
 The server is a Python binary based on the [FastMCP 2.0 framework](https://gofastmcp.com). It runs in a Python virtual environment. A prebuilt package is available at https://pypi.org/project/datacommons-mcp/.
 
@@ -22,7 +22,7 @@ The server currently supports the following tools:
 
 Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py. 
 
-> Tip: If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#inspect) for details.
+> Tip: If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#test-with-mcp-inspector) for details.
 
 ### Clients
 
@@ -32,7 +32,7 @@ The server supports both standard MCP transport protocols:
 - Stdio: For clients that connect directly using local processes
 - Streamable HTTP: For clients that connect remotely or otherwise require HTTP (e.g. Typescript)
 
-See [Basic usage](#basic) below for how to use the server with Google-based clients over Stdio.
+See [Basic usage](#basic-usage) below for how to use the server with Google-based clients over Stdio.
 
 For an end-to-end tutorial using a server and agent over HTTP in the cloud, see the sample Data Commons [Colab notebook]().
 
@@ -43,7 +43,6 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
-{: #basic}
 ## Basic usage: run a local agent and server
 
 Below we provide specific instructions for the following agents:
@@ -65,7 +64,6 @@ For all instances:
 
 > If you have not rebuilt your Data Commons image since the stable release of 2025-09-08, you must [sync to the latest stable release](https://docs.datacommons.org/custom_dc/build_image.html#sync-code-to-the-stable-branch), [rebuild your image](https://docs.datacommons.org/custom_dc/build_image.html#build-package) and [redeploy](https://docs.datacommons.org/custom_dc/deploy_cloud.html#manage-your-service).
 
-{: #vars}
 ### Configure environment variables
 
 #### "Base" Data Commons (datacommons.org)
@@ -91,7 +89,7 @@ To set variables using a `.env` file:
 1. Set the following variables: 
    - `DC_API_KEY`: Set to your Data Commons API key
    - `DC_TYPE`: Set to `custom`.
-   - `CUSTOM_DC_URL: Uncomment and set to the URL of your instance. 
+   - `CUSTOM_DC_URL`: Uncomment and set to the URL of your instance. 
 1. Optionally, set other variables.
 
 ### Use Gemini CLI
@@ -138,7 +136,6 @@ Once Gemini CLI has started up, you can immediately begin sending natural-langua
 
 > **Tip**: To ensure that Gemini CLI uses the Data Commons MCP tools, and not its own `GoogleSearch` tool, include a prompt to use Data Commons in your query. For example, use a query like "Use Data Commons tools to answer the following: ..."  You can also add such a prompt to your [`GEMINI.md` file](https://codelabs.developers.google.com/gemini-cli-hands-on#9) so that it's persisted across sessions.
 
-{: #sample}
 ### Use the sample agent
 
 xxx is a basic agent for interacting with the MCP Server. To run it locally:
@@ -167,9 +164,8 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
 - [Building a Data Commons MCP Agent]() is a Google Colab tutorial that shows how to build an HTTP-based agent step by step. 
-- The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#sample) above.
+- The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#use-the-sample-agent) above.
 
-{: #inspect}
 ### Test with MCP Inspector
 
 If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
@@ -177,7 +173,7 @@ If you're interested in getting a deeper understanding of Data Commons tools and
 To use it:
 
 1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
-1. Ensure you've set up the relevant server [environment variables](#vars).
+1. Ensure you've set up the relevant server [environment variables](#environment-variables).
 1. To run the server using the PyPi package, from any directory, run:
    ```
    npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
@@ -194,7 +190,7 @@ To use it:
 
 ### Run a standalone server
 
-1. Ensure you've set up the relevant server [environment variables](#vars). 
+1. Ensure you've set up the relevant server [environment variables](#environment-variables). 
 1. To run the server using the PyPi package, from any directory, run:
    ```
    uvx datacommons-mcp serve http [--port <port>]
