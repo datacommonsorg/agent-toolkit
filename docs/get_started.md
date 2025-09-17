@@ -65,7 +65,7 @@ For all instances:
 
 > **Important**: Additionally, for custom Data Commons instances:
 
-> If you have not rebuilt your Data Commons image since the stable release of 2025-09-08, you must [sync to the lastest stable release](https://docs.datacommons.org/custom_dc/build_image.html#sync-code-to-the-stable-branch), [rebuild your image](https://docs.datacommons.org/custom_dc/build_image.html#build-package) and [redeploy](https://docs.datacommons.org/custom_dc/deploy_cloud.html#manage-your-service).
+> If you have not rebuilt your Data Commons image since the stable release of 2025-09-08, you must [sync to the latest stable release](https://docs.datacommons.org/custom_dc/build_image.html#sync-code-to-the-stable-branch), [rebuild your image](https://docs.datacommons.org/custom_dc/build_image.html#build-package) and [redeploy](https://docs.datacommons.org/custom_dc/deploy_cloud.html#manage-your-service).
 
 {: #vars}
 ### Configure environment variables
@@ -215,7 +215,7 @@ The way to connect to the server from a remote client is different from client t
 
 #### Gemini CLI
 
-To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file with the following:
+To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file) with the following:
 
 ```json
 {
