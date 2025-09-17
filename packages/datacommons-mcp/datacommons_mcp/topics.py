@@ -415,7 +415,6 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
             topic_dcid=topic_data["topic_dcid"],
             topic_name=topic_data["topic_name"],
             member_variables=topic_data["member_variables"],
-            descendant_variables=topic_data["descendant_variables"],
             member_topics=topic_data.get("member_topics", []),
         )
         for dcid, topic_data in cache_data["topics_by_dcid"].items()
