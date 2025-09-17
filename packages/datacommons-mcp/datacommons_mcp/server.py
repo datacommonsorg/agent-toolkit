@@ -21,6 +21,7 @@ import types
 from typing import Union, get_args, get_origin
 
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
 from pydantic import ValidationError
 
 import datacommons_mcp.settings as settings
@@ -77,7 +78,7 @@ async def get_observations(
     date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
-) -> ObservationToolResponse:
+) -> ToolResult:
     """Fetches observations for a statistical variable from Data Commons.
 
     **CRITICAL: Always validate variable-place combinations first**
@@ -142,7 +143,7 @@ async def get_observations(
 
     """
     # TODO(keyurs): Remove place_name parameter from the service call.
-    return await get_observations_service(
+    response: ObservationToolResponse = await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
@@ -152,6 +153,12 @@ async def get_observations(
         date=date,
         date_range_start=date_range_start,
         date_range_end=date_range_end,
+    )
+    return ToolResult(
+        content=[],
+        structured_content=response.model_dump_json(
+            exclude_none=True, exclude_unset=True
+        ),
     )
 
 
@@ -379,7 +386,7 @@ async def search_indicators(
     *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-) -> SearchResponse:
+) -> ToolResult:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
     This tool returns candidate indicators that match your query. You should treat these as
@@ -501,11 +508,17 @@ async def search_indicators(
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
     """
     # Call the real search_indicators service
-    return await search_indicators_service(
+    response: SearchResponse = await search_indicators_service(
         client=dc_client,
         query=query,
         places=places,
         per_search_limit=per_search_limit,
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
+    )
+    return ToolResult(
+        content=[],
+        structured_content=response.model_dump_json(
+            exclude_none=True, exclude_unset=True
+        ),
     )
