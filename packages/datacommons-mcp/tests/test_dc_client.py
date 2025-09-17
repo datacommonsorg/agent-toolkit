@@ -1317,6 +1317,24 @@ class TestDCClientFetchIndicatorsNew:
         assert len(result) == 1
         assert result[0].dcid == "existing_var"
 
+    def test_expand_topics_to_variables_no_place_filtering(self, client: DCClient):
+        """
+        Tests that expanded variables are only included if they pass the
+        existence check.
+        """
+        # Arrange
+        topic = SearchTopic(dcid="dc/topic/Health")
+        topic.member_variables = ["var1", "var2"]
+        indicators = [topic]
+
+        # Act
+        result = client._expand_topics_to_variables(indicators, place_dcids=[])
+
+        # Assert
+        assert len(result) == 2
+        assert result[0].dcid == "var1"
+        assert result[1].dcid == "var2"
+
     @pytest.mark.asyncio
     @patch("datacommons_mcp.clients.asyncio.to_thread")
     async def test_fetch_indicators_new_end_to_end(

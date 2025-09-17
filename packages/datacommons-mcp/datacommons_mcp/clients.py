@@ -98,6 +98,9 @@ class DCClient:
         else:
             self._place_like_statvar_store = {}
 
+    #
+    # Initialization & Configuration
+    #
     def _compute_search_indices(self) -> list[str]:
         """Compute and validate search indices based on the configured search_scope.
 
@@ -127,6 +130,9 @@ class DCClient:
             client=self.dc, place_like_constraints=constraints
         )
 
+    #
+    # Core DC API Wrappers
+    #
     async def fetch_obs(self, request: ObservationRequest) -> ObservationApiResponse:
         # Get the raw API response
         if request.child_place_type:
@@ -177,7 +183,7 @@ class DCClient:
         return len(response.get(parent_place_dcid, [])) > 0
 
     #
-    # Search indicators shared methods
+    # Search Indicators Helpers (Shared)
     #
     def _ensure_place_variables_cached(self, place_dcid: str) -> None:
         """Ensure variables for a place are cached."""
@@ -246,7 +252,7 @@ class DCClient:
         return places_with_data
 
     #
-    # new search-indicators endpoint
+    # New Search Indicators Endpoint (/api/nl/search-indicators)
     #
     async def search_indicators(
         self,
@@ -347,15 +353,12 @@ class DCClient:
 
         # Populate member information for any remaining topics.
         # If include_topics is false, expand topics into variables.
-        all_indicators = []
+        topics_to_process = {}
         for indicators in results_by_search.values():
-            all_indicators.extend(indicators)
+            for indicator in indicators:
+                if isinstance(indicator, SearchTopic):
+                    topics_to_process[indicator.dcid] = indicator
 
-        topics_to_process = {
-            indicator.dcid: indicator
-            for indicator in all_indicators
-            if isinstance(indicator, SearchTopic)
-        }
         if topics_to_process:
             self._get_topics_members_with_existence_new(
                 topics_to_process, all_place_dcids
@@ -582,13 +585,17 @@ class DCClient:
                         continue
 
                     # Re-check existence for each new variable.
-                    places_with_data = self._get_variable_places_with_data(
-                        var_dcid, place_dcids
-                    )
-                    if places_with_data:
-                        expanded_variables[var_dcid] = SearchVariable(
-                            dcid=var_dcid, places_with_data=places_with_data
+                    places_with_data = []
+                    if place_dcids:
+                        places_with_data = self._get_variable_places_with_data(
+                            var_dcid, place_dcids
                         )
+                        if not places_with_data:
+                            # Variable does not pass place filtering, do not add
+                            continue
+                    expanded_variables[var_dcid] = SearchVariable(
+                        dcid=var_dcid, places_with_data=places_with_data
+                    )
 
             elif indicator.dcid not in expanded_variables:
                 expanded_variables[indicator.dcid] = indicator
@@ -596,7 +603,7 @@ class DCClient:
         return list(expanded_variables.values())
 
     #
-    # Legacy search-vector endpoint
+    # Legacy Search Indicators Endpoint (/api/nl/search-vector)
     #
     async def search_svs(
         self, queries: list[str], *, skip_topics: bool = True, max_results: int = 10
@@ -871,6 +878,9 @@ class DCClient:
         return lookups
 
 
+#
+# Client Factory Functions
+#
 # TODO(keyurva): For custom dc client, load both custom and base dc topic stores and merge them.
 # Since this is not the case currently, base topics are not returned for custom dc (in base_only and base_and_custom modes).
 def create_dc_client(settings: DCSettings) -> DCClient:
