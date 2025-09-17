@@ -16,142 +16,796 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from datacommons_mcp.clients import DCClient
-from datacommons_mcp.data_models.observations import ObservationPeriod
-from datacommons_mcp.exceptions import DataLookupError
+from datacommons_mcp.data_models.observations import (
+    ObservationApiResponse,
+    ObservationDateType,
+    ObservationToolResponse,
+)
+from datacommons_mcp.exceptions import (
+    DataLookupError,
+    InvalidDateFormatError,
+    InvalidDateRangeError,
+)
 from datacommons_mcp.services import (
-    _build_observation_request,
+    _validate_and_build_request,
     get_observations,
     search_indicators,
 )
 
 
 @pytest.mark.asyncio
-class TestBuildObservationRequest:
+class TestGetObservations:
     @pytest.fixture
     def mock_client(self):
-        client = Mock(spec=DCClient)
-        client.search_places = AsyncMock()
-        return client
+        """
+        Provides a fresh, reset mock for each test method.
+        """
+        mock = Mock(spec_set=DCClient)
+        mock.search_places = AsyncMock()
+        mock.fetch_obs = AsyncMock()
+        mock.fetch_entity_names = AsyncMock()
+        mock.fetch_entity_types = AsyncMock()
+        return mock
 
-    async def test_validation_errors(self, mock_client):
+    async def test_input_validation_errors(self, mock_client):
         # Missing variable
         with pytest.raises(ValueError, match="'variable_dcid' must be specified."):
-            await _build_observation_request(
-                mock_client, variable_dcid="", place_name="USA"
+            await _validate_and_build_request(
+                client=mock_client, variable_dcid="", place_name="USA"
             )
 
         # Missing place
         with pytest.raises(
             ValueError, match="Specify either 'place_name' or 'place_dcid'"
         ):
-            await _build_observation_request(mock_client, variable_dcid="var1")
+            await _validate_and_build_request(client=mock_client, variable_dcid="var1")
 
-        # Incomplete date range
-        with pytest.raises(
-            ValueError, match="Both 'start_date' and 'end_date' are required"
-        ):
-            await _build_observation_request(
-                mock_client, variable_dcid="var1", place_name="USA", start_date="2022"
+    async def test_input_validation_date_validation(self, mock_client):
+        # Invalid date format
+        with pytest.raises(InvalidDateFormatError):
+            await _validate_and_build_request(
+                client=mock_client,
+                variable_dcid="var1",
+                place_name="USA",
+                date=ObservationDateType.RANGE,
+                date_range_start="2022-a",
+                date_range_end="2023",
             )
 
-    async def test_with_dcids(self, mock_client):
-        request = await _build_observation_request(
-            mock_client, variable_dcid="var1", place_dcid="country/USA"
+        # Invalid date range
+        with pytest.raises(InvalidDateRangeError):
+            await _validate_and_build_request(
+                client=mock_client,
+                variable_dcid="var1",
+                place_name="USA",
+                date=ObservationDateType.RANGE,
+                date_range_start="2023",
+                date_range_end="2022",
+            )
+
+    async def test_request_building_with_dcids(self, mock_client):
+        request = await _validate_and_build_request(
+            client=mock_client, variable_dcid="var1", place_dcid="country/USA"
         )
         assert request.variable_dcid == "var1"
         assert request.place_dcid == "country/USA"
-        assert request.observation_period == ObservationPeriod.LATEST
+        assert request.date_type == ObservationDateType.LATEST
         mock_client.search_places.assert_not_called()
 
-    async def test_with_resolution_success(self, mock_client):
+    async def test_request_building_with_resolution_success(self, mock_client):
         mock_client.search_places.return_value = {"USA": "country/USA"}
 
-        request = await _build_observation_request(
-            mock_client,
+        request = await _validate_and_build_request(
+            client=mock_client,
             variable_dcid="Count_Person",
             place_name="USA",
-            start_date="2022",
-            end_date="2023",
+            date=ObservationDateType.RANGE,
+            date_range_start="2022",
+            date_range_end="2023",
         )
 
         mock_client.search_places.assert_awaited_once_with(["USA"])
         assert request.variable_dcid == "Count_Person"
         assert request.place_dcid == "country/USA"
-        assert request.observation_period == ObservationPeriod.ALL
-        assert request.date_filter.start_date == "2022-01-01"
-        assert request.date_filter.end_date == "2023-12-31"
+        assert request.date_type == ObservationDateType.ALL
+        assert request.date_filter.start_date_str == "2022-01-01"
+        assert request.date_filter.end_date_str == "2023-12-31"
 
-    async def test_resolution_failure(self, mock_client):
-        mock_client.search_places.return_value = {}  # No place found
-        with pytest.raises(DataLookupError, match="DataLookupError: No place found"):
-            await _build_observation_request(
-                mock_client, variable_dcid="var1", place_name="invalid"
-            )
-
-
-@pytest.mark.asyncio
-class TestGetObservations:
-    @pytest.fixture
-    def mock_client(self):
-        client = Mock()
-        client.search_places = AsyncMock()
-        client.fetch_obs = AsyncMock()
-        return client
-
-    async def test_get_observations_success(self, mock_client):
-        """Test successful observation retrieval."""
-        # Setup mocks
+    async def test_request_building_with_single_date_string(self, mock_client):
+        """Tests that a single date string creates a valid DateRange object."""
         mock_client.search_places.return_value = {"USA": "country/USA"}
-        mock_response = Mock()
-        mock_client.fetch_obs.return_value = mock_response
 
-        # Call the function
-        result = await get_observations(
+        request = await _validate_and_build_request(
             client=mock_client,
             variable_dcid="Count_Person",
             place_name="USA",
-            period="latest",
+            date="2022-05-15",
         )
 
-        # Verify the result
-        assert result == mock_response
-
-        # Verify search_places was called
         mock_client.search_places.assert_awaited_once_with(["USA"])
+        assert request.variable_dcid == "Count_Person"
+        assert request.place_dcid == "country/USA"
+        assert request.date_type == ObservationDateType.ALL
+        assert request.date_filter.start_date_str == "2022-05-15"
+        assert request.date_filter.end_date_str == "2022-05-15"
 
-        # Verify fetch_obs was called with the correct request
-        mock_client.fetch_obs.assert_awaited_once()
-        call_args = mock_client.fetch_obs.call_args[0][0]
-        assert call_args.variable_dcid == "Count_Person"
-        assert call_args.place_dcid == "country/USA"
-        assert call_args.observation_period == ObservationPeriod.LATEST
+    async def test_request_building_resolution_failure(self, mock_client):
+        mock_client.search_places.return_value = {}  # No place found
+        with pytest.raises(DataLookupError, match="DataLookupError: No place found"):
+            await _validate_and_build_request(
+                client=mock_client, variable_dcid="var1", place_name="invalid"
+            )
 
-    async def test_get_observations_with_dcid(self, mock_client):
-        """Test observation retrieval with direct DCID."""
-        # Setup mocks
-        mock_response = Mock()
-        mock_client.fetch_obs.return_value = mock_response
+    @pytest.fixture
+    def mock_api_response(self):
+        """Provides a mock ObservationApiResponse."""
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "country/USA": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [
+                                        {"date": "2020", "value": 10},
+                                        {"date": "2021", "value": 20},
+                                        {"date": "2022", "value": 30},
+                                    ],
+                                }
+                            ]
+                        },
+                        "country/CAN": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [
+                                        {"date": "2021", "value": 15},
+                                        {"date": "2022", "value": 25},
+                                    ],
+                                }
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        return ObservationApiResponse.model_validate(api_response_data)
 
-        # Call the function
+    async def test_data_fetching_and_processing_get_observations_e2e_single_place(
+        self, mock_client
+    ):
+        """Test the full get_observations flow for a single place."""
+        # Arrange
+        # This mock response is specific to this test and only contains data for the requested place.
+        single_place_api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "metadata": {},  # Ensure metadata is present
+                    "byEntity": {
+                        "country/USA": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [
+                                        {"date": "2020", "value": 10},
+                                        {"date": "2021", "value": 20},
+                                        {"date": "2022", "value": 30},
+                                    ],
+                                }
+                            ]
+                        }
+                    },
+                }
+            },
+            "facets": {"source1": {"importName": "Source One"}},
+        }
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            single_place_api_response_data
+        )
+
+        mock_client.fetch_entity_names.return_value = {
+            "country/USA": "United States",
+            "country/CAN": "Canada",
+            "var1": "Variable 1",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "country/USA": ["Country"],
+            "country/CAN": ["Country"],
+        }
+
+        # Act
         result = await get_observations(
             client=mock_client,
-            variable_dcid="Count_Person",
-            place_dcid="country/USA",
-            period="latest",
+            variable_dcid="var1",
+            place_name="USA",
+            date=ObservationDateType.RANGE,
+            date_range_start="2021",
+            date_range_end="2022",
         )
 
-        # Verify the result
-        assert result == mock_response
+        # Assert
+        assert isinstance(result, ObservationToolResponse)
+        assert result.variable.dcid == "var1"
+        assert result.variable.name == "Variable 1"
+        assert result.resolved_parent_place is None
+        assert result.child_place_type is None
 
-        # Verify search_places was NOT called (since we provided DCID)
-        mock_client.search_places.assert_not_called()
+        # Check observations
+        assert len(result.place_observations) == 1
+        obs = result.place_observations[0]
+        assert obs.place.dcid == "country/USA"
+        assert obs.place.name == "United States"
+        assert obs.place.type_of == ["Country"]
+        assert len(obs.time_series) == 2
+        assert ("2021", 20) in obs.time_series
+        assert ("2022", 30) in obs.time_series
 
-        # Verify fetch_obs was called with the correct request
-        mock_client.fetch_obs.assert_awaited_once()
-        call_args = mock_client.fetch_obs.call_args[0][0]
-        assert call_args.variable_dcid == "Count_Person"
-        assert call_args.place_dcid == "country/USA"
-        assert call_args.observation_period == ObservationPeriod.LATEST
+        # Check source info
+        assert result.source_metadata.source_id == "source1"
+        assert result.source_metadata.import_name == "Source One"
+        assert len(result.alternative_sources) == 0  # No other sources for USA
+
+    async def test_data_fetching_and_processing_get_observations_e2e_child_places(
+        self, mock_client
+    ):
+        """Test observation retrieval for child places of a parent."""
+        # Arrange
+        mock_client.search_places.return_value = {"California": "country/USA/state/CA"}
+
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "geoId/06001": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 100}],
+                                }
+                            ]
+                        },
+                        "geoId/06037": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 200}],
+                                }
+                            ]
+                        },
+                        "geoId/06085": {  # Santa Clara, different source
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 300}],
+                                }
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_api_response = ObservationApiResponse.model_validate(api_response_data)
+        mock_client.fetch_obs.return_value = mock_api_response
+
+        mock_client.fetch_entity_names.return_value = {
+            "country/USA/state/CA": "California",
+            "geoId/06001": "Alameda County",
+            "geoId/06037": "Los Angeles County",
+            "geoId/06085": "Santa Clara County",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "country/USA/state/CA": ["State"],
+            "geoId/06001": ["County"],
+            "geoId/06037": ["County"],
+            "geoId/06085": ["County"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="California",
+            child_place_type="County",
+            date="latest",
+        )
+
+        # Assert
+        assert result.resolved_parent_place.name == "California"
+        assert result.child_place_type == "County"
+        # All 3 counties should be in the response
+        assert len(result.place_observations) == 3
+
+        # Check that the observations are correct
+        obs_by_dcid = {obs.place.dcid: obs for obs in result.place_observations}
+        # Alameda and LA have data from the primary source (source1)
+        assert len(obs_by_dcid["geoId/06001"].time_series) == 1
+        assert obs_by_dcid["geoId/06001"].time_series[0] == ("2022", 100.0)
+        assert len(obs_by_dcid["geoId/06037"].time_series) == 1
+        assert obs_by_dcid["geoId/06037"].time_series[0] == ("2022", 200.0)
+        # Santa Clara has no data from source1, so its time_series is empty
+        assert len(obs_by_dcid["geoId/06085"].time_series) == 0
+
+        # Check that source2 is listed as an alternative
+        assert len(result.alternative_sources) == 1
+        alt_source = result.alternative_sources[0]
+        assert alt_source.source_id == "source2"
+        assert alt_source.places_found_count == 1
+
+    async def test_data_fetching_unit_field(self, mock_client):
+        """Tests that date='latest' fetches only the latest observation."""
+        # Arrange
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            {
+                "byVariable": {
+                    "var1": {
+                        "metadata": {"unit": "USDollar"},
+                        "byEntity": {
+                            "country/USA": {
+                                "orderedFacets": [
+                                    {
+                                        "facetId": "source1",
+                                        "observations": [
+                                            {"date": "2022", "value": 30},
+                                        ],
+                                    }
+                                ]
+                            }
+                        },
+                    }
+                },
+                "facets": {"source1": {"importName": "Source One", "unit": "USDollar"}},
+            }
+        )
+        mock_client.fetch_entity_names.return_value = {"country/USA": "United States"}
+        mock_client.fetch_entity_types.return_value = {"country/USA": ["Country"]}
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="USA",
+        )
+
+        # Assert
+        assert result.source_metadata.unit == "USDollar"
+
+    async def test_data_fetching_date_filtering_date_latest(self, mock_client):
+        """Tests that date='latest' fetches only the latest observation."""
+        # Arrange
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            {
+                "byVariable": {
+                    "var1": {
+                        "byEntity": {
+                            "country/USA": {
+                                "orderedFacets": [
+                                    {
+                                        "facetId": "source1",
+                                        "observations": [  # Only the latest observation is returned by the mock
+                                            {"date": "2022", "value": 30},
+                                        ],
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "facets": {"source1": {"importName": "Source One"}},
+            }
+        )
+        mock_client.fetch_entity_names.return_value = {"country/USA": "United States"}
+        mock_client.fetch_entity_types.return_value = {"country/USA": ["Country"]}
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="USA",
+            date="latest",
+        )
+
+        # Assert
+        assert len(result.place_observations) == 1
+        obs = result.place_observations[0]
+        assert len(obs.time_series) == 1
+        assert obs.time_series[0] == ("2022", 30)
+        # Verify the correct API call was made
+        mock_client.fetch_obs.assert_called_once()
+        assert (
+            mock_client.fetch_obs.call_args[0][0].date_type
+            == ObservationDateType.LATEST
+        )
+
+    async def test_source_selection_primary_source_selection(self, mock_client):
+        """Tests that the source with data for the most places is chosen as primary."""
+        # Arrange
+        mock_client.search_places.return_value = {"California": "country/USA/state/CA"}
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "geoId/06001": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 100}],
+                                }
+                            ]
+                        },
+                        "geoId/06037": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 200}],
+                                }
+                            ]
+                        },
+                        "geoId/06085": {  # Santa Clara, different source
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 300}],
+                                }
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_api_response = ObservationApiResponse.model_validate(api_response_data)
+        mock_client.fetch_obs.return_value = mock_api_response
+        mock_client.fetch_entity_names.return_value = {
+            "country/USA/state/CA": "California",
+            "geoId/06001": "Alameda County",
+            "geoId/06037": "Los Angeles County",
+            "geoId/06085": "Santa Clara County",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "country/USA/state/CA": ["State"],
+            "geoId/06001": ["County"],
+            "geoId/06037": ["County"],
+            "geoId/06085": ["County"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="California",
+            child_place_type="County",
+        )
+
+        # Assert
+        assert result.source_metadata.source_id == "source1"
+
+        # Check alternative sources
+        assert len(result.alternative_sources) == 1
+        alt_source = result.alternative_sources[0]
+        assert alt_source.source_id == "source2"
+        assert alt_source.places_found_count == 1
+
+    async def test_source_selection_single_place_with_alternative_source(
+        self, mock_client
+    ):
+        """
+        Tests that for a single place response, alternative sources have
+        places_found_count set to None.
+        """
+        # Arrange
+        # Mock API response with two sources for a single place
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "country/USA": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",  # More observations, will be primary
+                                    "observations": [
+                                        {"date": "2021", "value": 20},
+                                        {"date": "2022", "value": 30},
+                                    ],
+                                },
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 25}],
+                                },
+                            ]
+                        }
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {"country/USA": "United States"}
+        mock_client.fetch_entity_types.return_value = {"country/USA": ["Country"]}
+
+        # Act
+        result = await get_observations(
+            client=mock_client, variable_dcid="var1", place_name="USA"
+        )
+
+        # Assert
+        assert len(result.alternative_sources) == 1
+        alt_source = result.alternative_sources[0]
+        assert alt_source.source_id == "source2"
+        assert alt_source.places_found_count is None
+
+    async def test_source_selection_source_override(self, mock_client):
+        """Tests that source_override forces the use of a specific source."""
+        # Arrange
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "country/USA": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 100}],
+                                },
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 200}],
+                                },
+                            ]
+                        }
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {"country/USA": "United States"}
+        mock_client.fetch_entity_types.return_value = {"country/USA": ["Country"]}
+
+        # Act: Override to use source2
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="USA",
+            source_override="source2",
+        )
+
+        # Assert
+        assert result.source_metadata.source_id == "source2"
+        assert result.place_observations[0].time_series[0] == ("2022", 200)
+        # No alternatives should be listed when a source is selected
+        assert len(result.alternative_sources) == 0
+
+    async def test_source_selection_tiebreaker_by_facet_order(self, mock_client):
+        """
+        Tests that the average index in orderedFacets is used as a tie-breaker.
+        Source2 should be chosen because it appears earlier on average.
+        """
+        # Arrange
+        # source1 appears at indices 1 and 1 (avg: 1)
+        # source2 appears at indices 0 and 0 (avg: 0)
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "place1": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 1}],
+                                },
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 2}],
+                                },
+                            ]
+                        },
+                        "place2": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 3}],
+                                },
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 4}],
+                                },
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {
+            "place1": "Place One",
+            "place2": "Place Two",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "place1": ["City"],
+            "place2": ["City"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client, variable_dcid="var1", place_dcid="any"
+        )
+
+        # Assert
+        assert result.source_metadata.source_id == "source2"
+
+    async def test_source_selection_tiebreaker_by_source_id(self, mock_client):
+        """
+        Tests that the source_id is used as a final tie-breaker.
+        Source2 should be chosen because it is alphabetically greater.
+        """
+        # Arrange
+        # source1 appears at indices 0 and 1 (avg: 0.5)
+        # source2 appears at indices 1 and 0 (avg: 0.5)
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "place1": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 1}],
+                                },
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 2}],
+                                },
+                            ]
+                        },
+                        "place2": {
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": "2022", "value": 3}],
+                                },
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": "2022", "value": 4}],
+                                },
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {
+            "place1": "Place One",
+            "place2": "Place Two",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "place1": ["City"],
+            "place2": ["City"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client, variable_dcid="var1", place_dcid="any"
+        )
+
+        # Assert
+        # Both have same avg rank (0.5), but source2 is alphabetically greater, so max() chooses it.
+        assert result.source_metadata.source_id == "source2"
+
+    @pytest.mark.parametrize(
+        ("date1", "date2", "expected_primary_source"),
+        [
+            ("2022-01", "2022-02", "source2"),  # YYYY-MM
+            ("2022-02", "2022-01", "source1"),  # YYYY-MM
+            ("2022-01-15", "2022-01-16", "source2"),  # YYYY-MM-DD
+            ("2022", "2022-06", "source2"),  # YYYY vs YYYY-MM
+            ("2022-06", "2022", "source1"),  # YYYY-MM vs YYYY
+            ("2022-01-16", "2022-01-15", "source1"),  # YYYY-MM-DD
+            ("2022-02", "2022-01-15", "source1"),  # Mixed Granularity
+        ],
+    )
+    async def test_source_selection_primary_source_tiebreaker_by_latest_date(
+        self, mock_client, date1, date2, expected_primary_source
+    ):
+        """
+        Tests that the latest date is used as a tie-breaker when place and
+        observation counts are equal, across various date formats.
+        """
+        # Arrange
+        # Two sources, each with one place and one observation.
+        # The only difference is the date of the observation.
+        api_response_data = {
+            "byVariable": {
+                "var1": {
+                    "byEntity": {
+                        "geoId/01": {  # Place 1
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source1",
+                                    "observations": [{"date": date1, "value": 100}],
+                                }
+                            ]
+                        },
+                        "geoId/02": {  # Place 2
+                            "orderedFacets": [
+                                {
+                                    "facetId": "source2",
+                                    "observations": [{"date": date2, "value": 200}],
+                                }
+                            ]
+                        },
+                    }
+                }
+            },
+            "facets": {
+                "source1": {"importName": "Source One"},
+                "source2": {"importName": "Source Two"},
+            },
+        }
+        mock_client.search_places.return_value = {"USA": "country/USA"}
+        mock_client.fetch_obs.return_value = ObservationApiResponse.model_validate(
+            api_response_data
+        )
+        mock_client.fetch_entity_names.return_value = {
+            "country/USA": "USA",
+            "geoId/01": "Place 1",
+            "geoId/02": "Place 2",
+        }
+        mock_client.fetch_entity_types.return_value = {
+            "country/USA": ["Country"],
+            "geoId/01": ["State"],
+            "geoId/02": ["State"],
+        }
+
+        # Act
+        result = await get_observations(
+            client=mock_client,
+            variable_dcid="var1",
+            place_name="USA",
+            child_place_type="State",
+        )
+
+        # Assert
+        assert result.source_metadata.source_id == expected_primary_source
 
 
 @pytest.mark.asyncio
@@ -162,7 +816,9 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_basic(self):
         """Test basic search in browse mode without place filtering."""
         mock_client = Mock()
-        mock_client.fetch_indicators = AsyncMock(return_value={})
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
         mock_client.fetch_entity_names = Mock(return_value={})
 
         result = await search_indicators(client=mock_client, query="health")
@@ -194,7 +850,7 @@ class TestSearchIndicators:
                 },
             }
         )
-        mock_client.fetch_entity_names = Mock(
+        mock_client.fetch_entity_names = AsyncMock(
             return_value={
                 "topic/trade": "Trade",
                 "TradeExports_FRA": "Exports to France",
@@ -225,13 +881,11 @@ class TestSearchIndicators:
                 "lookups": {"topic/health": "Health", "Count_Person": "Population"},
             }
         )
-        mock_client.fetch_entity_names = Mock(
+        mock_client.fetch_entity_names = AsyncMock(
             return_value={"topic/health": "Health", "Count_Person": "Population"}
         )
 
-        result = await search_indicators(
-            client=mock_client, query="health", per_search_limit=5
-        )
+        await search_indicators(client=mock_client, query="health", per_search_limit=5)
 
         # Verify per_search_limit was passed to client
         mock_client.fetch_indicators.assert_called_once_with(
@@ -277,7 +931,7 @@ class TestSearchIndicators:
                 "variables": [{"dcid": "Count_Person"}, {"dcid": "Count_Household"}],
             }
         )
-        mock_client.fetch_entity_names = Mock(
+        mock_client.fetch_entity_names = AsyncMock(
             return_value={
                 "Count_Person": "Population",
                 "Count_Household": "Households",
@@ -317,7 +971,7 @@ class TestSearchIndicators:
                 },  # query + Germany (filtered by France)
             ]
         )
-        mock_client.fetch_entity_names = Mock(
+        mock_client.fetch_entity_names = AsyncMock(
             return_value={
                 "TradeExports_FRA": "Exports to France",
                 "TradeExports_DEU": "Exports to Germany",
@@ -369,7 +1023,7 @@ class TestSearchIndicators:
         # Test valid per_search_limit values with place (so lookup mode is actually used)
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
         mock_client.fetch_indicators = AsyncMock(return_value={"variables": []})
-        mock_client.fetch_entity_names = Mock(return_value={"country/USA": "USA"})
+        mock_client.fetch_entity_names = AsyncMock(return_value={"country/USA": "USA"})
 
         # Should not raise for valid values
         await search_indicators(
@@ -397,7 +1051,7 @@ class TestSearchIndicators:
                 "lookups": {"Count_Person": "Population"},
             }
         )
-        mock_client.fetch_entity_names = Mock(
+        mock_client.fetch_entity_names = AsyncMock(
             return_value={"Count_Person": "Population"}
         )
 
@@ -428,7 +1082,9 @@ class TestSearchIndicators:
                 "Canada": "country/CAN",
             }
         )
-        mock_client.fetch_indicators = AsyncMock(return_value={})
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
         mock_client.fetch_entity_names = Mock(return_value={})
 
         # Test 1: Single place including topics
@@ -449,7 +1105,9 @@ class TestSearchIndicators:
         # Reset mocks for next test
         mock_client.reset_mock()
         mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
-        mock_client.fetch_indicators = AsyncMock(return_value={})
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
         mock_client.fetch_entity_names = Mock(return_value={})
 
         # Test 2: Single place variables-only
@@ -477,7 +1135,9 @@ class TestSearchIndicators:
                 "Mexico": "country/MEX",
             }
         )
-        mock_client.fetch_indicators = AsyncMock(return_value={})
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
         mock_client.fetch_entity_names = Mock(return_value={})
 
         # Test 3: Multiple places including topics
@@ -502,7 +1162,9 @@ class TestSearchIndicators:
         mock_client.search_places = AsyncMock(
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
-        mock_client.fetch_indicators = AsyncMock(return_value={})
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
         mock_client.fetch_entity_names = Mock(return_value={})
 
         # Test 1: Maybe bilateral including topics
@@ -545,7 +1207,9 @@ class TestSearchIndicators:
         mock_client.search_places = AsyncMock(
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
-        mock_client.fetch_indicators = AsyncMock(return_value={})
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={"topics": [], "variables": [], "lookups": {}}
+        )
         mock_client.fetch_entity_names = Mock(return_value={})
 
         # Test 2: Maybe bilateral variables-only
@@ -592,7 +1256,7 @@ class TestSearchIndicators:
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
         mock_client.fetch_indicators = AsyncMock(return_value={"variables": []})
-        mock_client.fetch_entity_names = Mock(return_value={})
+        mock_client.fetch_entity_names = AsyncMock(return_value={})
 
         # Test maybe_bilateral=True with places (should work)
         result = await search_indicators(
@@ -648,8 +1312,5 @@ class TestSearchIndicators:
         assert result.status == "SUCCESS"
 
         # No places
-        result = await search_indicators(
-            client=mock_client,
-            query="test",
-        )
+        result = await search_indicators(client=mock_client, query="test")
         assert result.status == "SUCCESS"

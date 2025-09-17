@@ -1,0 +1,60 @@
+[
+  {
+    "query": "What is the population (dcid=Count_Person) of California??",
+    "expected_tool_use": [
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "date": "latest",
+          "place_dcid": "geoId/06",
+          "variable_dcid": "Count_Person"
+        }
+      }
+    ],
+    "reference": "A data analyst could use this data to identify the most recent population"
+  },
+  {
+    "query": "What was the population of California in 2023?",
+    "expected_tool_use": [
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "date": "2023",
+          "place_dcid": "geoId/06",
+          "variable_dcid": "Count_Person"
+        }
+      }
+    ],
+    "reference": "A data analyst can use the fetched data to report California's population"
+  },
+  {
+    "query": "What was the population of California in between may 2002 and november 2005?",
+    "expected_tool_use": [
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "date": "range",
+          "date_range_start": "2002-05",
+          "date_range_end": "2005-11",
+          "place_dcid": "geoId/06",
+          "variable_dcid": "Count_Person"
+        }
+      }
+    ],
+    "reference": "A data analyst could present the population data for California"
+  },
+  {
+    "query": "how has the population changed over time?",
+    "expected_tool_use": [
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "date": "all",
+          "place_dcid": "geoId/06",
+          "variable_dcid": "Count_Person"
+        }
+      }
+    ],
+    "reference": "A data analyst can use this time-series data to analyze the population changes in California"
+  }
+]

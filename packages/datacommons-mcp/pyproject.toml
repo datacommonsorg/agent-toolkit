@@ -12,6 +12,7 @@ dependencies = [
     "datacommons-client",
     "pydantic>=2.11.7",
     "pydantic-settings",
+    "python-dateutil>=2.9.0.post0",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 
@@ -26,7 +27,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.package-data]
-datacommons_mcp = ["*.json"]
+datacommons_mcp = ["**/*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "datacommons_mcp.version.__version__"}

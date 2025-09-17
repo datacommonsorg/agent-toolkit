@@ -14,7 +14,7 @@
 
 from datacommons_client.models.observation import Observation
 
-from datacommons_mcp.data_models.observations import DateRange
+from datacommons_mcp.data_models.observations import DateRange, ObservationDate
 
 
 def filter_by_date(
@@ -34,10 +34,13 @@ def filter_by_date(
     filtered_list = []
     for obs in observations:
         # Parse the observation's date interval. The result will be cached.
-        obs_start, obs_end = DateRange.parse_interval(obs.date)
+        obs_date = ObservationDate.parse_date(obs.date)
 
         # Lexicographical comparison is correct for YYYY-MM-DD format.
-        if range_start <= obs_start and obs_end <= range_end:
-            filtered_list.append(obs)
+        if range_start and obs_date < range_start:
+            continue
+        if range_end and obs_date > range_end:
+            continue
+        filtered_list.append(obs)
 
     return filtered_list

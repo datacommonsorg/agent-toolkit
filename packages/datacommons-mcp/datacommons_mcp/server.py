@@ -34,15 +34,16 @@ from datacommons_mcp.data_models.charts import (
     SingleVariableChart,
 )
 from datacommons_mcp.data_models.observations import (
+    ObservationDateType,
     ObservationToolResponse,
 )
 from datacommons_mcp.data_models.search import (
     SearchResponse,
-    SearchTopic,
-    SearchVariable,
 )
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
+)
+from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
 
@@ -61,21 +62,28 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP("DC MCP Server")
+mcp = FastMCP(
+    "DC MCP Server",
+    stateless_http=True,
+)
 
 
 @mcp.tool()
 async def get_observations(
     variable_dcid: str,
-    place_dcid: str | None = None,
-    place_name: str | None = None,
+    place_dcid: str,
     child_place_type: str | None = None,
-    source_id_override: str | None = None,
-    period: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    source_override: str | None = None,
+    date: str = ObservationDateType.LATEST.value,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
 ) -> ObservationToolResponse:
     """Fetches observations for a statistical variable from Data Commons.
+
+    **CRITICAL: Always validate variable-place combinations first**
+    - You **MUST** call `search_indicators` first to verify that the variable exists for the specified place
+    - Only use DCIDs returned by `search_indicators` - never guess or assume variable-place combinations
+    - This ensures data availability and prevents errors from invalid combinations
 
     This tool can operate in two primary modes:
     1.  **Single Place Mode**: Get data for one specific place (e.g., "Population of California").
@@ -87,59 +95,63 @@ async def get_observations(
         * Variable DCIDs are unique identifiers for statistical variables in Data Commons and are returned by prior calls to the
         `search_indicators` tool.
 
-    * **Place Selection**: You **must** provide either `place_dcid` or `place_name`.
-        * If `place_dcid` is provided, it takes priority over `place_name`.
+    * **Place Selection**: You **must** provide the `place_dcid`.
         * **Important Note for Bilateral Data**: When fetching data for bilateral variables (e.g., exports from one country to another),
         the `variable_dcid` often encodes one of the places (e.g., `TradeExports_FRA` refers to exports *to* France).
-        In such cases, the `place_dcid` (or `place_name`) parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
+        In such cases, the `place_dcid` parameter in `get_observations` should specify the *other* place involved in the bilateral relationship
         (e.g., the exporter country, such as 'USA' for exports *from* USA).
-        The `search_indicators` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid` (or `place_name`).
+        The `search_indicators` tool's `places_with_data` field can help identify which place is the appropriate observation source for `place_dcid`.
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
         * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
           **CRITICAL:** Before calling `get_observations` with `child_place_type`, you **MUST** first call the `validate_child_place_types` tool to find valid types.
           Only proceed with `get_observations` if `validate_child_place_types` confirms that the `child_place_type` is valid for the specified parent place.
+          **Note:** If you used child sampling in `search_indicators` to validate variable existence, you should still get data for ALL children of that type, not just the sampled subset.
 
     * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
-        * Avoid requesting `'all'` data via the `period` parameter.
+        * Avoid requesting `'all'` data via the `date` parameter.
         * **Instead, you must either request the `'latest'` data or provide a specific, bounded date range.**
 
     * **Date Filtering**: The tool filters observations by date using the following priority:
-        1.  **`period`**: If you provide the `period` parameter ('all' or 'latest'), it takes top priority.
-        2.  **Date Range**: If `period` is not provided, you must specify a custom range using **both** `start_date` and `end_date`.
+        1.  **`date`**: The `date` parameter is required and can be one of the enum values 'all', 'latest', 'range', or a date string in the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'.
+        2.  **Date Range**: If `date` is set to 'range', you must specify a date range using `date_range_start` and/or `date_range_end`.
+            * If only `date_range_start` is specified, then the response will contain all observations starting at and after that date (inclusive).
+            * If only `date_range_end` is specified, then the response will contain all observations before and up to that date (inclusive).
+            * If both are specified, the response contains observations within the provided range (inclusive).
             * Dates must be in `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` format.
-            * To get data for a single date, set `start_date` and `end_date` to the same value. For example, to get data for 2025, use `start_date="2025"` and `end_date="2025"`.
-        3.  **Default Behavior**: If you do not provide **any** date parameters (`period`, `start_date`, or `end_date`), the tool will automatically fetch only the `'latest'` observation.
+        3.  **Default Behavior**: If you do not provide **any** date parameters (`date`, `date_range_start`, or `date_range_end`), the tool will automatically fetch only the `'latest'` observation.
 
     Args:
       variable_dcid (str, required): The unique identifier (DCID) of the statistical variable.
-      place_dcid (str, optional): The DCID of the place.
-      place_name (str, optional): The common name of the place. Ex: "United States", "India", "NYC". Ignored if `place_dcid` is set.
+      place_dcid (str, required): The DCID of the place.
       child_place_type (str, optional): The type of child places to get data for. **Use this to switch to Child Places Mode.**
-      source_id_override (str, optional): An optional facet ID to force the use of a specific data source.
-      period (str, optional): A special period filter. Accepts "all" or "latest". Overrides date range.
-      start_date (str, optional): The start date for a custom range. **Used only with `end_date` and ignored if `period` is set.**
-      end_date (str, optional): The end date for a custom range. **Used only with `start_date` and ignored if `period` is set.**
+      source_override (str, optional): An optional source ID to force the use of a specific data source.
+      date (str, optional): An optional date filter. Accepts 'all', 'latest', 'range', or single date values of the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. Defaults to 'latest' if no date parameters are provided.
+      date_range_start (str, optional): The start date for a range (inclusive). **Used only if `date` is set to'range'.**
+      date_range_end (str, optional): The end date for a range (inclusive). **Used only if `date` is set to'range'.**
 
     Returns:
-      dict: A dictionary containing the request status and data.
+        The fetched observation data including:
+        - `variable`: Details about the statistical variable requested.
+        - `place_observations`: A list of observations, one entry per place. Each entry contains:
+            - `place`: Details about the observed place (DCID, name, type).
+            - `time_series`: A list of `(date, value)` tuples, where `date` is a string (e.g., "2022-01-01") and `value` is a float.
+        - `source_metadata`: Information about the primary data source used.
+        - `alternative_sources`: Details about other available data sources.
 
-      **How to Process the Response:**
-      1.  **Check Status**: First, check the `status` field. If it's "ERROR" or "NO_DATA_FOUND", inform the user accordingly using the `message`.
-      2.  **Extract Data**: The data is inside `data['data_by_variable']`. Each key is a `variable_id`. The `observations` list contains the actual data points: `[entity_id, date, value]`.
-      3.  **Make it Readable**: Use the `data['lookups']['id_name_mappings']` dictionary to convert `variable_id` and `entity_id` from cryptic IDs to human-readable names.
     """
+    # TODO(keyurs): Remove place_name parameter from the service call.
     return await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
-        place_name=place_name,
+        place_name=None,
         child_place_type=child_place_type,
-        source_id_override=source_id_override,
-        period=period,
-        start_date=start_date,
-        end_date=end_date,
+        source_override=source_override,
+        date=date,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
     )
 
 
@@ -363,9 +375,10 @@ async def get_datacommons_chart_config(
 async def search_indicators(
     query: str,
     places: list[str] | None = None,
+    per_search_limit: int = 10,
+    *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-    per_search_limit: int = 10,
 ) -> SearchResponse:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
@@ -375,6 +388,34 @@ async def search_indicators(
 
 
     **How to Use This Tool:**
+
+    **include_topics Parameter Guidelines:**
+
+    **Primary Rule**: If a user explicitly states what the parameter should be, use it as requested.
+
+    **include_topics = True (default)**
+        - **Purpose**: Explore topic hierarchy and find related variables
+        - **Use when**: You want to understand the structure of data categories and discover related variables
+        - **Returns**: Both topics (categories) and variables with hierarchical structure
+        - **Example use cases**:
+            - "what basic health data do you have"
+            - "Show me health data categories and what variables are available"
+            - "What economic indicators are available and how are they organized?"
+
+    **include_topics = False**
+        - **Purpose**: Direct variable search for specific data needs
+        - **Use when**: The goal is to fetch specific data, rather than to explore or present data categories to the user
+        - **Returns**: Variables only (no topic hierarchy)
+        - **Example use cases**:
+            - "Find unemployment rate variables for United States"
+            - "Get population data variables for India"
+            - "Search for carbon emission variables in NYC"
+
+    **places Parameter Guidelines:**
+
+    Always use the human-readable place names in English (e.g., 'California', 'Canada'),
+    not their DCIDs (e.g., 'geoId/06', 'country/CAN', or 'wikidataId/Q1979').
+    If you obtain place information from another tool, ensure you extract and use place names only for search_indicators.
 
     * **For place-constrained queries** like "population of France":
         - Call with `query="population"`, `places=["France"]`, and `maybe_bilateral=False`
@@ -406,18 +447,21 @@ async def search_indicators(
         - Call with `query="trade"`
         - No place existence checks are performed
 
+    * **When place results don't match user intent** (e.g., user asks for "Scotland" but gets Scotland County, USA instead of Scotland, UK in the response):
+        - Add a qualifier: `places=["Scotland, UK"]` or `places=["Scotland, United Kingdom"]`
+
     Args:
         query (str): The search query for indicators (topics, categories, or variables).
             Examples: "health grants", "carbon emissions", "unemployment rate"
         places (list[str], optional): List of place names for filtering and existence checks.
             Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
+        per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
         include_topics (bool, optional): Whether to search for Topics (collections of variables) or
             just variables. Default: True
         maybe_bilateral (bool, optional): Whether this query could represent bilateral relationships.
             Set to True for queries that could be bilateral (e.g., "trade exports to france").
             Set to False for queries about properties of places (e.g., "population of france").
             Default: False
-        per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
 
     Returns:
         dict: A dictionary containing candidate indicators with the following structure:
@@ -453,6 +497,7 @@ async def search_indicators(
     **Best Practices:**
     - Include topics if you want to understand data organization and discover collections of variables (topics) or related variables
     - Exclude topics only when you have a specific query.
+    - For places, provide English place names only.
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
     """
     # Call the real search_indicators service
@@ -460,6 +505,7 @@ async def search_indicators(
         client=dc_client,
         query=query,
         places=places,
-        maybe_bilateral=maybe_bilateral,
         per_search_limit=per_search_limit,
+        include_topics=include_topics,
+        maybe_bilateral=maybe_bilateral,
     )

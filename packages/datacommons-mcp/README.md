@@ -89,7 +89,8 @@ Edit your `~/.gemini/settings.json` file and add the following, replacing `<your
       ],
       "env": {
         "DC_API_KEY": "<your api key>"
-      }
+      },
+      "trust": true
     }
   }
 }

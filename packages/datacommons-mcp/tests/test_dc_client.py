@@ -29,17 +29,22 @@ from datacommons_client.client import DataCommonsClient
 from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
-    DateRange,
-    ObservationApiResponse,
-    ObservationPeriod,
-    ObservationToolRequest,
-    ObservationToolResponse,
-    PlaceData,
-    Source,
-    SourceMetadata,
-    VariableSeries,
+    ObservationDateType,
+    ObservationRequest,
 )
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
+
+
+@pytest.fixture
+def isolated_env(tmp_path, monkeypatch):
+    """A fixture to isolate tests from .env files and existing env vars."""
+    monkeypatch.chdir(tmp_path)
+
+    # This inner function will be the fixture's return value
+    def _patch_env(env_vars):
+        return patch.dict(os.environ, env_vars, clear=True)
+
+    return _patch_env
 
 
 @pytest.fixture
@@ -246,215 +251,68 @@ class TestDCClientSearch:
         ]
 
 
-class TestDCClientObservations:
-    """Tests for the observation-fetching methods of DCClient."""
+@pytest.mark.asyncio
+class TestDCClientFetchObs:
+    """Tests for the fetch_obs method of DCClient."""
 
-    @pytest.mark.asyncio
-    async def test_fetch_obs_single_place(self, mocked_datacommons_client):
+    async def test_fetch_obs_calls_fetch_for_single_place(
+        self, mocked_datacommons_client
+    ):
         """
-        Verifies that fetch_obs returns ObservationToolResponse and integrates the API response.
+        Verifies that fetch_obs calls the correct underlying API for a single place.
         """
-        # Arrange: Create an instance of our wrapper client and mock API response
+        # Arrange
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        request = ObservationToolRequest(
+        request = ObservationRequest(
             variable_dcid="var1",
             place_dcid="place1",
-            observation_period=ObservationPeriod.LATEST,
+            date_type=ObservationDateType.LATEST,
+            child_place_type=None,  # Explicitly None for single place query
         )
 
-        # Create API response using actual data structure like test_multi_client.py
-        api_response_data = {
-            "byVariable": {
-                "var1": {
-                    "byEntity": {
-                        "place1": {
-                            "orderedFacets": [
-                                {
-                                    "facetId": "source1",
-                                    "earliestDate": "2023-01-01",
-                                    "latestDate": "2023-01-01",
-                                    "obsCount": 1,
-                                    "observations": [
-                                        {"date": "2023-01-01", "value": 100}
-                                    ],
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "facets": {"source1": {"importName": "test_source"}},
-        }
-        mock_api_response = ObservationApiResponse.model_validate(api_response_data)
-        mocked_datacommons_client.observation.fetch.return_value = mock_api_response
+        # Act
+        await client_under_test.fetch_obs(request)
 
-        # Mock fetch_entity_names to return place names
-        client_under_test.fetch_entity_names = Mock(
-            return_value={"place1": "Test Place"}
-        )
-
-        # Act: Call the method on our wrapper client
-        result = await client_under_test.fetch_obs(request)
-
-        expected_response = ObservationToolResponse(
-            place_data={
-                "place1": PlaceData(
-                    place_dcid="place1",
-                    place_name="Test Place",
-                    variable_series={
-                        "var1": VariableSeries(
-                            variable_dcid="var1",
-                            source_metadata=SourceMetadata(
-                                source_id="source1",
-                                earliest_date="2023-01-01",
-                                latest_date="2023-01-01",
-                                total_observations=1,
-                            ),
-                            observations=[{"date": "2023-01-01", "value": 100}],
-                            alternative_sources=[],
-                        )
-                    },
-                )
-            },
-            source_info={
-                "source1": Source(importName="test_source", source_id="source1")
-            },
-        )
-
-        assert result == expected_response
-
-        # Verify that the API was called correctly
+        # Assert
+        # Verify that the correct underlying method was called with the right parameters
         mocked_datacommons_client.observation.fetch.assert_called_once_with(
             variable_dcids="var1",
             entity_dcids="place1",
-            date=ObservationPeriod.LATEST,
+            date=ObservationDateType.LATEST,
             filter_facet_ids=None,
         )
+        # Verify that the other method was not called
+        mocked_datacommons_client.observation.fetch_observations_by_entity_type.assert_not_called()
 
-        # Verify that place metadata was added
-        client_under_test.fetch_entity_names.assert_called_once_with(["place1"])
-
-    @pytest.mark.asyncio
-    async def test_fetch_obs_child_places(self, mocked_datacommons_client):
+    async def test_fetch_obs_calls_fetch_by_entity_type_for_child_places(
+        self, mocked_datacommons_client
+    ):
         """
-        Verifies that fetch_obs returns ObservationToolResponse for child place queries.
+        Verifies that fetch_obs calls the correct underlying API for child places.
         """
-        # Arrange: Create an instance of our wrapper client and mock API response
+        # Arrange
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        request = ObservationToolRequest(
+        request = ObservationRequest(
             variable_dcid="var1",
             place_dcid="parent_place",
             child_place_type="County",
-            observation_period=ObservationPeriod.LATEST,
+            date_type=ObservationDateType.LATEST,
         )
 
-        # Create API response using actual data structure like test_multi_client.py
-        api_response_data = {
-            "byVariable": {
-                "var1": {
-                    "byEntity": {
-                        "child_place1": {
-                            "orderedFacets": [
-                                {
-                                    "facetId": "source1",
-                                    "earliestDate": "2023-01-01",
-                                    "latestDate": "2023-01-01",
-                                    "obsCount": 1,
-                                    "observations": [
-                                        {"date": "2023-01-01", "value": 50}
-                                    ],
-                                }
-                            ]
-                        },
-                        "child_place2": {
-                            "orderedFacets": [
-                                {
-                                    "facetId": "source1",
-                                    "earliestDate": "2023-01-01",
-                                    "latestDate": "2023-01-01",
-                                    "obsCount": 1,
-                                    "observations": [
-                                        {"date": "2023-01-01", "value": 75}
-                                    ],
-                                }
-                            ]
-                        },
-                    }
-                }
-            },
-            "facets": {"source1": {"importName": "test_source"}},
-        }
-        mock_api_response = ObservationApiResponse.model_validate(api_response_data)
-        mocked_datacommons_client.observation.fetch_observations_by_entity_type.return_value = mock_api_response
+        # Act
+        await client_under_test.fetch_obs(request)
 
-        # Mock fetch_entity_names to return place names
-        client_under_test.fetch_entity_names = Mock(
-            return_value={
-                "child_place1": "Child Place 1",
-                "child_place2": "Child Place 2",
-            }
-        )
-
-        # Act: Call the method on our wrapper client
-        result = await client_under_test.fetch_obs(request)
-
-        expected_response = ObservationToolResponse(
-            place_data={
-                "child_place1": PlaceData(
-                    place_dcid="child_place1",
-                    place_name="Child Place 1",
-                    variable_series={
-                        "var1": VariableSeries(
-                            variable_dcid="var1",
-                            source_metadata=SourceMetadata(
-                                source_id="source1",
-                                earliest_date="2023-01-01",
-                                latest_date="2023-01-01",
-                                total_observations=1,
-                            ),
-                            observations=[{"date": "2023-01-01", "value": 50}],
-                            alternative_sources=[],
-                        )
-                    },
-                ),
-                "child_place2": PlaceData(
-                    place_dcid="child_place2",
-                    place_name="Child Place 2",
-                    variable_series={
-                        "var1": VariableSeries(
-                            variable_dcid="var1",
-                            source_metadata=SourceMetadata(
-                                source_id="source1",
-                                earliest_date="2023-01-01",
-                                latest_date="2023-01-01",
-                                total_observations=1,
-                            ),
-                            observations=[{"date": "2023-01-01", "value": 75}],
-                            alternative_sources=[],
-                        )
-                    },
-                ),
-            },
-            source_info={
-                "source1": Source(importName="test_source", source_id="source1")
-            },
-        )
-
-        assert result == expected_response
-
-        # Verify that the API was called correctly
+        # Assert
+        # Verify that the correct underlying method was called with the right parameters
         mocked_datacommons_client.observation.fetch_observations_by_entity_type.assert_called_once_with(
             variable_dcids="var1",
             parent_entity="parent_place",
             entity_type="County",
-            date=ObservationPeriod.LATEST,
+            date=ObservationDateType.LATEST,
             filter_facet_ids=None,
         )
-
-        # Verify that place metadata was added for both child places
-        client_under_test.fetch_entity_names.assert_called_once_with(
-            ["child_place1", "child_place2"]
-        )
+        # Verify that the other method was not called
+        mocked_datacommons_client.observation.fetch.assert_not_called()
 
 
 class TestDCClientFetchIndicators:
@@ -855,109 +713,13 @@ class TestDCClientFetchIndicators:
         assert "Count_Household" in result["variables"]
 
 
-class TestDCClientIntegrateObservationResponse:
-    """Tests for the _integrate_observation_response method of DCClient."""
-
-    @pytest.fixture
-    def mock_api_response(self):
-        """Fixture for a mocked API response with test data."""
-        raw_response_data = {
-            "byVariable": {
-                "var1": {
-                    "byEntity": {
-                        "place1": {
-                            "orderedFacets": [
-                                {
-                                    "facetId": "f1",
-                                    "earliestDate": "2022",
-                                    "latestDate": "2023",
-                                    "obsCount": 2,
-                                    "observations": [
-                                        {"date": "2022", "value": 1},
-                                        {"date": "2023", "value": 2},
-                                    ],
-                                },
-                                {
-                                    "facetId": "f2",
-                                    "earliestDate": "2020",
-                                    "latestDate": "2021",
-                                    "obsCount": 3,
-                                    "observations": [
-                                        {"date": "2020", "value": 3},
-                                        {"date": "2020", "value": 3},
-                                        {"date": "2021", "value": 4},
-                                    ],
-                                },
-                            ]
-                        }
-                    }
-                }
-            },
-            "facets": {
-                "f1": {"importName": "source1"},
-                "f2": {"importName": "source2"},
-            },
-        }
-        return ObservationApiResponse.model_validate(raw_response_data)
-
-    def test_integrate_observation_initial_data(self, mock_api_response):
-        """Test that _integrate_observation_response correctly processes initial data."""
-        response = ObservationToolResponse()
-        DCClient._integrate_observation_response(response, mock_api_response)
-
-        assert "place1" in response.place_data
-        place_data = response.place_data["place1"]
-        assert "var1" in place_data.variable_series
-
-        var_series = place_data.variable_series["var1"]
-        assert var_series.source_metadata.source_id == "f1"
-        assert var_series.source_id == "f1"  # Test the property
-        assert len(var_series.observations) == 2
-        assert len(var_series.alternative_sources) == 1
-        assert var_series.alternative_sources[0].source_id == "f2"
-
-    def test_integrate_observation_alternative_sources(self, mock_api_response):
-        """Test that _integrate_observation_response correctly handles alternative sources."""
-        response = ObservationToolResponse()
-        # Pre-populate with some data
-        initial_metadata = SourceMetadata(source_id="f_initial")
-        initial_series = VariableSeries(
-            variable_dcid="var1",
-            source_metadata=initial_metadata,
-            observations=[],
-            alternative_sources=[],
-        )
-        response.place_data["place1"] = Mock(variable_series={"var1": initial_series})
-
-        DCClient._integrate_observation_response(response, mock_api_response)
-
-        # Check that the new sources were appended
-        final_series = response.place_data["place1"].variable_series["var1"]
-        assert len(final_series.alternative_sources) == 2  # 2 new sources added
-        assert {s.source_id for s in final_series.alternative_sources} == {"f1", "f2"}
-
-    def test_integrate_observation_with_date_filter(self, mock_api_response):
-        """Test that _integrate_observation_response correctly applies date filtering."""
-        response = ObservationToolResponse()
-        date_filter = DateRange(start_date="2023", end_date="2023")
-
-        DCClient._integrate_observation_response(
-            response, mock_api_response, date_filter=date_filter
-        )
-
-        var_series = response.place_data["place1"].variable_series["var1"]
-        # Only the observation for "2023" should have been selected
-        assert len(var_series.observations) == 1
-        assert var_series.observations[0].value == 2
-
-
 class TestCreateDCClient:
     """Tests for the create_dc_client factory function."""
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
-    @patch("datacommons_mcp.clients.read_topic_cache")
+    @patch("datacommons_mcp.clients.read_topic_caches")
     def test_create_dc_client_base_dc(
-        self, mock_read_cache: Mock, mock_dc_client: Mock
+        self, mock_read_caches: Mock, mock_dc_client: Mock
     ):
         """Test base DC creation with defaults."""
         # Arrange
@@ -965,7 +727,7 @@ class TestCreateDCClient:
             settings = BaseDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
-            mock_read_cache.return_value = Mock()
+            mock_read_caches.return_value = Mock()
 
             # Act
             result = create_dc_client(settings)
@@ -981,18 +743,16 @@ class TestCreateDCClient:
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
     def test_create_dc_client_custom_dc(
-        self, mock_create_store: Mock, mock_dc_client: Mock
+        self, mock_create_store: Mock, mock_dc_client: Mock, isolated_env
     ):
         """Test custom DC creation with defaults."""
         # Arrange
-        with patch.dict(
-            os.environ,
-            {
-                "DC_API_KEY": "test_api_key",
-                "DC_TYPE": "custom",
-                "CUSTOM_DC_URL": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
-            },
-        ):
+        env_vars = {
+            "DC_API_KEY": "test_api_key",
+            "DC_TYPE": "custom",
+            "CUSTOM_DC_URL": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
+        }
+        with isolated_env(env_vars):
             settings = CustomDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
@@ -1039,3 +799,106 @@ class TestCreateDCClient:
             # Should compute api_base_url by adding /core/api/v2/
             expected_api_url = "https://example.com/core/api/v2/"
             mock_dc_client.assert_called_with(url=expected_api_url)
+
+    @patch("datacommons_mcp.clients.DataCommonsClient")
+    @patch("datacommons_mcp.clients._create_base_topic_store")
+    @patch("datacommons_mcp.clients.create_topic_store")
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            pytest.param(
+                {
+                    "dc_type": "base",
+                    "env_vars": {"DC_API_KEY": "test_api_key", "DC_TYPE": "base"},
+                    "expected_scope": SearchScope.BASE_ONLY,
+                    "should_create_base": True,
+                    "should_create_custom": False,
+                    "should_merge": False,
+                },
+                id="base_only_scope_creates_only_base_topic_store",
+            ),
+            pytest.param(
+                {
+                    "dc_type": "custom",
+                    "env_vars": {
+                        "DC_API_KEY": "test_api_key",
+                        "DC_TYPE": "custom",
+                        "CUSTOM_DC_URL": "https://example.com",
+                        "DC_ROOT_TOPIC_DCIDS": "topic1,topic2",
+                        "DC_SEARCH_SCOPE": "custom_only",
+                    },
+                    "expected_scope": SearchScope.CUSTOM_ONLY,
+                    "should_create_base": False,
+                    "should_create_custom": True,
+                    "should_merge": False,
+                },
+                id="custom_only_scope_creates_only_custom_topic_store",
+            ),
+            pytest.param(
+                {
+                    "dc_type": "custom",
+                    "env_vars": {
+                        "DC_API_KEY": "test_api_key",
+                        "DC_TYPE": "custom",
+                        "CUSTOM_DC_URL": "https://example.com",
+                        "DC_ROOT_TOPIC_DCIDS": "topic1,topic2",
+                    },
+                    "expected_scope": SearchScope.BASE_AND_CUSTOM,
+                    "should_create_base": True,
+                    "should_create_custom": True,
+                    "should_merge": True,
+                },
+                id="base_and_custom_scope_creates_and_merges_both_topic_stores",
+            ),
+        ],
+    )
+    def test_create_dc_client_search_scope_topic_stores(
+        self,
+        mock_create_store: Mock,
+        mock_create_base_store: Mock,
+        mock_dc_client: Mock,
+        test_case: dict,
+        isolated_env,
+    ):
+        """Test that topic store creation calls match search scope."""
+        # Arrange
+        env_vars = test_case["env_vars"]
+        with isolated_env(env_vars):
+            settings = (
+                BaseDCSettings()
+                if test_case["dc_type"] == "base"
+                else CustomDCSettings()
+            )
+            mock_dc_instance = Mock()
+            mock_dc_client.return_value = mock_dc_instance
+            mock_custom_store = Mock()
+            mock_base_store = Mock()
+            mock_create_store.return_value = mock_custom_store
+            mock_create_base_store.return_value = mock_base_store
+
+            # Act
+            result = create_dc_client(settings)
+
+            # Assert
+            assert isinstance(result, DCClient)
+            assert result.search_scope == test_case["expected_scope"]
+
+            # Verify base topic store creation
+            if test_case["should_create_base"]:
+                mock_create_base_store.assert_called_once_with(settings)
+            else:
+                mock_create_base_store.assert_not_called()
+
+            # Verify custom topic store creation
+            if test_case["should_create_custom"]:
+                mock_create_store.assert_called_once_with(
+                    ["topic1", "topic2"], mock_dc_instance
+                )
+            else:
+                mock_create_store.assert_not_called()
+
+            # Verify store merging
+            if test_case["should_merge"]:
+                mock_custom_store.merge.assert_called_once_with(mock_base_store)
+            else:
+                mock_custom_store.merge.assert_not_called()

@@ -20,32 +20,24 @@ import asyncio
 import json
 import logging
 import re
+from pathlib import Path
 
 import requests
 from datacommons_client.client import DataCommonsClient
 
+from datacommons_mcp._constrained_vars import place_statvar_constraint_mapping
 from datacommons_mcp.cache import LruCache
 from datacommons_mcp.data_models.enums import SearchScope
-from datacommons_mcp.data_models.search import SearchMode
 from datacommons_mcp.data_models.observations import (
-    DateRange,
     ObservationApiResponse,
-    ObservationToolRequest,
-    ObservationToolResponse,
-    PlaceData,
-    Source,
-    SourceMetadata,
-    VariableSeries,
+    ObservationRequest,
 )
 from datacommons_mcp.data_models.settings import (
     BaseDCSettings,
     CustomDCSettings,
     DCSettings,
 )
-from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_cache
-from datacommons_mcp.utils import filter_by_date
-
-from datacommons_mcp._constrained_vars import place_statvar_constraint_mapping
+from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_caches
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +83,7 @@ class DCClient:
         if _place_like_constraints:
             self._compute_place_like_statvar_store(constraints=_place_like_constraints)
         else:
-            self._place_like_statvar_store = dict()
+            self._place_like_statvar_store = {}
 
     def _compute_search_indices(self) -> list[str]:
         """Compute and validate search indices based on the configured search_scope.
@@ -114,7 +106,7 @@ class DCClient:
 
         return indices
 
-    def _compute_place_like_statvar_store(self, constraints: list[str]):
+    def _compute_place_like_statvar_store(self, constraints: list[str]) -> None:
         """Compute and cache place-like to statistical variable mappings.
         # TODO (@jm-rivera): Remove once new endpoint is live.
         """
@@ -122,43 +114,28 @@ class DCClient:
             client=self.dc, place_like_constraints=constraints
         )
 
-    async def fetch_obs(
-        self, request: ObservationToolRequest
-    ) -> ObservationToolResponse:
+    async def fetch_obs(self, request: ObservationRequest) -> ObservationApiResponse:
         # Get the raw API response
         if request.child_place_type:
-            api_response = self.dc.observation.fetch_observations_by_entity_type(
+            return self.dc.observation.fetch_observations_by_entity_type(
                 variable_dcids=request.variable_dcid,
                 parent_entity=request.place_dcid,
                 entity_type=request.child_place_type,
-                date=request.observation_period,
+                date=request.date_type,
                 filter_facet_ids=request.source_ids,
             )
-        else:
-            api_response = self.dc.observation.fetch(
-                variable_dcids=request.variable_dcid,
-                entity_dcids=request.place_dcid,
-                date=request.observation_period,
-                filter_facet_ids=request.source_ids,
-            )
-
-        # Convert to tool response format
-        final_response = ObservationToolResponse()
-        self._integrate_observation_response(
-            final_response,
-            api_response,
-            request.date_filter,
+        return self.dc.observation.fetch(
+            variable_dcids=request.variable_dcid,
+            entity_dcids=request.place_dcid,
+            date=request.date_type,
+            filter_facet_ids=request.source_ids,
         )
 
-        # Add place metadata
-        self.add_place_metadata_to_obs(final_response)
-        return final_response
-
-    def fetch_entity_names(self, dcids: list[str]) -> dict:
+    async def fetch_entity_names(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_entity_names(entity_dcids=dcids)
-        return {dcid: name.value for dcid, name in response.items()}
+        return {dcid: name.value for dcid, name in response.items() if name}
 
-    def fetch_entity_types(self, dcids: list[str]) -> dict:
+    async def fetch_entity_types(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_property_values(
             node_dcids=dcids, properties="typeOf"
         )
@@ -166,140 +143,6 @@ class DCClient:
             dcid: list(response.extract_connected_dcids(dcid, "typeOf"))
             for dcid in response.get_properties()
         }
-
-    def add_place_metadata_to_obs(self, obs_response: ObservationToolResponse) -> None:
-        all_place_dcids = list(obs_response.place_data.keys())
-        names = self.fetch_entity_names(all_place_dcids)
-
-        for place_dcid, name in names.items():
-            obs_response.place_data[place_dcid].place_name = name
-
-    # TODO(b/440436967): Simplify this method.
-    @staticmethod
-    def _integrate_observation_response(
-        final_response: ObservationToolResponse,
-        api_response: ObservationApiResponse,
-        date_filter: DateRange | None = None,
-        selected_source_ids: list[str] | None = None,
-    ) -> None:
-        """
-        Merges a single DC's API response into the final tool response.
-
-        This method populates two main parts of the final_response:
-        1.  `source_info`: A global dictionary of all unique data sources (facets)
-            encountered across all API calls, keyed by source_id. This contains
-            static info like import name.
-        2.  `place_data`: A dictionary keyed by place, containing variable series.
-            Each series has its own `source_metadata` (with dynamic info like
-            observation dates for this query) and a list of alternative sources.
-        """
-        flattened_api_response = api_response.get_data_by_entity()
-        for variable_dcid, api_variable_data in flattened_api_response.items():
-            for place_dcid, api_place_data in api_variable_data.items():
-                # Get or initialize the place_data entry in final response
-                if place_dcid not in final_response.place_data:
-                    final_response.place_data[place_dcid] = PlaceData(
-                        place_dcid=place_dcid
-                    )
-                place_data = final_response.place_data[place_dcid]
-
-                # 1. Collect all sources from this API call, creating both
-                #    Source (global) and SourceMetadata (series-specific) objects.
-                all_sources_from_api = []
-                for facet in api_place_data.orderedFacets:
-                    if selected_source_ids and facet.facetId not in selected_source_ids:
-                        continue
-
-                    facet_metadata_from_api = api_response.facets.get(facet.facetId)
-
-                    # If obsCount is not provided, calculate it from the observations list.
-                    obs_count = (
-                        facet.obsCount
-                        if facet.obsCount is not None
-                        else len(facet.observations or [])
-                    )
-
-                    # Calculate earliest/latest dates if not provided by the API
-                    earliest_date = facet.earliestDate
-                    latest_date = facet.latestDate
-                    if (not earliest_date or not latest_date) and facet.observations:
-                        obs_dates = [obs.date for obs in facet.observations]
-                        if obs_dates:
-                            parsed_intervals = [
-                                DateRange.parse_interval(d) for d in obs_dates
-                            ]
-                            all_start_dates = [
-                                interval[0] for interval in parsed_intervals
-                            ]
-                            all_end_dates = [
-                                interval[1] for interval in parsed_intervals
-                            ]
-                            if not earliest_date:
-                                earliest_date = min(all_start_dates)
-                            if not latest_date:
-                                latest_date = max(all_end_dates)
-
-                    # Create the series-specific metadata object
-                    series_metadata = SourceMetadata(
-                        source_id=facet.facetId,
-                        earliest_date=earliest_date,
-                        latest_date=latest_date,
-                        total_observations=obs_count,
-                    )
-
-                    # Create and add the global Source object to the main response if new.
-                    if facet.facetId not in final_response.source_info:
-                        final_response.source_info[facet.facetId] = Source(
-                            **facet_metadata_from_api.to_dict(),
-                            source_id=facet.facetId,
-                        )
-
-                    filtered_obs = filter_by_date(facet.observations, date_filter)
-
-                    all_sources_from_api.append((series_metadata, filtered_obs))
-
-                # 2. Now, decide on the primary source *if needed*. This only happens if the
-                # variable series doesn't exist yet.
-                primary_metadata = None
-                primary_obs = None
-
-                # Filter to only sources that have observations for the given date range
-                sources_with_obs = [s for s in all_sources_from_api if s[1]]
-
-                if sources_with_obs:
-                    # Sort to find the best source: 1. latest date, 2. most observations
-                    sources_with_obs.sort(
-                        key=lambda x: (
-                            x[0].latest_date or "",
-                            x[0].total_observations or 0,
-                        ),
-                        reverse=True,
-                    )
-                    # The best one becomes the primary source
-                    primary_metadata, primary_obs = sources_with_obs[0]
-
-                # 3. Get all SourceMetadata objects from this API call
-                all_metadata_for_place_var = [s[0] for s in all_sources_from_api]
-
-                # 4. Integrate into the final response
-                if variable_dcid in place_data.variable_series:
-                    # If series exists, just add all sources from this API call as alternatives.
-                    place_data.variable_series[
-                        variable_dcid
-                    ].alternative_sources.extend(all_metadata_for_place_var)
-                elif primary_metadata:
-                    # Otherwise, create a new series using the best source we found.
-                    alternative_sources = [
-                        m
-                        for m in all_metadata_for_place_var
-                        if m.source_id != primary_metadata.source_id
-                    ]
-                    place_data.variable_series[variable_dcid] = VariableSeries(
-                        variable_dcid=variable_dcid,
-                        source_metadata=primary_metadata,
-                        observations=primary_obs,
-                        alternative_sources=alternative_sources,
-                    )
 
     async def search_places(self, names: list[str]) -> dict:
         results_map = {}
@@ -376,8 +219,9 @@ class DCClient:
         self,
         query: str,
         place_dcids: list[str] = None,
-        include_topics: bool = True,
         max_results: int = 10,
+        *,
+        include_topics: bool = True,
     ) -> dict:
         """
         Search for indicators matching a query, optionally filtered by place existence.
@@ -392,8 +236,8 @@ class DCClient:
         # Search for indicators - it returns topics and / or variables.
         search_results = await self._search_indicators(
             query=query,
-            include_topics=include_topics,
             max_results=max_search_results,
+            include_topics=include_topics,
         )
 
         # Separate topics and variables
@@ -462,14 +306,15 @@ class DCClient:
         }
 
     async def _search_indicators(
-        self, query: str, include_topics: bool = True, max_results: int = 10
+        self, query: str, max_results: int = 10, *, include_topics: bool = True
     ) -> dict:
         """
         Search for topics and variables using search_svs.
         """
-        logger.info(f"Searching for indicators with query: {query}")
+        logger.info("Searching for indicators with query: %s", query)
+        # Always include topics since we need to expand topics to variables.
         search_results = await self.search_svs(
-            [query], skip_topics=not include_topics, max_results=max_results
+            [query], skip_topics=False, max_results=max_results
         )
         results = search_results.get(query, [])
 
@@ -696,19 +541,24 @@ def create_dc_client(settings: DCSettings) -> DCClient:
         return _create_base_dc_client(settings)
     if isinstance(settings, CustomDCSettings):
         return _create_custom_dc_client(settings)
+
     raise ValueError(
         f"Invalid settings type: {type(settings)}. Must be BaseDCSettings or CustomDCSettings"
     )
 
 
+def _create_base_topic_store(settings: DCSettings) -> TopicStore:
+    """Create a topic store from settings."""
+    if settings.topic_cache_paths:
+        paths = [Path(path) for path in settings.topic_cache_paths]
+        return read_topic_caches(paths)
+    return read_topic_caches()
+
+
 def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     """Create a base DC client from settings."""
     # Create topic store from path if provided else use default topic cache
-    topic_store = None
-    if settings.topic_cache_path:
-        topic_store = read_topic_cache(settings.topic_cache_path)
-    else:
-        topic_store = read_topic_cache()
+    topic_store = _create_base_topic_store(settings)
 
     # Create DataCommonsClient
     dc = DataCommonsClient(api_key=settings.api_key)
@@ -733,9 +583,15 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     dc = DataCommonsClient(url=settings.api_base_url)
 
     # Create topic store if root_topic_dcids provided
-    topic_store = None
+    topic_store: TopicStore | None = None
     if settings.root_topic_dcids:
         topic_store = create_topic_store(settings.root_topic_dcids, dc)
+
+    if search_scope == SearchScope.BASE_AND_CUSTOM:
+        base_topic_store = _create_base_topic_store(settings)
+        topic_store = (
+            topic_store.merge(base_topic_store) if topic_store else base_topic_store
+        )
 
     # Create DCClient
     return DCClient(

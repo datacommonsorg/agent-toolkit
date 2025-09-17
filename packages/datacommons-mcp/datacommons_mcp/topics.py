@@ -16,6 +16,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Self
 
 from datacommons_client.client import DataCommonsClient
 
@@ -26,7 +27,11 @@ _SOURCE_DIR = Path(__file__).resolve().parent
 _TYPE_TOPIC = "Topic"
 _DCID_PREFIX_TOPIC = "topic/"
 _DCID_PREFIX_SVPG = "svpg/"
-_DEFAULT_TOPIC_CACHE_PATH = _SOURCE_DIR / "topic_cache.json"
+_DEFAULT_TOPIC_CACHE_DIR = _SOURCE_DIR / "data" / "topics"
+_DEFAULT_TOPIC_CACHE_PATHS = [
+    _DEFAULT_TOPIC_CACHE_DIR / "topic_cache.json",
+    _DEFAULT_TOPIC_CACHE_DIR / "sdg_topic_cache.json",
+]
 
 
 @dataclass
@@ -114,6 +119,27 @@ class TopicStore:
         """Get the human-readable name for a DCID."""
         return self.dcid_to_name.get(dcid, "")
 
+    def merge(self, other: Self) -> Self:
+        """Merge another TopicStore into this one.
+
+        For overlapping data, this store's data prevails.
+        Only new data from the second store is added.
+        """
+        # Only add topics that don't already exist
+        for topic_dcid, topic_data in other.topics_by_dcid.items():
+            if topic_dcid not in self.topics_by_dcid:
+                self.topics_by_dcid[topic_dcid] = topic_data
+
+        # Merge variables (sets naturally handle duplicates)
+        self.all_variables.update(other.all_variables)
+
+        # Only add names that don't already exist
+        for dcid, name in other.dcid_to_name.items():
+            if dcid not in self.dcid_to_name:
+                self.dcid_to_name[dcid] = name
+
+        return self
+
 
 def _flatten_variables_recursive(
     node: Node,
@@ -143,7 +169,25 @@ def _flatten_variables_recursive(
                 all_vars[child_dcid] = None
 
 
-def read_topic_cache(file_path: Path = _DEFAULT_TOPIC_CACHE_PATH) -> TopicStore:
+def read_topic_caches(
+    file_paths: list[Path] = _DEFAULT_TOPIC_CACHE_PATHS,
+) -> TopicStore:
+    """
+    Reads multiple topic cache files and merges them into a single TopicStore.
+    """
+    topic_store = TopicStore(topics_by_dcid={}, all_variables=set(), dcid_to_name={})
+    for file_path in file_paths:
+        logger.info("Reading topic cache from: %s", file_path)
+        topic_store.merge(read_topic_cache(file_path))
+    logger.info(
+        "Topic store: %s topics, %s variables",
+        len(topic_store.topics_by_dcid),
+        len(topic_store.all_variables),
+    )
+    return topic_store
+
+
+def read_topic_cache(file_path: Path) -> TopicStore:
     """
     Reads the topic_cache.json file, parses the hierarchical structure,
     and returns a TopicStore containing the topic map and a set of all variables.
@@ -298,7 +342,7 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
         TopicStore loaded from cache
     """
 
-    with open(cache_file_path, "r") as f:
+    with open(cache_file_path) as f:
         cache_data = json.load(f)
 
     # Reconstruct TopicStore from cache data
