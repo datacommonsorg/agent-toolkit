@@ -115,22 +115,12 @@ To setup:
 
 ### DC client configuration
 
-The server uses configuration from [config.py](config.py) which supports:
+The server uses configuration from environment variables or a `.env` file. 
 
-- Base Data Commons instance
-- Custom Data Commons instance
+- See [.env.sample](../.env.sample) for frequently used parameters and example configuration
+- See [data_models/settings.py](../datacommons_mcp/data_models/settings.py) for all available configuration parameters
 
-Instantiate the clients in [server.py](server.py) based on the configuration.
-
-> **TODO**: Configuration will soon be changed from hardcoded config in code to configuration via environment variables for better deployment flexibility.
-
-```python
-# Base DC client only
-dc_client = create_dc_client(config.BASE_DC_CONFIG)
-
-# Custom DC client (includes base + custom search capabilities)
-dc_client = create_dc_client(config.CUSTOM_DC_CONFIG)
-```
+Create a `.env` file in the project root with your configuration.
 
 ### File Checks + Formatting
 ```bash
