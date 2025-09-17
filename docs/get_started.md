@@ -167,8 +167,8 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
 
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
-- [Building a Data Commons MCP Agent]() is a Google Colab tutorial that shows how to build an HTTP-based agent step by step. 
-- The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#use-the-sample-agent) above.
+- [Building an Agent with Data Commons Tools]() is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
+- The sample [basic agent]() is a simple Python ADK agent you can use to develop locally. See [Use the sample agent](#use-the-sample-agent) above for details.
 
 ### Test with MCP Inspector
 
@@ -209,7 +209,7 @@ The server is addressable with the endpoint `mcp`. For example, `http://my-mcp-s
 
 ### Connect to an already-running server from a remote client
 
-The way to connect to the server from a remote client is different from client to client; see your client's documentation for specific procedures. Below we provide instructions for Gemini CLI and for the Google-ADK-based sample agent.
+Below we provide instructions for Gemini CLI and for the Google-ADK-based sample agent. If you're using a different client, consult its documentation to determine how to specify an HTTP URL.
 
 #### Gemini CLI
 
