@@ -22,7 +22,9 @@ The server currently supports the following tools:
 - `get_observations`: Fetches statistical data for a given variable and place.
 - `validate_child_place_types`: Validates child place types for a given parent place.
 
-Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py. If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#inspector) for details.
+Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py. 
+
+> Tip: If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#inspect) for details.
 
 ### Clients
 
@@ -118,7 +120,7 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
         "datacommons-mcp@latest",
         "serve",
         "stdio"
-      ]
+      ],
       "env": {
         "DC_API_KEY": "<your key>"
       }
@@ -172,7 +174,7 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
 {: #inspect}
 ### Test with MCP Inspector
 
-If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector]() is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
+If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
 
 To use it:
 
@@ -228,7 +230,7 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 ```
 #### Sample agent
 
-To configure the sample agent xxx to connect to a remote Data Commons server over HTtP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-agents/sample_agents/basic_agent/agent.py` with the following:
+To configure the sample agent xxx to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-agents/sample_agents/basic_agent/agent.py` with the following:
 
 ```python
     tools=[McpToolset(
