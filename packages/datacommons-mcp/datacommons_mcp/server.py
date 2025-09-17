@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Union, get_args, get_origin
 
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
@@ -69,6 +69,16 @@ mcp = FastMCP(
     "DC MCP Server",
     stateless_http=True,
 )
+
+
+def _create_structured_tool_result(response_model: BaseModel) -> ToolResult:
+    """Creates a ToolResult with the model's data as structured content."""
+    return ToolResult(
+        content=[],
+        structured_content=response_model.model_dump(
+            exclude_none=True, exclude_unset=True
+        ),
+    )
 
 
 @mcp.tool()
@@ -156,10 +166,7 @@ async def get_observations(
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
-    return ToolResult(
-        content=[],
-        structured_content=response.model_dump(exclude_none=True, exclude_unset=True),
-    )
+    return _create_structured_tool_result(response)
 
 
 @mcp.tool()
@@ -516,7 +523,4 @@ async def search_indicators(
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
     )
-    return ToolResult(
-        content=[],
-        structured_content=response.model_dump(exclude_none=True, exclude_unset=True),
-    )
+    return _create_structured_tool_result(response)
