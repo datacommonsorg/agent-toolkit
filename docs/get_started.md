@@ -1,10 +1,10 @@
-# Get Started with the Data Commons MCP Server
+# Get Started with the Data Commons MCP
 
 * TOC
 
 ## Overview
 
-The Data Commons Model Context Protocol (MCP) Server gives AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allows end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, you can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
+The Data Commons Model Context Protocol (MCP) Server gives AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allows end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, a user can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
 
 The MCP Server returns data from the "base" instance (in datacommons.org) or, if configured, a Custom Data Commons instance. 
 
@@ -87,7 +87,7 @@ We recommend that you use the Gemini API key [authentication option](https://git
 1. Go to https://aistudio.google.com/ and create a key. 
 1. Set the follwing environment variable:
    ```
-   export GEMINI_API_KEY="<YOUR KEY>"
+   export GEMINI_API_KEY="<your key>"
    ```
 
 To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file (or `settings.json` file in another directory) to add the following:
@@ -105,7 +105,7 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
         "stdio"
       ]
       "env": {
-        "DC_API_KEY": "<YOUR API KEY>"
+        "DC_API_KEY": "<your key>"
       }
     }
   }
@@ -167,7 +167,7 @@ To use it:
    ```
    npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
    ```
-1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`. 
+1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session_token>`. 
 1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
 1. In the left pane, click **Connect**. 
 
@@ -179,7 +179,7 @@ To install packages from PyPi:
 1. Go to the directory where your `.env` file is stored (e.g. `agent-toolkit/packages/datacommons-mcp`).
 1. Run the following command:
    ```
-   uvx datacommons-mcp serve http [--port <PORT>]
+   uvx datacommons-mcp serve http [--port <port>]
    ```
 To install packages from local code (cloned from Github):
 1. Go to the server project directory:
@@ -189,11 +189,11 @@ To install packages from local code (cloned from Github):
 1. If using an `.env` file, ensure that it is present in the directory.
 1. Run the following command:
    ```
-   uv run datacommons-mcp serve http [--port <PORT>]
+   uv run datacommons-mcp serve http [--port <port>]
    ```
 By default, the port is 8080 if you don't set it explicitly.
 
-The server is addressable with the endpoint `mcp`. For example, to point a locally running client to the server, you can use http://localhost:8080/mcp.
+The server is addressable with the endpoint `mcp`. For example, to point a locally running client to the server, you can use `http://localhost:8080/mcp`.
 
 ### Connect to an already-running server from a remote client
 
@@ -208,20 +208,19 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 ...
 "mcpServers": {
     "datacommons-mcp": {
-      "httpUrl": "http://<HOST>:<PORT>/mcp"
+      "httpUrl": "http://<host>:<port>/mcp"
     }
     ...
   }
 }
 ```
-
 #### Sample agent
 
 To configure the sample agent xxx to connect to a remote Data Commons server over HTtP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-agents/sample_agents/basic_agent/agent.py` with the following:
 
 ```python
     tools=[McpToolset(
-            connection_params=StreamableHTTPConnectionParams(url=f"http://<HOST>:<PORT>/mcp")
+            connection_params=StreamableHTTPConnectionParams(url=f"http://<host>:<port>/mcp")
         )],
     ...
 )
