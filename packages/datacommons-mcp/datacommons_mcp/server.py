@@ -18,7 +18,7 @@ Server module for the DC MCP server.
 import asyncio
 import logging
 import types
-from typing import Union, get_args, get_origin
+from typing import TYPE_CHECKING, Union, get_args, get_origin
 
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
@@ -38,15 +38,17 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import (
-    SearchResponse,
-)
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
 )
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
+
+if TYPE_CHECKING:
+    from datacommons_mcp.data_models.search import (
+        SearchResponse,
+    )
 
 # Configure logging
 logger = logging.getLogger(__name__)
