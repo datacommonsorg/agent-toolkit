@@ -1,4 +1,4 @@
-# Introducing Data Commons MCP server
+# Get Started with the Data Commons MCP Server
 
 * TOC
 
@@ -22,7 +22,7 @@ The server currently supports the following tools:
 - `get_observations`: Fetches statistical data for a given variable and place.
 - `validate_child_place_types`: Validates child place types for a given parent place.
 
-Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py.
+Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py. If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#inspector) for details.
 
 ### Clients
 
@@ -34,7 +34,7 @@ The server supports both standard MCP transport protocols:
 
 See [Basic usage](#basic) below for how to use the server with Google-based clients over Stdio.
 
-For an end-to-end tutorial using a server and agent over HTTP, see the sample Data Commons [Colab notebook]()
+For an end-to-end tutorial using a server and agent over HTTP in the cloud, see the sample Data Commons [Colab notebook]().
 
 ### Unsupported features
 
@@ -46,17 +46,17 @@ At the current time, the following are not supported:
 {#basic}
 ## Basic usage: run a local agent and server
 
-Below we provide specific instructions for locally running agents:
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- best for playing with the server; requires minimal setup
-- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup
+Below we provide specific instructions for the following agents:
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- best for playing with the server; requires minimal setup.
+- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup.
 
-Both spawn the server in a local subprocess.
+For other clients/agents, see the relevant documentation; you should be able to reuse the commands and arguments detailed below.
 
 ### Prerequisites
 
-- Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
-- For Gemini CLI, install [`node.js`](https://nodejs.org/en/download).
-- For Gemini CLI or running the sample agent locally, install `uv`, for installing and running Python packages; see the instructions at <https://github.com/astral-sh/uv/blob/main/README.md>. 
+- A Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
+- For running the sample agent or the Colab notebook (and, optionally, Gemini CLI), a Gemini-enabled API key. To obtain a Gemini API key, go to <https://aistudio.google.com/app/apikey>.
+- For Gemini CLI, running the sample agent locally, or running the server locally in standalone mode, install `uv` to install and manage Python packages; see the instructions at <https://github.com/astral-sh/uv/blob/main/README.md>. 
 - For running the sample agent locally, install [Git](https://git-scm.com/).
 
 {#vars}
@@ -90,7 +90,7 @@ We recommend that you use the Gemini API key [authentication option](https://git
    export GEMINI_API_KEY="<YOUR KEY>"
    ```
 
-To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file to add the following:
+To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file (or `settings.json` file in another directory) to add the following:
 
 ```json
 {
@@ -103,7 +103,7 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
         "datacommons-mcp@latest",
         "serve",
         "stdio"
-      ],
+      ]
       "env": {
         "DC_API_KEY": "<YOUR API KEY>"
       }
@@ -116,6 +116,8 @@ If desired, you can modify the following settings:
 - `command`: If you want to run packages from locally cloned stored Python code, set this to `uv` and add `run` to the list of `args`, 
 
 You can now run the `gemini` command from any directory and it will automatically kick off the MCP server, with the correct environment variables.
+
+> Tip: If you run Gemini from the directory where your `.env` file is stored, you can omit the `env` section above.
 
 Once Gemini CLI has started up, you can immediately begin sending natural-language queries! 
 
@@ -143,7 +145,7 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
    ```
    uv run adk web ./datacommons-agents
    ```
-1. 
+1. more coming...
 
 ## Develop your own ADK agent
 
@@ -152,7 +154,23 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
 - [Building a Data Commons MCP Agent]() is a Google Colab tutorial that shows how to build an HTTP-based agent step by step. 
 - The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#sample) above.
 
-{: #standalone}
+{#inspect}
+### Test with MCP Inspector
+
+If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector]() is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
+
+To use it:
+
+1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
+1. Ensure you've set up the relevant server [environment variables](#vars).
+1. From any directory, run:
+   ```
+   npx @modelcontextprotocol/inspector uvx datacommons-mcp serve stdio
+   ```
+1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN={session_token}`. 
+1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
+1. In the left pane, click **Connect**. 
+
 ## Use a remote server/client
 
 ### Run a standalone server
@@ -161,7 +179,7 @@ To install packages from PyPi:
 1. Go to the directory where your `.env` file is stored (e.g. `agent-toolkit/packages/datacommons-mcp`).
 1. Run the following command:
    ```
-   uvx datacommons-mcp serve <PROTOCOL> [--port <PORT>]
+   uvx datacommons-mcp serve http [--port <PORT>]
    ```
 To install packages from local code (cloned from Github):
 1. Go to the server project directory:
@@ -171,12 +189,8 @@ To install packages from local code (cloned from Github):
 1. If using an `.env` file, ensure that it is present in the directory.
 1. Run the following command:
    ```
-   uv run datacommons-mcp serve <PROTOCOL> [--port <PORT>]
+   uv run datacommons-mcp serve http [--port <PORT>]
    ```
-The _PROTOCOL_ is one of:
-- `stdio`: suitable for most locally running clients
-- `http`: suitable for remote clients or other clients that require HTTP. 
-
 By default, the port is 8080 if you don't set it explicitly.
 
 The server is addressable with the endpoint `mcp`. For example, to point a locally running client to the server, you can use http://localhost:8080/mcp.
@@ -187,7 +201,7 @@ The way to connect to the server from a remote client is different from client t
 
 #### Gemini CLI
 
-To configure Gemini CLI to connect to a remote Data Commons server, in your `~/.gemini/settings.json` file, add the following:
+To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file with the following:
 
 ```json
 {
@@ -203,7 +217,16 @@ To configure Gemini CLI to connect to a remote Data Commons server, in your `~/.
 
 #### Sample agent
 
-To configure the sample agent xxx to connect to a remote Data Commons server, edit the file `agent.py` 
+To configure the sample agent xxx to connect to a remote Data Commons server over HTtP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-agents/sample_agents/basic_agent/agent.py` with the following:
+
+```python
+    tools=[McpToolset(
+            connection_params=StreamableHTTPConnectionParams(url=f"http://<HOST>:<PORT>/mcp")
+        )],
+    ...
+)
+```
+
 
 
 
