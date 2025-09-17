@@ -424,14 +424,21 @@ class DCClient:
             api_response: The JSON response from the search-indicators API.
 
         Returns:
-            A tuple containing
-            - A dict where keys are the individual searches (query+index) and values are the list of SearchIndicators returned by that search.
-            - dcid_name_mappings dictionary.
+            A tuple containing two elements:
+            1. A dictionary mapping a search key (e.g., "query-index_name") to a
+               list of `SearchIndicator` objects.
+            2. A dictionary mapping DCIDs to their human-readable names.
 
-        Example Output:
-            {"population_uae_mem" :
-                [SearchTopic(dcid="dc/topic/Health", ...)], [SearchVariable(dcid="Count_Person", ...)],
-            }, {"dc/topic/Health": "Health", "Count_Person": "Person Count"}
+        Example:
+            (
+                {
+                    "population-base_uae_mem": [
+                        SearchTopic(dcid="dc/topic/Health", ...),
+                        SearchVariable(dcid="Count_Person", ...),
+                    ],
+                },
+                {"dc/topic/Health": "Health", "Count_Person": "Person Count"},
+            )
         """
         results_by_search: dict[str, list[SearchIndicator]] = {}
         dcid_name_mappings = {}
