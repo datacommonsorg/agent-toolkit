@@ -43,6 +43,10 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
+### Feedback
+
+If you'd like to provide feedback on the Data Commons MCP Server, please see this [FAQ entry](https://datacommons.org/faq#feedback) on how to file bugs or feature requests. 
+
 ## Basic usage: run a local agent and server
 
 Below we provide specific instructions for the following agents:
