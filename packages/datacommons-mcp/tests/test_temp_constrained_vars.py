@@ -88,7 +88,7 @@ def test_get_topic_places_with_data_includes_place_like_store(
     # Minimal topic store containing a topic with one variable
     topic_dcid = "dc/topic/Health"
     var_dcid = "dc/variable/Count_Person"
-    topic_obj = Mock(member_topics=[], variables=[var_dcid])
+    topic_obj = Mock(member_topics=[], member_variables=[var_dcid])
     client_under_test.topic_store = Mock(topics_by_dcid={topic_dcid: topic_obj})
 
     # Variable cache does not list the variable for the place

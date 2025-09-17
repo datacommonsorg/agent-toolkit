@@ -489,7 +489,10 @@ class TestDCClientFetchIndicators:
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
                 member_topics=[],
-                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"],
+                member_variables=[
+                    "dc/variable/Count_Person",
+                    "dc/variable/Count_Household",
+                ],
             )
         }
 
@@ -555,7 +558,7 @@ class TestDCClientFetchIndicators:
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
-                member_topics=[], variables=["dc/variable/Count_Person"]
+                member_topics=[], member_variables=["dc/variable/Count_Person"]
             )
         }
 
@@ -586,7 +589,7 @@ class TestDCClientFetchIndicators:
         client_under_test.topic_store = Mock()
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
-                member_topics=[], variables=["dc/variable/Count_Person"]
+                member_topics=[], member_variables=["dc/variable/Count_Person"]
             )
         }
 
@@ -601,7 +604,10 @@ class TestDCClientFetchIndicators:
         client_under_test.topic_store.topics_by_dcid = {
             "dc/topic/Health": Mock(
                 member_topics=["dc/topic/HealthCare"],
-                variables=["dc/variable/Count_Person", "dc/variable/Count_Household"],
+                member_variables=[
+                    "dc/variable/Count_Person",
+                    "dc/variable/Count_Household",
+                ],
             )
         }
 
@@ -615,7 +621,7 @@ class TestDCClientFetchIndicators:
         # Act: Get members with existence filtering
         topics = [{"dcid": "dc/topic/Health"}]
         result = client_under_test._get_topics_members_with_existence(
-            topics, ["geoId/06", "geoId/36"]
+            topics, include_topics=True, place_dcids=["geoId/06", "geoId/36"]
         )
 
         # Assert: Verify member filtering
@@ -913,7 +919,7 @@ class TestDCClientFetchIndicatorsNew:
         client.topic_store = Mock()
         health_topic_data = Mock()
         health_topic_data.member_topics = ["dc/topic/SubHealth"]  # Member topic
-        health_topic_data.variables = ["Count_Person_Health"]  # Member variable
+        health_topic_data.member_variables = ["Count_Person_Health"]  # Member variable
         client.topic_store.topics_by_dcid.get.return_value = health_topic_data
 
         # Mock the final name lookup to return names for the members
@@ -1395,7 +1401,10 @@ class TestDCClientFetchIndicatorsNew:
         health_topic_data = Mock()
         health_topic_data.member_topics = []
         # This member variable will be added during expansion
-        health_topic_data.variables = ["MortalityRate_Person_MedicalCondition"]
+        health_topic_data.member_variables = ["MortalityRate_Person_MedicalCondition"]
+        health_topic_data.descendant_variables = [
+            "MortalityRate_Person_MedicalCondition"
+        ]
         client.topic_store.topics_by_dcid.get.return_value = health_topic_data
 
         # 3. Mock the variable cache for existence checks
@@ -1494,7 +1503,7 @@ class TestDCClientFetchIndicatorsNew:
         health_topic_data = Mock()
         # The topic has one member variable that exists and one that does not.
         health_topic_data.member_topics = []
-        health_topic_data.variables = [
+        health_topic_data.member_variables = [
             "MortalityRate_Person_MedicalCondition",  # Exists
             "NonExistent_Var",  # Does not exist
         ]
@@ -1555,11 +1564,11 @@ class TestCreateDCClient:
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.read_topic_caches")
     def test_create_dc_client_base_dc(
-        self, mock_read_caches: Mock, mock_dc_client: Mock
+        self, mock_read_caches: Mock, mock_dc_client: Mock, isolated_env
     ):
         """Test base DC creation with defaults."""
         # Arrange
-        with patch.dict(os.environ, {"DC_API_KEY": "test_api_key", "DC_TYPE": "base"}):
+        with isolated_env({"DC_API_KEY": "test_api_key", "DC_TYPE": "base"}):
             settings = BaseDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance

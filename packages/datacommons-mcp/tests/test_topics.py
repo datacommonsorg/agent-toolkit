@@ -28,7 +28,7 @@ class TestTopicStoreMerge:
                 "topic/health": TopicVariables(
                     topic_dcid="topic/health",
                     topic_name="Health",
-                    variables=["sv/health_var1", "sv/health_var2"],
+                    member_variables=["sv/health_var1", "sv/health_var2"],
                     member_topics=["topic/mental_health"],
                 )
             },
@@ -47,7 +47,7 @@ class TestTopicStoreMerge:
                 "topic/economy": TopicVariables(
                     topic_dcid="topic/economy",
                     topic_name="Economy",
-                    variables=["sv/econ_var1", "sv/econ_var2"],
+                    member_variables=["sv/econ_var1", "sv/econ_var2"],
                     member_topics=["topic/trade"],
                 )
             },
@@ -96,7 +96,7 @@ class TestTopicStoreMerge:
                 "topic/health": TopicVariables(
                     topic_dcid="topic/health",
                     topic_name="Health",
-                    variables=["sv/health_var1"],
+                    member_variables=["sv/health_var1"],
                     member_topics=[],
                 )
             },
@@ -113,7 +113,7 @@ class TestTopicStoreMerge:
                 "topic/health": TopicVariables(
                     topic_dcid="topic/health",
                     topic_name="Health & Wellness",  # Different name
-                    variables=[
+                    member_variables=[
                         "sv/health_var1",
                         "sv/health_var2",
                     ],  # Additional variable
@@ -138,7 +138,7 @@ class TestTopicStoreMerge:
         expected_health_topic = TopicVariables(
             topic_dcid="topic/health",
             topic_name="Health",  # First store's name
-            variables=["sv/health_var1"],  # First store's variables only
+            member_variables=["sv/health_var1"],  # First store's variables only
             member_topics=[],  # First store's member topics
         )
         assert result.topics_by_dcid["topic/health"] == expected_health_topic

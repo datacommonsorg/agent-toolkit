@@ -237,7 +237,7 @@ class DCClient:
             ) | self._place_like_statvar_store.get(place_dcid, set())
             if place_variables is not None:
                 matching_vars = [
-                    var for var in topic_data.variables if var in place_variables
+                    var for var in topic_data.member_variables if var in place_variables
                 ]
                 if matching_vars:
                     places_with_data.append(place_dcid)
@@ -361,7 +361,9 @@ class DCClient:
 
         if topics_to_process:
             self._get_topics_members_with_existence_new(
-                topics_to_process, all_place_dcids
+                topics_to_process,
+                include_topics=include_topics,
+                place_dcids=all_place_dcids,
             )
 
         if not include_topics:
@@ -489,12 +491,19 @@ class DCClient:
         return results_by_search, dcid_name_mappings
 
     def _get_topics_members_with_existence_new(
-        self, topics: dict[str, SearchTopic], place_dcids: list[str] | None
+        self,
+        topics: dict[str, SearchTopic],
+        *,
+        include_topics: bool,
+        place_dcids: list[str] | None,
     ) -> None:
         """
         Get and set member topics and variables for SearchTopic objects,
         filtered by existence if places are specified. This method modifies
         the SearchTopic objects in place.
+
+        If include_topics is false, we return all descendant variables.
+        If include_topics is true, we return member topics and member variables.
 
         Note: This has the same logic as _get_topics_members_with_existence but operates on SearchTopic objects.
         """
@@ -506,8 +515,15 @@ class DCClient:
             if not topic_data:
                 continue
 
-            member_topics = topic_data.member_topics
-            member_variables = topic_data.variables
+            member_topics: list[str] = []
+            member_variables: list[str] = []
+
+            if include_topics:
+                member_topics = topic_data.member_topics
+                member_variables = topic_data.member_variables
+            else:
+                member_topics = []
+                member_variables = topic_data.descendant_variables
 
             # Filter by existence if places are specified
             if place_dcids:
@@ -544,7 +560,7 @@ class DCClient:
         for place_dcid in place_dcids:
             place_variables = self.variable_cache.get(place_dcid)
             if place_variables and any(
-                var in place_variables for var in topic_data.variables
+                var in place_variables for var in topic_data.member_variables
             ):
                 return True
 
@@ -716,7 +732,9 @@ class DCClient:
         variables = variables[:max_results]
 
         # Get member information for topics
-        topic_members = self._get_topics_members_with_existence(topics, place_dcids)
+        topic_members = self._get_topics_members_with_existence(
+            topics, include_topics=include_topics, place_dcids=place_dcids
+        )
 
         # Build response structure
         return {
@@ -783,7 +801,9 @@ class DCClient:
                 if self.topic_store and sv_dcid in self.topic_store.topics_by_dcid:
                     # If topics are not included, expand topics to variables.
                     if not include_topics:
-                        for variable in self.topic_store.get_topic_variables(sv_dcid):
+                        for variable in self.topic_store.get_topic_descendant_variables(
+                            sv_dcid
+                        ):
                             if variable not in variable_set:
                                 variables.append(variable)
                                 variable_set.add(variable)
@@ -831,9 +851,17 @@ class DCClient:
         return existing_topics
 
     def _get_topics_members_with_existence(
-        self, topic_dcids: list[dict], place_dcids: list[str] = None
+        self,
+        topic_dcids: list[dict],
+        *,
+        include_topics: bool,
+        place_dcids: list[str] = None,
     ) -> dict:
-        """Get member topics and variables for topics, filtered by existence if places specified."""
+        """Get member topics and variables for topics, filtered by existence if places specified
+
+        If include_topics is false, we return all descendant variables.
+        If include_topics is true, we return member topics and member variables.
+        """
         if not topic_dcids or not self.topic_store:
             return {}
 
@@ -845,8 +873,15 @@ class DCClient:
             if not topic_data:
                 continue
 
-            member_topics = topic_data.member_topics
-            member_variables = topic_data.variables
+            member_topics: list[str] = []
+            member_variables: list[str] = []
+
+            if include_topics:
+                member_topics = topic_data.member_topics
+                member_variables = topic_data.member_variables
+            else:
+                member_topics = []
+                member_variables = topic_data.descendant_variables
 
             # Filter by existence if places are specified
             if place_dcids:
