@@ -1,4 +1,4 @@
-# Get Started with the Data Commons MCP
+# Get Started with Data Commons MCP Server
 
 * TOC
 
@@ -43,7 +43,7 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
-{#basic}
+{: #basic}
 ## Basic usage: run a local agent and server
 
 Below we provide specific instructions for the following agents:
@@ -54,30 +54,43 @@ For other clients/agents, see the relevant documentation; you should be able to 
 
 ### Prerequisites
 
+For all instances:
+
 - A Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
 - For running the sample agent or the Colab notebook (and, optionally, Gemini CLI), a Gemini-enabled API key. To obtain a Gemini API key, go to <https://aistudio.google.com/app/apikey>.
 - For Gemini CLI, running the sample agent locally, or running the server locally in standalone mode, install `uv` to install and manage Python packages; see the instructions at <https://github.com/astral-sh/uv/blob/main/README.md>. 
 - For running the sample agent locally, install [Git](https://git-scm.com/).
 
-{#vars}
+> **Important**: Additionally, for custom Data Commons instances:
+
+> If you have not rebuilt your Data Commons image since the stable release of 09/09/2025, you must [sync to the lastest stable release](https://docs.datacommons.org/custom_dc/build_image.html#sync-code-to-the-stable-branch), [rebuild your image](https://docs.datacommons.org/custom_dc/build_image.html#build-package) and [redeploy](https://docs.datacommons.org/custom_dc/deploy_cloud.html#manage-your-service).
+
+{: #vars}
 ### Configure environment variables
 
 You configure the server using environment variables. All supported options are documented in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample. 
 
-For basic usage against datacommons.org, juset set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
+#### "Base" Data Commons (datacommons.org)
 
-If you're running a against a custom Data Commons instance, or otherwise setting several variables, we recommend using a `.env` file, which the server locates automatically, to keep all the settings in one place. To do so:
+For basic usage against datacommons.org, just set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
+
+#### Custom Data Commons
+
+If you're running a against a custom Data Commons instance, we recommend using a `.env` file, which the server locates automatically, to keep all the settings in one place. To do so:
 
 1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. 
 
-    > Tip: If you're planning to run the sample agent, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
+   > Tip: If you're planning to run the sample agent or , clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
 1. From the directory where you saved the sample file, copy it to a new file called `.env`. For example:
    ```
    cd ~/agent-toolkit/packages/datacommons-mcp
    cp .env.sample .env
    ```
-1. Set the required variable `DC_API_KEY` to your Data Commons API key, and any other optional variables. If you are using a Custom Data Commons instance, be sure to set `DC_TYPE` to `custom` and uncomment and set `CUSTOM_DC_URL` to the URL of your instance. 
+1. Set the following variables: 
+   - `DC_API_KEY`: Set to your Data Commons API key
+   - `DC_TYPE`: Set to `custom`.
+   - `CUSTOM_DC_URL: Set to  If you are using a Custom Data Commons instance, be sure to set `DC_TYPE` to `custom` and uncomment and set `CUSTOM_DC_URL` to the URL of your instance. 
 
 ### Use Gemini CLI
 
@@ -123,7 +136,7 @@ Once Gemini CLI has started up, you can immediately begin sending natural-langua
 
 > **Tip**: To ensure that Gemini CLI uses the Data Commons MCP tools, and not its own `GoogleSearch` tool, include a prompt to use Data Commons in your query. For example, use a query like "Use Data Commons tools to answer the following: ..."  You can also add such a prompt to your [`GEMINI.md` file](https://codelabs.developers.google.com/gemini-cli-hands-on#9) so that it's persisted across sessions.
 
-{#sample}
+{: #sample}
 ### Use the sample agent
 
 xxx is a basic agent for interacting with the MCP Server. To run it locally:
@@ -154,7 +167,7 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
 - [Building a Data Commons MCP Agent]() is a Google Colab tutorial that shows how to build an HTTP-based agent step by step. 
 - The sample [basic agent]() is a simple Stdio-based agent. To develop against it, see [Use the sample agent](#sample) above.
 
-{#inspect}
+{: #inspect}
 ### Test with MCP Inspector
 
 If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector]() is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
