@@ -22,7 +22,7 @@ The server currently supports the following tools:
 - `get_observations`: Fetches statistical data for a given variable and place.
 - `validate_child_place_types`: Validates child place types for a given parent place.
 
-Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py. If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#inspector) for details.
+Tool APIs are defined in https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/datacommons_mcp/server.py. If you want a deeper understanding of how the tools work, you may use the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) to make tool calls directly; see [Test with MCP Inspector](#inspect) for details.
 
 ### Clients
 
