@@ -445,7 +445,6 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
     # Note: Cached data now only contains direct variables
     # Descendant variables are computed on-demand during existence checks
     logger.info("Loaded topic store from: %s", cache_file_path)
-    topic_store.debug_log()
 
     return topic_store
 
@@ -542,7 +541,6 @@ def create_topic_store(
     topic_store.populate_topic_descendant_variables()
 
     logger.info("Created topic store for: %s", dc_client.api.base_url)
-    topic_store.debug_log()
 
     # Cache the result if a cache file path is provided
     if cache_file_path:
