@@ -707,6 +707,7 @@ class DCClient:
                 }
             else:
                 search_results = {}
+
         else:
             # Search for more results than we need to ensure we get enough topics and variables.
             # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.

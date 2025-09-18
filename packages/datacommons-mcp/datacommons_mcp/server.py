@@ -447,6 +447,13 @@ async def search_indicators(
         - Call with `query="trade"`
         - No place existence checks are performed
 
+    * **For unqualified exploratory queries** like "what data do you have?":
+        - Ask the user to specify a place (e.g., "Which place would you like to explore? For example, 'Paris', 'California', 'India', 'Africa', 'World'")
+        - Call with `query=""` (empty string) and `places=[user_specified_place]`
+        - Returns root topics if available to give users an overview of available data for that place
+        - If no topics are available, returns empty response
+        - Usual existence checks are performed for the specified place
+
     * **When place results don't match user intent** (e.g., user asks for "Scotland" but gets Scotland County, USA instead of Scotland, UK in the response):
         - Add a qualifier: `places=["Scotland, UK"]` or `places=["Scotland, United Kingdom"]`
 

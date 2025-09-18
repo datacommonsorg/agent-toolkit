@@ -147,7 +147,11 @@ class CustomDCSettings(DCSettings):
     )
 
     @field_validator(
-        "root_topic_dcids", "base_root_topic_dcids", "place_like_constraints", "topic_cache_paths", mode="before"
+        "root_topic_dcids",
+        "base_root_topic_dcids",
+        "place_like_constraints",
+        "topic_cache_paths",
+        mode="before",
     )
     @classmethod
     def parse_list_like_parameter(cls, v: str) -> list[str] | None:
