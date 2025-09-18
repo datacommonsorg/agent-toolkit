@@ -11,16 +11,16 @@ This is a Model Context Protocol server for fetching public information from Dat
 1.  A Data Commons API key. You can get one from [apikeys.datacommons.org](https://apikeys.datacommons.org/).
 2.  `uv`. You can find installation instructions at [https://astral.sh/uv](https://astral.sh/uv).
 
-## Configuration
+### Configuration
 
-For basic usage against datacommons.org, wet the following required environment variable:
+For basic usage against datacommons.org, set the following required environment variable:
 ```
 export DC_API_KEY=<your API key>
 ```
 
 To use the server with a Custom Data Commons instance, set additional environment variables using an `.env` file.  For usage, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md#custom-data-commons).
 
-## Start the server 
+### Start the server 
 
 Run the server with `uvx`. 
 
