@@ -1081,7 +1081,7 @@ def _create_base_topic_store(settings: DCSettings) -> TopicStore:
     # Set base root topic DCIDs, they are separately specified in the settings.
     topic_store.root_topic_dcids = settings.base_root_topic_dcids
 
-    logger.info("Base DC topic store: %s")
+    logger.info("Base DC topic store:")
     topic_store.debug_log()
 
     return topic_store
