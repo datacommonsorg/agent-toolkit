@@ -790,8 +790,6 @@ class DCClient:
 
         # An empty query is treated as a request to browse for root topics.
         if not query:
-            # Always include topics for such requests.
-            include_topics = True
             if self.topic_store and self.topic_store.root_topic_dcids:
                 search_results = {
                     "topics": self.topic_store.root_topic_dcids,
