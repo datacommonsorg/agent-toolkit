@@ -13,7 +13,3 @@ This repo contains the MCP tools for fetching public information from [Data Comm
 
 
 [Docs](docs/get_started.md)
-
-## Test Agents (internal)
-
-[Data Commons Test Agent](packages/datacommons-test-agents/)
