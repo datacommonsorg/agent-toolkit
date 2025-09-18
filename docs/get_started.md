@@ -16,7 +16,7 @@ At this time, there is no centrally deployed server; you run your own server, an
 
 The server currently supports the following tools:
 
-- `search_indicators`: Searches for available variables and/or topics for a given place or metric. Topics are only relevant for Custom Data Commons instances that have implemented them.
+- `search_indicators`: Searches for available variables and/or topics (a hierarchy of sub-topics and member variables) for a given place or metric. Topics are only relevant for Custom Data Commons instances that have implemented them.
 - `get_observations`: Fetches statistical data for a given variable and place.
 - `validate_child_place_types`: Validates child place types for a given parent place.
 
