@@ -119,8 +119,8 @@ We recommend that you use the [Gemini API key](https://github.com/google-gemini/
       ],
       "env": {
         "DC_API_KEY": "<your key>"
-      }
-     "trust": true
+      },
+      "trust": true
     }
   }
 }
