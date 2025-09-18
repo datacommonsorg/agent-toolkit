@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Data Commons Model Context Protocol (MCP) tools give AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allows end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, depending on the agent, a user can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
+The Data Commons [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) service gives AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allow end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, depending on the agent, a user can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
 
 The MCP server returns data from datacommons.org by default or can be configured for a Custom Data Commons instance. 
 
@@ -72,7 +72,7 @@ For all instances:
 
 ### Configure environment variables
 
-#### Connecting to datacommons.org
+#### Base Data Commons (datacommons.org)
 
 For basic usage against datacommons.org, set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
 ```
@@ -97,14 +97,13 @@ To set variables using a `.env` file:
    - `DC_TYPE`: Set to `custom`.
    - `CUSTOM_DC_URL`: Uncomment and set to the URL of your instance. 
 1. Optionally, set other variables.
+1. Save the file.
 
 ### Use Gemini CLI
 
 To install Gemini CLI, see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
 
 We recommend that you use the [Gemini API key](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#option-2-gemini-api-key) or [Vertex API key](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#option-3-vertex-ai) authentication options if you already have a Google Cloud Platform project, so you don't have to log in for every session. 
-
-To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file (or `settings.json` file in another directory) to add the following:
 
 ```json
 {
@@ -120,15 +119,12 @@ To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemi
       ],
       "env": {
         "DC_API_KEY": "<your key>"
-        "DC_API_KEY": "<your key>"
       }
     }
   }
 }
 ```
-If desired, you can modify the following settings:
-- `selectedAuthType`: If you don't have a GCP project and want to use OAuth with your Google account, set this to `oauth-personal`.
-- `command`: Set to `uv` if you want to run packages from locally stored Python code.
+If you don't have a GCP project and want to use OAuth with your Google account, set `selectedAuthType` to `oauth-personal`.
 
 You can now run the `gemini` command from any directory and it will automatically kick off the MCP server, with the correct environment variables.
 
@@ -165,7 +161,7 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
 
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
-- [Building an Agent with Data Commons Tools]() is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
+- [title pending]() is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
 - The sample [basic agent]() is a simple Python ADK agent you can use to develop locally. See [Use the sample agent](#use-the-sample-agent) above for details.
 
 ### Test with MCP Inspector
@@ -183,6 +179,7 @@ To use it:
 1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session token>`. 
 1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
 1. In the left pane, click **Connect**. 
+1. more coming...
 
 ## Use a remote server/client
 
@@ -227,8 +224,3 @@ To configure the sample agent xxx to connect to a remote Data Commons server ove
     ...
 )
 ```
-
-
-
-
-
