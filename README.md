@@ -14,7 +14,7 @@ This repo contains the MCP Server for fetching public information from [Data Com
 
 [Docs](docs/get_started.md)
 
-## Test Agents
+## Test Agents (internal)
 
 [Data Commons Test Agent](packages/datacommons-test-agents/)
-[Docs](packages/datacommons-mcp/docs/dev.md)
+[Docs](packages/datacommons-test-agents/README.md)
