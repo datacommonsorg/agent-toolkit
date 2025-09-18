@@ -1,4 +1,4 @@
-# Get Started with Data Commons MCP Server
+# Get Started with Data Commons MCP Tools
 
 ## Overview
 
