@@ -45,7 +45,7 @@ At the current time, the following are not supported:
 
 ### Feedback
 
-If you'd like to provide feedback on the Data Commons MCP Server, please see this [FAQ entry](https://datacommons.org/faq#feedback) on how to file bugs or feature requests. 
+If you'd like to provide feedback on the Data Commons MCP tools, please see this [FAQ entry](https://datacommons.org/faq#feedback) on how to file bugs or feature requests. 
 
 ## Basic usage: run a local agent and server
 
