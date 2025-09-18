@@ -70,7 +70,7 @@ For all instances:
 
 ### Configure environment variables
 
-#### "Base" Data Commons (datacommons.org)
+#### Connecting to datacommons.org
 
 For basic usage against datacommons.org, set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
 ```
