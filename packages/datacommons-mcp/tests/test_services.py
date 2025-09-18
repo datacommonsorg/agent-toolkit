@@ -21,7 +21,6 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import SearchResponse
 from datacommons_mcp.exceptions import (
     DataLookupError,
     InvalidDateFormatError,
@@ -1302,89 +1301,3 @@ class TestSearchIndicators:
         )
         assert result.status == "SUCCESS"
         assert mock_client.fetch_indicators.call_count == 1  # single search
-
-
-@pytest.mark.asyncio
-class TestSearchIndicatorsNewPath:
-    """Tests for the search_indicators service function with the new endpoint path."""
-
-    async def test_search_indicators_new_path_flag_true(self):
-        """
-        Tests that search_indicators calls client.search_indicators when the flag is True.
-        """
-        # Arrange
-        mock_client = Mock(spec=DCClient)
-        mock_client.use_search_indicators_endpoint = True
-        # Mock the new path method
-        mock_client.search_indicators = AsyncMock(
-            return_value=SearchResponse(variables=[])
-        )
-        # Mock the old path method to ensure it's NOT called
-        mock_client.fetch_indicators = AsyncMock()
-
-        mock_client.search_places = AsyncMock(
-            return_value={"USA": "country/USA", "France": "country/FRA"}
-        )
-
-        # Act
-        await search_indicators(client=mock_client, query="test")
-
-        # Assert
-        mock_client.search_indicators.assert_awaited_once()
-        mock_client.fetch_indicators.assert_not_called()
-
-    async def test_search_indicators_new_path_flag_false(self):
-        """
-        Tests that search_indicators calls the old path (_search_vector via fetch_indicators)
-        when the flag is False.
-        """
-        # Arrange
-        mock_client = Mock(spec=DCClient)
-        mock_client.use_search_indicators_endpoint = False
-        # Mock the new path method to ensure it's NOT called
-        mock_client.search_indicators = AsyncMock()
-        # Mock the old path dependencies
-        mock_client.fetch_indicators = AsyncMock(
-            return_value={"topics": [], "variables": [], "lookups": {}}
-        )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
-        mock_client.search_places = AsyncMock(
-            return_value={"USA": "country/USA", "France": "country/FRA"}
-        )
-
-        # Act
-        await search_indicators(client=mock_client, query="test")
-
-        # Assert
-        mock_client.search_indicators.assert_not_awaited()
-        mock_client.fetch_indicators.assert_called_once()
-
-        # Test valid combinations (should not raise)
-        # Single place
-        result = await search_indicators(
-            client=mock_client,
-            query="test",
-            places=["USA"],
-        )
-        assert result.status == "SUCCESS"
-
-        # Multiple places
-        result = await search_indicators(
-            client=mock_client,
-            query="test",
-            places=["USA", "Canada"],
-        )
-        assert result.status == "SUCCESS"
-
-        # Maybe bilateral with places
-        result = await search_indicators(
-            client=mock_client,
-            query="test",
-            places=["USA", "France"],
-            maybe_bilateral=True,
-        )
-        assert result.status == "SUCCESS"
-
-        # No places
-        result = await search_indicators(client=mock_client, query="test")
-        assert result.status == "SUCCESS"

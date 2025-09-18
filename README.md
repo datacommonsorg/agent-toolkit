@@ -1,17 +1,20 @@
 # Data Commons Agent Toolkit
 
-This is an experimental MCP server for fetching public information from [Data Commons](https://datacommons.org/).
-
-**This is experimental and subject to change.**
+This repo contains the MCP tools for fetching public information from [Data Commons](https://datacommons.org/), as well as a sample Google ADK agent.
 
 ## MCP Server
 
 [Data Commons MCP Server package](packages/datacommons-mcp/)
 * PyPI: https://pypi.org/project/datacommons-mcp
 
-[Developer docs](packages/datacommons-mcp/docs/dev.md)
+[Docs](docs/get_started.md)
+
+## Sample Agent
 
 
-## Test Agents
+[Docs](docs/get_started.md)
+
+## Test Agents (internal)
 
 [Data Commons Test Agent](packages/datacommons-test-agents/)
+[Docs](packages/datacommons-test-agents/README.md)

@@ -680,6 +680,97 @@ class DCClient:
 
         return results_map
 
+    async def _call_search_indicators_temp(
+        self, queries: list[str], *, max_results: int = 10
+    ) -> dict:
+        """
+        Temporary method that mirrors search_svs but calls the new search-indicators endpoint.
+
+        This method takes the same arguments and returns the same structure as search_svs,
+        but uses the new /api/nl/search-indicators endpoint instead of /api/nl/search-vector.
+
+        This method is temporary to create a minimal delta between the two endpoints to minimize the impact of the change.
+        After the 1.0 release, this method should be removed in favor of a more complete implementation.
+
+        Returns:
+            Dictionary mapping query strings to lists of results with 'SV' and 'CosineScore' keys
+        """
+        results_map = {}
+        endpoint_url = f"{self.sv_search_base_url}/api/nl/search-indicators"
+        headers = {"Content-Type": "application/json"}
+
+        # Use precomputed indices based on configured search scope
+        indices = self.search_indices
+
+        for query in queries:
+            # Prepare parameters for the new endpoint
+            params = {
+                "queries": [query],
+                "limit_per_index": max_results,
+                "index": indices,
+            }
+
+            try:
+                response = await asyncio.to_thread(
+                    requests.get,
+                    endpoint_url,
+                    params=params,
+                    headers=headers,  # noqa: S113
+                )
+                response.raise_for_status()
+                api_response = response.json()
+
+                # Transform the response to match search_svs format
+                transformed_results = self._transform_search_indicators_to_svs_format(
+                    api_response, max_results=max_results
+                )
+                results_map[query] = transformed_results
+
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "An unexpected error occurred for query '%s': %s", query, e
+                )
+                results_map[query] = []
+
+        return results_map
+
+    def _transform_search_indicators_to_svs_format(
+        self, api_response: dict, *, max_results: int = 10
+    ) -> list[dict]:
+        """
+        Transform search-indicators response to match search_svs format.
+
+        Returns:
+            List of dictionaries with 'SV' and 'CosineScore' keys
+        """
+        results = []
+        query_results = api_response.get("queryResults", [])
+
+        for query_result in query_results:
+            for index_result in query_result.get("indexResults", []):
+                for indicator in index_result.get("results", []):
+                    dcid = indicator.get("dcid")
+                    if not dcid:
+                        continue
+
+                    # Extract score (default to 0.0 if not present)
+                    score = indicator.get("score", 0.0)
+
+                    results.append(
+                        {
+                            "SV": dcid,
+                            "CosineScore": score,
+                            "description": indicator.get("description"),
+                            "alternate_descriptions": indicator.get(
+                                "search_descriptions"
+                            ),
+                        }
+                    )
+
+        # Sort by score descending, then limit results
+        results.sort(key=lambda x: x["CosineScore"], reverse=True)
+        return results[:max_results]
+
     async def fetch_indicators(
         self,
         query: str,
@@ -783,23 +874,35 @@ class DCClient:
                 [topic_info["dcid"] for topic_info in topics]
                 + [var_info["dcid"] for var_info in variables]
             ),
+            "descriptions": search_results.get("descriptions", {}),
+            "alternate_descriptions": search_results.get("alternate_descriptions", {}),
         }
 
     async def _search_vector(
         self, query: str, max_results: int = 10, *, include_topics: bool = True
     ) -> dict:
         """
-        Search for topics and variables using search_svs.
+        Search for topics and variables using the search-indicators or search-vector endpoint.
         """
-        logger.info("Querying search-vector for: '%s'", query)
         # Always include topics since we need to expand topics to variables.
-        search_results = await self.search_svs(
-            [query], skip_topics=False, max_results=max_results
-        )
+        if self.use_search_indicators_endpoint:
+            logger.info("Calling search-indicators endpoint for: '%s'", query)
+            search_results = await self._call_search_indicators_temp(
+                queries=[query],
+                max_results=max_results,
+            )
+        else:
+            logger.info("Calling search-vector endpoint for: '%s'", query)
+            search_results = await self.search_svs(
+                [query], skip_topics=False, max_results=max_results
+            )
+
         results = search_results.get(query, [])
 
         topics = []
         variables = []
+        descriptions: dict[str, str] = {}
+        alternate_descriptions: dict[str, list[str]] = {}
         # Track variables to avoid duplicates when expanding topics to variables.
         variable_set: set[str] = set()
 
@@ -826,7 +929,15 @@ class DCClient:
                 variables.append(sv_dcid)
                 variable_set.add(sv_dcid)
 
-        return {"topics": topics, "variables": variables}
+            descriptions[sv_dcid] = result.get("description")
+            alternate_descriptions[sv_dcid] = result.get("alternate_descriptions")
+
+        return {
+            "topics": topics,
+            "variables": variables,
+            "descriptions": descriptions,
+            "alternate_descriptions": alternate_descriptions,
+        }
 
     def _filter_variables_by_existence(
         self, variable_dcids: list[str], place_dcids: list[str]
