@@ -1125,7 +1125,8 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
             topic_store.merge(base_topic_store) if topic_store else base_topic_store
         )
 
-    logger.info("Custom DC topic store loaded")
+    if topic_store:
+        logger.info("Custom DC topic store loaded")
 
     # Create DCClient
     return DCClient(
