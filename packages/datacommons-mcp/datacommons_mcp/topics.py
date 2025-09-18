@@ -96,6 +96,7 @@ class TopicStore:
     topics_by_dcid: dict[str, TopicVariables]
     all_variables: set[str]
     dcid_to_name: dict[str, str] = field(default_factory=dict)
+    root_topic_dcids: list[str] = field(default_factory=list)
 
     def has_variable(self, sv_dcid: str) -> bool:
         return sv_dcid in self.all_variables
@@ -172,6 +173,11 @@ class TopicStore:
             if dcid not in self.dcid_to_name:
                 self.dcid_to_name[dcid] = name
 
+        # Only add root topic DCIDs that don't already exist
+        for dcid in other.root_topic_dcids:
+            if dcid not in self.root_topic_dcids:
+                self.root_topic_dcids.append(dcid)
+
         return self
 
     def debug_log(self) -> None:
@@ -185,6 +191,7 @@ class TopicStore:
                 len(topic_data.descendant_variables),
                 len(topic_data.member_topics),
             )
+        logger.info("  Root topic DCIDs: %s", self.root_topic_dcids)
 
 
 def _flatten_variables_recursive(
@@ -385,6 +392,7 @@ def _save_topic_store_to_cache(topic_store: TopicStore, cache_file_path: Path) -
         },
         "all_variables": list(topic_store.all_variables),
         "dcid_to_name": topic_store.dcid_to_name,
+        "root_topic_dcids": topic_store.root_topic_dcids,
     }
 
     # Ensure the directory exists
@@ -422,11 +430,13 @@ def _load_topic_store_from_cache(cache_file_path: Path) -> TopicStore:
 
     all_variables = set(cache_data["all_variables"])
     dcid_to_name = cache_data["dcid_to_name"]
+    root_topic_dcids = cache_data["root_topic_dcids"]
 
     topic_store = TopicStore(
         topics_by_dcid=topics_by_dcid,
         all_variables=all_variables,
         dcid_to_name=dcid_to_name,
+        root_topic_dcids=root_topic_dcids,
     )
 
     # Populate descendant variables for each topic
@@ -525,6 +535,7 @@ def create_topic_store(
         topics_by_dcid=topics_by_dcid,
         all_variables=all_variables,
         dcid_to_name=dcid_to_name,
+        root_topic_dcids=root_topic_dcids,
     )
 
     # Populate descendant variables for each topic
