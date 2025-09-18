@@ -1,6 +1,6 @@
 # Data Commons Agent Toolkit
 
-This repo contains the MCP Server for fetching public information from [Data Commons](https://datacommons.org/), as well as a sample Google ADK-based agent.
+This repo contains the MCP tools for fetching public information from [Data Commons](https://datacommons.org/), as well as a sample Google ADK agent.
 
 ## MCP Server
 

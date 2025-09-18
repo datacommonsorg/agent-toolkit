@@ -72,7 +72,7 @@ For all instances:
 
 ### Configure environment variables
 
-#### "Base" Data Commons (datacommons.org)
+#### Connecting to datacommons.org
 
 For basic usage against datacommons.org, set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
 ```
@@ -198,7 +198,7 @@ The server is addressable with the endpoint `mcp`. For example, `http://my-mcp-s
 
 ### Connect to an already-running server from a remote client
 
-Below we provide instructions for Gemini CLI and for the Google-ADK-based sample agent. If you're using a different client, consult its documentation to determine how to specify an HTTP URL.
+Below we provide instructions for Gemini CLI and a sample ADK agent. If you're using a different client, consult its documentation to determine how to specify an HTTP URL.
 
 #### Gemini CLI
 
