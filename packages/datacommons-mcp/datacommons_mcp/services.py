@@ -504,13 +504,7 @@ async def search_indicators(
         query, places, place_dcids_map, maybe_bilateral=maybe_bilateral
     )
 
-    # Use search-indicators endpoint
-    if client.use_search_indicators_endpoint:
-        return await client.search_indicators(
-            search_tasks, per_search_limit, include_topics=include_topics
-        )
-
-    # Use search-vector endpoint
+    # Use search-vector or temp impl of search-indicators endpoint
     search_result = await _search_vector(
         client=client,
         search_tasks=search_tasks,
@@ -706,6 +700,8 @@ async def _merge_search_results(results: list[dict]) -> SearchResult:
     all_variables: dict[str, SearchVariable] = {}
 
     for result in results:
+        descriptions = result.get("descriptions", {})
+        alternate_descriptions = result.get("alternate_descriptions", {})
         # Union topics
         for topic in result.get("topics", []):
             topic_dcid = topic["dcid"]
@@ -715,6 +711,8 @@ async def _merge_search_results(results: list[dict]) -> SearchResult:
                     member_topics=topic.get("member_topics", []),
                     member_variables=topic.get("member_variables", []),
                     places_with_data=topic.get("places_with_data"),
+                    description=descriptions.get(topic_dcid),
+                    alternate_descriptions=alternate_descriptions.get(topic_dcid),
                 )
 
         # Union variables
@@ -724,6 +722,8 @@ async def _merge_search_results(results: list[dict]) -> SearchResult:
                 all_variables[var_dcid] = SearchVariable(
                     dcid=variable["dcid"],
                     places_with_data=variable.get("places_with_data", []),
+                    description=descriptions.get(var_dcid),
+                    alternate_descriptions=alternate_descriptions.get(var_dcid),
                 )
 
     return SearchResult(topics=all_topics, variables=all_variables)

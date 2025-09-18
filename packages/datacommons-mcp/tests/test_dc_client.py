@@ -701,8 +701,10 @@ class TestDCClientFetchIndicators:
             ]
         }
 
-        # Mock the search_svs method
-        client_under_test.search_svs = AsyncMock(return_value=mock_search_results)
+        # Mock the _call_search_indicators_temp method
+        client_under_test._call_search_indicators_temp = AsyncMock(
+            return_value=mock_search_results
+        )
 
         # Set topic store to None
         client_under_test.topic_store = None
@@ -758,6 +760,34 @@ class TestDCClientFetchIndicators:
         assert len(result["variables"]) == 2  # Both variables should be included
         assert "Count_Person" in result["variables"]
         assert "Count_Household" in result["variables"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_indicators_temp_search_indicators_endpoint_called(
+        self, mocked_datacommons_client: Mock
+    ):
+        """Test basic functionality without place filtering."""
+        # Arrange: Create client for the temp path and mock search results
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client, use_search_indicators_endpoint=True
+        )
+
+        # Mock search_svs method (should not be called)
+        client_under_test.search_svs = AsyncMock(return_value={})
+        # Mock _call_search_indicators_temp method (should be called)
+        client_under_test._call_search_indicators_temp = AsyncMock(return_value={})
+
+        # Mock topic store
+        client_under_test.topic_store = Mock()
+        client_under_test.topic_store.get_name.side_effect = lambda dcid: dcid
+
+        # Mock topic data
+        client_under_test.topic_store.topics_by_dcid = {}
+
+        # Act: Call the method
+        await client_under_test.fetch_indicators("test query", include_topics=True)
+
+        client_under_test._call_search_indicators_temp.assert_awaited_once()
+        client_under_test.search_svs.assert_not_called()
 
 
 class TestDCClientFetchIndicatorsNew:
