@@ -1,6 +1,6 @@
 # Data Commons MCP Server
 
-This package a Model Context Protocol server for fetching public information from Data Commons (datacommons.org or custom instances).
+This is a Model Context Protocol server for fetching public information from Data Commons (datacommons.org or custom instances).
 
 [Data Commons](https://datacommons.org) is an open knowledge repository that provides a unified view across multiple public data sets and statistics. 
 
@@ -13,12 +13,12 @@ This package a Model Context Protocol server for fetching public information fro
 
 ## Configuration
 
-Set the following required environment variable:
+For basic usage against datacommons.org, wet the following required environment variable:
 ```
 export DC_API_KEY=<your API key>
 ```
 
-To use the server with a Custom Data Commons instance, set additional environment variables using an `.env` file. The file `.env.sample` in this package contains all available configuration options with detailed documentation. For recommended usage, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md#custom-data-commons).
+To use the server with a Custom Data Commons instance, set additional environment variables using an `.env` file.  For usage, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md#custom-data-commons).
 
 ## Start the server 
 
@@ -42,4 +42,4 @@ uvx datacommons-mcp serve http
 
 You can use any MCP-enabled agent/client to connect to the server. See your preferred client's documentation for how to configure it to connect to the Data Commons MCP Server. 
 
-To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md), or try it out with this [Google Colab notebook]().
+To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md). Or try it out with this [Google Colab notebook]().
