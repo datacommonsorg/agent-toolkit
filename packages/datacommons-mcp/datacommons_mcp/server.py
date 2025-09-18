@@ -18,11 +18,10 @@ Server module for the DC MCP server.
 import asyncio
 import logging
 import types
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import Union, get_args, get_origin
 
 from fastmcp import FastMCP
-from fastmcp.tools.tool import ToolResult
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
@@ -38,17 +37,15 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
+from datacommons_mcp.data_models.search import (
+    SearchResponse,
+)
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
 )
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
-
-if TYPE_CHECKING:
-    from datacommons_mcp.data_models.search import (
-        SearchResponse,
-    )
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -71,16 +68,6 @@ mcp = FastMCP(
 )
 
 
-def _create_structured_tool_result(response_model: BaseModel) -> ToolResult:
-    """Creates a ToolResult with the model's data as structured content."""
-    return ToolResult(
-        content=[],
-        structured_content=response_model.model_dump(
-            exclude_none=True, exclude_unset=True
-        ),
-    )
-
-
 @mcp.tool()
 async def get_observations(
     variable_dcid: str,
@@ -90,7 +77,7 @@ async def get_observations(
     date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
-) -> ToolResult:
+) -> ObservationToolResponse:
     """Fetches observations for a statistical variable from Data Commons.
 
     **CRITICAL: Always validate variable-place combinations first**
@@ -155,7 +142,7 @@ async def get_observations(
 
     """
     # TODO(keyurs): Remove place_name parameter from the service call.
-    response: ObservationToolResponse = await get_observations_service(
+    return await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
@@ -166,7 +153,6 @@ async def get_observations(
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
-    return _create_structured_tool_result(response)
 
 
 @mcp.tool()
@@ -393,7 +379,7 @@ async def search_indicators(
     *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-) -> ToolResult:
+) -> SearchResponse:
     """Search for topics and variables (collectively called "indicators") across Data Commons.
 
     This tool returns candidate indicators that match your query. You should treat these as
@@ -515,7 +501,7 @@ async def search_indicators(
     - For child entity queries, sample 5-6 diverse child entities as representative proxy
     """
     # Call the real search_indicators service
-    response: SearchResponse = await search_indicators_service(
+    return await search_indicators_service(
         client=dc_client,
         query=query,
         places=places,
@@ -523,4 +509,3 @@ async def search_indicators(
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
     )
-    return _create_structured_tool_result(response)
