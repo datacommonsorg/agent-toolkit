@@ -35,6 +35,7 @@ If you are using a custom Data Commons instance, please see the [User Guide](use
             "trust": true
              }
         }
+        ...
     }
     ```
 If you are using your Google Account credentials (with OAuth), you are prompted to log in.

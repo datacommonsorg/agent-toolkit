@@ -73,7 +73,7 @@ For all instances:
 #### Base Data Commons (datacommons.org)
 
 For basic usage against datacommons.org, set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
-```
+```bash
 export DC_API_KEY=<your API key>
 ```
 
@@ -86,7 +86,7 @@ To set variables using a `.env` file:
 1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. Or, if you plan to run the sample agent, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
 1. From the directory where you saved the sample file, copy it to a new file called `.env`. For example:
-   ```
+   ```bash
    cd ~/agent-toolkit/packages/datacommons-mcp
    cp .env.sample .env
    ```
@@ -102,12 +102,12 @@ To set variables using a `.env` file:
 We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run it locally:
 
 1. Set the following environment variables in your shell or startup script:
-   ```
+   ```bash
    export DC_API_KEY=<your Data Commons API key>
    export GEMINI_API_KEY=<your Google AI API key>
    ```
 Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
-   ```
+   ```bash
    git clone https://github.com/datacommonsorg/agent-toolkit.git
    ```
 1. more coming...
@@ -142,7 +142,7 @@ To use it:
 
 1. Ensure you've set up the relevant server [environment variables](#environment-variables). If you're using a `.env` file, go to the directory where the file is stored.
 1. Run:
-   ```
+   ```bash
    uvx datacommons-mcp serve http [--port <port>]
    ```
 By default, the port is 8080 if you don't set it explicitly.
