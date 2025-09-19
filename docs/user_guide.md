@@ -118,7 +118,7 @@ We recommend that you use the [Gemini API key](https://github.com/google-gemini/
         "stdio"
       ],
       "env": {
-        "DC_API_KEY": "<your key>"
+        "DC_API_KEY": "<your Data Commons API key>"
       },
       "trust": true
     }

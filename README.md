@@ -10,8 +10,8 @@ This repo contains the MCP tools for fetching public information from [Data Comm
 
 ## Docs
 
-* [Getting Started with Data Commons MCP Tools](docs/get_started.md)
-* [Sample Agents](docs/sample_agents.md)
+* [Gemini CLI]
+* [User Guide](docs/user_guide.md)
 
 ### Internal Development Docs
 
