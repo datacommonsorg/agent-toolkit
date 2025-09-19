@@ -5,14 +5,14 @@ repos:
         name: ruff-format
         entry: uv run ruff format
         language: system
-        types: [python]
+        types: [python, jupyter]
         args: []
         stages: [pre-push]
       - id: ruff-check
         name: ruff-check
         entry: uv run ruff check
         language: system
-        types: [python]
+        types: [python, jupyter]
         args: [--fix]
         stages: [pre-push]
       - id: pytest
