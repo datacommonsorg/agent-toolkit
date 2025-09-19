@@ -25,6 +25,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
+packages = ["datacommons_mcp"] # Ignores tests, evals and other non-package dirs
 
 [tool.setuptools.package-data]
 datacommons_mcp = ["**/*.json"]
