@@ -37,6 +37,10 @@ datacommons-test-agents = { workspace = true }
 members = ["packages/*"]
 
 [tool.ruff.lint]
+# TODO(clincoln8): Implement lint checks for ipynb's (including pre-push hook).
+exclude = [
+    "**/*.ipynb",  # Ignores all notebooks
+]
 # Visit https://docs.astral.sh/ruff/rules/ for detailed rule descriptions.
 extend-select = [
   "ERA",  # removes commented-out code from Python files.
