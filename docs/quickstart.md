@@ -1,11 +1,13 @@
 # Quickstart: Use Data Commons Tools with Gemini CLI
 
-This page shows you how query datacommons.org using Gemini CLI. If you are using a custom Data Commons instance, please see the [User Guide]() for 
+This page shows you how query datacommons.org using Gemini CLI. 
+
+If you are using a custom Data Commons instance, please see the [User Guide](user_guide.md#custom-data-commons) for configuration instructions.
 
 ## Prerequisites
 
 - A free Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
-- Install `uv`, a tool for managing and installing Python packages: install from https://docs.astral.sh/uv/getting-started/installation/.
+- Install `uv`, a tool for managing and installing Python packages: install from <https://docs.astral.sh/uv/getting-started/installation/>.
 - Optional but recommended: If you have a Google Cloud Project, get a (free) Gemini-enabled API key from <https://aistudio.google.com/app/apikey>, and set the following environment variable in your shell/startup script:
    ```
    export GEMINI_API_KEY="<your key>"
