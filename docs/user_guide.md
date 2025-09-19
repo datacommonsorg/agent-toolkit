@@ -1,4 +1,4 @@
-# Get Started with Data Commons MCP Tools
+# Data Commons MCP User Guide
 
 ## Overview
 
