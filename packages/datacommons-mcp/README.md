@@ -40,6 +40,6 @@ uvx datacommons-mcp serve http
 ```
 ## Clients
 
-You can use any MCP-enabled agent/client to connect to the server. See your preferred client's documentation for how to configure it to connect to the Data Commons MCP Server. 
+You can use any MCP-enabled agent/client to connect to the server. See your preferred client's documentation for how to configure it, using the commands listed above. 
 
-To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md). Or try it out with this [Google Colab notebook]().
+To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md). Or try it out with this [Google Colab notebook](https://colab.research.google.com/github/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb).
