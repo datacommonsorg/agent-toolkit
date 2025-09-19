@@ -2,6 +2,11 @@
 
 This repo contains the MCP tools for fetching public information from [Data Commons](https://datacommons.org/).
 
+## Docs
+
+* [Quickstart with Gemini CLI](docs/quickstart.md)
+* [User Guide](docs/user_guide.md)
+
 ## MCP Server
 
 [Data Commons MCP Server package](packages/datacommons-mcp/)
@@ -10,7 +15,3 @@ This repo contains the MCP tools for fetching public information from [Data Comm
 ### Sample Agents
 [Data Commons sample agents](packages/datacommons-mcp/examples/sample_agents)
 
-## Docs
-
-* [Quickstart with Gemini CLI](docs/quickstart.md)
-* [User Guide](docs/user_guide.md)
