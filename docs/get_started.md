@@ -34,7 +34,7 @@ The server supports both standard MCP transport protocols:
 
 See [Basic usage](#basic-usage) below for how to use the server with Google-based clients over Stdio.
 
-For an end-to-end tutorial using a server and agent over HTTP in the cloud, see the sample Data Commons [Colab notebook]().
+For an end-to-end tutorial using a server and agent over HTTP in the cloud, see the sample Data Commons Colab notebook, [Try Data Commons MCP Tools with a Custom Agent](https://github.com/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb).
 
 ### Unsupported features
 
@@ -53,7 +53,7 @@ This section shows you how to run a local agent that kicks off the server in a s
 
 Below we provide specific instructions for the following agents:
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- best for playing with the server; requires minimal setup.
-- A sample agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup.
+- A sample basic agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup.
 
 For other clients/agents, see the relevant documentation; you should be able to reuse the commands and arguments detailed below.
 
@@ -137,24 +137,11 @@ Once Gemini CLI has started up, you can immediately begin sending natural-langua
 
 ### Use the sample agent
 
-xxx is a basic agent for interacting with the MCP Server. To run it locally:
+We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent][https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent]. To run it locally:
 
 1. Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
    ```
    git clone https://github.com/datacommonsorg/agent-toolkit.git
-   ```
-1. When the files are downloaded, navigate to the subdirectory `packages/datacommons_agents/`. For example:
-   ```
-   cd ~/agent-toolkit/packages/datacommons_agents/
-   ```
-1. Copy the `.env_sample` file to a new file `called `.env`:
-   ```
-   cp .env.sample .env
-   ```
-1. Set the required variables and save the file.
-1. Run the following command to start the web agent and server:
-   ```
-   uv run adk web ./datacommons-agents
    ```
 1. more coming...
 
@@ -162,8 +149,8 @@ xxx is a basic agent for interacting with the MCP Server. To run it locally:
 
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
-- [title pending]() is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
-- The sample [basic agent]() is a simple Python ADK agent you can use to develop locally. See [Use the sample agent](#use-the-sample-agent) above for details.
+- [Try Data Commons MCP Tools with a Custom Agent](https://github.com/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb) is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
+- The sample [basic agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent) is a simple Python ADK agent you can use to develop locally. See [Use the sample agent](#use-the-sample-agent) above for details.
 
 ### Test with MCP Inspector
 
