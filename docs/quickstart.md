@@ -24,16 +24,16 @@ If you are using a custom Data Commons instance, please see the [User Guide](use
         "mcpServers": {
             "datacommons-mcp": {
                 "command": "uvx",
-                 "args": [
-                     "datacommons-mcp@latest",
-                     "serve",
-                     "stdio"
-                 ],
+                "args": [
+                    "datacommons-mcp@latest",
+                    "serve",
+                    "stdio"
+                ],
                 "env": {
                     "DC_API_KEY": "<your Data Commons API key>"
                 },
-            "trust": true
-             }
+                "trust": true
+            }
         }
         ...
     }
