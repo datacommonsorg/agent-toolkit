@@ -203,7 +203,7 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 ```
 #### Sample agent
 
-To configure the sample agent xxx to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-agents/sample_agents/basic_agent/agent.py` with the following:
+To configure the sample agent xxx to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py` with the following:
 
 ```python
     tools=[McpToolset(

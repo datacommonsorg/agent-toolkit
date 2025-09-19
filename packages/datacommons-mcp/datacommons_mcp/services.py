@@ -496,6 +496,13 @@ async def search_indicators(
     # Validate parameters
     _validate_search_parameters(per_search_limit)
 
+    if not query.strip():
+        # Always include topics for such queries
+        include_topics = True
+        if not places:
+            # Default to World if no places are specified for such queries
+            places = ["World"]
+
     # Resolve place names to DCIDs
     place_dcids_map = await _resolve_places(client, places)
 

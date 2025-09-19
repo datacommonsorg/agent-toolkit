@@ -76,7 +76,13 @@ class BaseDCSettings(DCSettings):
         description="Paths to topic cache files",
     )
 
-    @field_validator("topic_cache_paths", mode="before")
+    base_root_topic_dcids: list[str] | None = Field(
+        default=["dc/topic/Root", "dc/topic/sdg"],
+        alias="DC_BASE_ROOT_TOPIC_DCIDS",
+        description="List of root topic DCIDs for base DC",
+    )
+
+    @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
     @classmethod
     def parse_list_like_parameter(cls, v: str) -> list[str] | None:
         return _parse_list_like_parameter(v)
@@ -123,6 +129,11 @@ class CustomDCSettings(DCSettings):
         alias="DC_ROOT_TOPIC_DCIDS",
         description="List of root topic DCIDs",
     )
+    base_root_topic_dcids: list[str] | None = Field(
+        default=["dc/topic/Root", "dc/topic/sdg"],
+        alias="DC_BASE_ROOT_TOPIC_DCIDS",
+        description="List of root topic DCIDs for base DC",
+    )
     topic_cache_paths: list[str] | None = Field(
         default=None,
         alias="DC_TOPIC_CACHE_PATHS",
@@ -136,7 +147,11 @@ class CustomDCSettings(DCSettings):
     )
 
     @field_validator(
-        "root_topic_dcids", "place_like_constraints", "topic_cache_paths", mode="before"
+        "root_topic_dcids",
+        "base_root_topic_dcids",
+        "place_like_constraints",
+        "topic_cache_paths",
+        mode="before",
     )
     @classmethod
     def parse_list_like_parameter(cls, v: str) -> list[str] | None:

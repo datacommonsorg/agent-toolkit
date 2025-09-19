@@ -380,125 +380,219 @@ async def search_indicators(
     include_topics: bool = True,
     maybe_bilateral: bool = False,
 ) -> SearchResponse:
-    """Search for topics and variables (collectively called "indicators") across Data Commons.
+    """
+    **Purpose:**
+    Search for topics and variables (collectively called "indicators") available in the Data Commons Knowledge Graph.
 
-    This tool returns candidate indicators that match your query. You should treat these as
-    candidates and filter them based on the user's query and context to surface the most
-    relevant results.
+    **Core Concept: Results are Candidates**
+    This tool returns *candidate* indicators that match your query. You must always filter and rank these results based on the user's context to find the most relevant one.
+
+    **Background: Data Commons Structure**
+    Data Commons organizes data in two main hierarchies:
+
+    1. **Topics:** A hierarchy of categories (e.g., `Health` -> `Clinical Data` -> `Medical Conditions`). Topics contain sub-topics and member variables.
+
+    2. **Places:** A hierarchy of geographic containment (e.g., `World` -> `Continent` -> `Country` -> `State`).
+
+    **CRITICAL DATA PRINCIPLE:**
+    The *same* statistical concept (e.g., "Population") might use *different* indicator DCIDs for different place types (e.g., one DCID for `Country` and another for `State`). This tool is essential for discovering *which* specific indicators are available for the `places` you are querying.
+
+    **Efficiency Tips:**
+
+    * Data coverage is generally high at the `Country` level.
+
+    * Fetching direct children of a place (e.g., states in a country) is efficient.
+
+    ### Parameters
+
+    **1. `query` (str, required)**
+
+      - The search query for indicators (topics or variables).
+
+      - **Examples:** `"health grants"`, `"carbon emissions"`, `"unemployment rate"`
+
+      - **CRITICAL RULES:**
+        * Search for one concept at a time to get focused results.
+          - Instead of: "health and unemployment rate" (single search)
+          - Use: "health" and "unemployment rate" as separate searches
+
+    **2. `places` (list[str], optional)**
+
+      - A list of English, human-readable place names to filter indicators by.
+
+      - If provided, the tool will only return indicators that have data for at least one of the specified places.
+
+      - **CRITICAL RULES:**
+
+        - **ALWAYS** use readable names (e.g., `"California"`, `"Canada"`, `"World"`).
+
+        - **NEVER** use DCIDs (e.g., `"geoId/06"`, `"country/CAN"`).
+
+        - If you get place info from another tool, extract and use *only* the readable name.
+
+        - If a place is ambiguous (e.g., "Scotland" could be a country or a US county), add a qualifier (e.g., `"Scotland, UK"`).
+
+      - When searching for indicators related to child places within a larger geographic entity (e.g., states within a country, or countries within a continent/the world), you MUST include the parent entity and a diverse sample of 5-6 of its child places in the `places` list.
+       This ensures the discovery of indicators that have data at the child place level. Refer to 'Recipe 4: Sampling Child Places' for detailed examples.
+
+      **How to Use the `places` Parameter (Recipes):**
+
+      - **Recipe 1: Data for a Specific Place**
+
+        - **Goal:** Find an indicator *about* a single place (e.g., "population of France").
+
+        - **Call:** `query="population"`, `places=["France"]`, `maybe_bilateral=False`
+
+      - **Recipe 2: Sampling Child Places**
+
+        - **Goal:** Check data availability for a *type* of child place (e.g., "population of Indian states" or "highest GDP countries" or "top 5 US states with lowest unemployment rate").
+
+        - **Action:** You must *proxy* this request by sampling a few children.
+
+        - **Example 1: Child places of a country**
+          - **Call:**
+            * `query="population"`
+            * `places=["India", "Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]`
+          - **Logic:**
+            1. Include the parent ("India") to find parent-level indicators.
+            2. Include 5-6 *diverse* child places (e.g., try to pick large/small, north/south/east/west, if known).
+            3. The results for these 5-6 places are a *proxy* for all children.
+
+        - **Example 2: Child places of the World (Countries)**
+          - **Call:**
+            * `query="GDP"`
+            * `places=["World", "USA", "China", "Germany", "Nigeria", "Brazil"]`
+          - **Logic:**
+            1. Include the parent ("World").
+            2. Include 5-6 *diverse* child countries (e.g., from different continents, different economies).
+            3. This sampling helps discover the correct indicator DCID used for the `Country` place type, which you can then use in other tools (like `fetch_data` with a parent=`World` and child_type=`Country`).
 
 
-    **How to Use This Tool:**
+      - **Recipe 3: Potentially Bilateral Data**
 
-    **include_topics Parameter Guidelines:**
+        - **Goal:** Find an indicator that *might* be bilateral (e.g., "trade exports to France"). The data might be *about* France, or it might be *from* other places *to* France.
 
-    **Primary Rule**: If a user explicitly states what the parameter should be, use it as requested.
+        - **Call:** `query="trade exports"`, `places=["France"]`, `maybe_bilateral=True`
 
-    **include_topics = True (default)**
-        - **Purpose**: Explore topic hierarchy and find related variables
-        - **Use when**: You want to understand the structure of data categories and discover related variables
-        - **Returns**: Both topics (categories) and variables with hierarchical structure
-        - **Example use cases**:
-            - "what basic health data do you have"
-            - "Show me health data categories and what variables are available"
-            - "What economic indicators are available and how are they organized?"
+      - **Recipe 4: Known Bilateral Data (Multi-Place)**
 
-    **include_topics = False**
-        - **Purpose**: Direct variable search for specific data needs
-        - **Use when**: The goal is to fetch specific data, rather than to explore or present data categories to the user
-        - **Returns**: Variables only (no topic hierarchy)
-        - **Example use cases**:
-            - "Find unemployment rate variables for United States"
-            - "Get population data variables for India"
-            - "Search for carbon emission variables in NYC"
+        - **Goal:** Find data *between* places (e.g., "trade from USA and Germany to France").
 
-    **places Parameter Guidelines:**
+        - **Call:** `query="trade exports"`, `places=["USA", "Germany", "France"]`, `maybe_bilateral=True`
 
-    Always use the human-readable place names in English (e.g., 'California', 'Canada'),
-    not their DCIDs (e.g., 'geoId/06', 'country/CAN', or 'wikidataId/Q1979').
-    If you obtain place information from another tool, ensure you extract and use place names only for search_indicators.
+        - **Note:** The response's `places_with_data` will show which of "USA", "Germany", or "France" the observations are attached to. The other places are often part of the variable name itself.
 
-    * **For place-constrained queries** like "population of France":
-        - Call with `query="population"`, `places=["France"]`, and `maybe_bilateral=False`
-        - The tool will match indicators and perform existence checks for the specified place
+      - **Recipe 5: No Place Filtering**
 
-    * **For place-constrained queries** where the agent deems the indicator *could* represent a bilateral relationship like "trade exports to France":
-        - Call with `query="trade exports"`, `places=["France"]`, and `maybe_bilateral=True`
-        - The tool will match indicators and perform existence checks for the specified place
+        - **Goal:** Find indicators for a query without checking any specific place (e.g., "what trade data do you have").
 
-    * **For bilateral place-constrained queries**:
-        - between two places like "trade exports from USA to France":
-          + Call with `query="trade exports"`, `places=["USA", "France"]`, and `maybe_bilateral=True`
-        - between multiple places like "trade exports from USA, Germany and UK to France":
-          + Call with `query="trade exports"`, `places=["USA", "Germany", "UK", "France"]`, and `maybe_bilateral=True`
-        - The tool will match indicators and perform existence checks for the specified places
-        - In bilateral data, one place (e.g., "France") is encoded in the variable name, while the other place (e.g., "USA", "Germany", "UK") is where we have observations
-        - Use `places_with_data` to identify which place has observations
+        - **Call:** `query="trade"`. Do not set `places`.
 
-    * **For child entity sampling** like "population of Indian states":
-        - Call with `query="population"` and `places=["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]`
-        - Sample 5-6 diverse child entities as representative proxy for all child entities
-        - Results are indicative of broader child entity coverage
+        - **Result:** The tool returns matching indicators, but `places_with_data` will be empty.
 
-    * **For exploratory queries** like "what basic health data do you have":
-        - Call with `query="basic health"`
-        - The tool will return organized topic categories and variables
+    **3. `per_search_limit` (int, optional, default=10, max=100)**
 
-    * **For non-place-constrained queries** like "what trade data do you have":
-        - Call with `query="trade"`
-        - No place existence checks are performed
+      - Maximum results per search.
 
-    * **When place results don't match user intent** (e.g., user asks for "Scotland" but gets Scotland County, USA instead of Scotland, UK in the response):
-        - Add a qualifier: `places=["Scotland, UK"]` or `places=["Scotland, United Kingdom"]`
+      - **CRITICAL RULE:** Only set per_search_limit when explicitly requested by the user.
+        - Use the default value (10) unless the user specifies a different limit
+        - Don't assume the user wants more or fewer results
 
-    Args:
-        query (str): The search query for indicators (topics, categories, or variables).
-            Examples: "health grants", "carbon emissions", "unemployment rate"
-        places (list[str], optional): List of place names for filtering and existence checks.
-            Examples: ["USA"], ["USA", "Canada"], ["Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]
-        per_search_limit (int, optional): Maximum results per search (default 10, max 100). A single query may trigger multiple internal searches.
-        include_topics (bool, optional): Whether to search for Topics (collections of variables) or
-            just variables. Default: True
-        maybe_bilateral (bool, optional): Whether this query could represent bilateral relationships.
-            Set to True for queries that could be bilateral (e.g., "trade exports to france").
-            Set to False for queries about properties of places (e.g., "population of france").
-            Default: False
+    **4. `include_topics` (bool, optional, default=True)**
 
-    Returns:
-        dict: A dictionary containing candidate indicators with the following structure:
-            {
-                "topics": [ # Only if `include_topics` is True
-                    {
-                        "dcid": str,  # Topic DCID
-                        "member_topics": list[str],  # Direct member topic DCIDs
-                        "member_variables": list[str],  # Direct member variable DCIDs
-                        "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
-                    }
-                ],
-                "variables": [
-                    {
-                        "dcid": str,  # Variable DCID
-                        "places_with_data": list[str]  # Place DCIDs where data exists (if place filtering was performed)
-                    }
-                ],
-                "dcid_name_mappings": dict[str, str],  # DCID to name mappings
-                "status": str  # Status of the search operation
-            }
+      - **Primary Rule:** If a user explicitly states what they want, follow their request. Otherwise, use these guidelines:
 
-        **If `include_topics = True`**: Returns both topics and variables with hierarchical structure
-        **If `include_topics = False`**: Returns only variables
+      - **`include_topics = True` (Default): For Exploration & Discovery**
 
-    **Processing the Response:**
-    * **Topics**: Collections of variables and sub-topics. Use the dcid_name_mappings to get readable names.
-    * **Variables**: Individual data indicators. Use the dcid_name_mappings to get readable names.
-    * **places_with_data**: Only present when place filtering was performed. Shows which requested places have data for each indicator.
-    * **Filter and rank**: Treat all results as candidates and filter/rank based on user context.
-    * **Data availability**: Use `places_with_data` to understand which places have data for each indicator.
+        - **Purpose:** To explore the data hierarchy and find related variables.
 
-    **Best Practices:**
-    - Include topics if you want to understand data organization and discover collections of variables (topics) or related variables
-    - Exclude topics only when you have a specific query.
-    - For places, provide English place names only.
-    - For child entity queries, sample 5-6 diverse child entities as representative proxy
+        - **Use when:**
+
+          - The user is exploring (e.g., "what basic health data do you have?").
+
+          - You need to understand how data is organized to ask a better follow-up.
+
+       - **Returns:** Both topics (categories) and variables.
+
+      - **`include_topics = False`: For Specific Data**
+
+        - **Purpose:** To find a specific variable for fetching data.
+
+        - **Use when:**
+
+          - The user's goal is to get a specific number or dataset (e.g., "find unemployment rate for United States").
+
+        - **Returns:** Variables only.
+
+    **5. `maybe_bilateral` (bool, optional, default=False)**
+
+      - Set to `True` if the query implies a relationship *between* places (e.g., "trade", "migration", "exports to France").
+
+      - Set to `False` (default) for queries about a *property of* a place (e.g., "population", "unemployment rate", "carbon emissions in NYC").
+
+      - See the "Recipes" in the `places` parameter section for specific examples.
+
+    ### Special Query Scenarios
+
+    **Scenario 1: Vague, Unqualified Queries ("what data do you have?")**
+      - **Action:** If a user asks a general question about available data, proactively call the tool for "World" to provide an initial overview.
+
+      - **Call:** `query=""`, `places=["World"]`, `include_topics=True`
+
+      - **Result:** This returns the top-level topics for the World.
+
+      - **Agent Follow-up:** After showing the World data, consider asking if the user would like to see data for a different, more specific place if it seems helpful for the conversation.
+
+      - **Example agent response:** "Here is a general overview of the data topics available for the World. You can also ask for this information for a specific place, like 'Africa', 'India', 'California', or 'Paris'."
+
+    **Scenario 2: Ambiguous Place Names**
+
+      - **Problem:** User asks for "Scotland", tool returns "Scotland County, USA".
+
+      - **Solution:** Re-run the call with a qualified place name.
+
+      - **Call:** `places=["Scotland, UK"]` or `places=["Scotland, United Kingdom"]`
+
+    ### Response Structure
+
+    Returns a dictionary containing candidate indicators.
+
+    ```json
+    {
+      "topics": [
+        {
+          "dcid": "dc/t/TopicDcid",
+          "member_topics": ["dc/t/SubTopic1", "..."],
+          "member_variables": ["dc/v/Variable1", "..."],
+          "places_with_data": ["geoId/06", "..."]
+        }
+      ],
+      "variables": [
+        {
+          "dcid": "dc/v/VariableDcid",
+          "places_with_data": ["geoId/06", "country/CAN", "..."]
+        }
+      ],
+      "dcid_name_mappings": {
+        "dc/t/TopicDcid": "Readable Topic Name",
+        "dc/v/VariableDcid": "Readable Variable Name",
+        "geoId/06": "California",
+        "country/CAN": "Canada"
+      },
+      "status": "SUCCESS"
+    }
+
+    ### How to Process the Response
+
+      - `topics`: (Only if `include_topics=True`) Collections of variables and sub-topics. Use `dcid_name_mappings` to get readable names for presentation.
+
+      - `variables`: Individual data indicators. Use `dcid_name_mappings` to get readable names.
+
+      - `places_with_data`: (Only if `places` was in the request) A list of *DCIDs* for the requested places that have data for that specific indicator.
+
+      - `dcid_name_mappings`: A dictionary to map all DCIDs (topics, variables, and places) in the response to their human-readable names.
+
+    **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
     # Call the real search_indicators service
     return await search_indicators_service(

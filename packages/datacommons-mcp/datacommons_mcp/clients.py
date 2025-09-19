@@ -786,15 +786,26 @@ class DCClient:
         Returns:
             Dictionary with topics, variables, and lookups
         """
+        query = query.strip()
 
-        # Search for more results than we need to ensure we get enough topics and variables.
-        # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
-        max_search_results = max_results * 2
-        search_results = await self._search_vector(
-            query=query,
-            max_results=max_search_results,
-            include_topics=include_topics,
-        )
+        # An empty query is treated as a request to browse for root topics.
+        if not query:
+            if self.topic_store and self.topic_store.root_topic_dcids:
+                search_results = {
+                    "topics": self.topic_store.root_topic_dcids,
+                }
+            else:
+                search_results = {}
+
+        else:
+            # Search for more results than we need to ensure we get enough topics and variables.
+            # The factor of 2 is arbitrary and we can adjust it (make it configurable?) as needed.
+            max_search_results = max_results * 2
+            search_results = await self._search_vector(
+                query=query,
+                max_results=max_search_results,
+                include_topics=include_topics,
+            )
 
         # Separate topics and variables
         topics = search_results.get("topics", [])
@@ -1063,8 +1074,16 @@ def _create_base_topic_store(settings: DCSettings) -> TopicStore:
     """Create a topic store from settings."""
     if settings.topic_cache_paths:
         paths = [Path(path) for path in settings.topic_cache_paths]
-        return read_topic_caches(paths)
-    return read_topic_caches()
+        topic_store = read_topic_caches(paths)
+    else:
+        topic_store = read_topic_caches()
+
+    # Set base root topic DCIDs, they are separately specified in the settings.
+    topic_store.root_topic_dcids = settings.base_root_topic_dcids
+
+    logger.info("Base DC topic store loaded")
+
+    return topic_store
 
 
 def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
@@ -1105,6 +1124,9 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         topic_store = (
             topic_store.merge(base_topic_store) if topic_store else base_topic_store
         )
+
+    if topic_store:
+        logger.info("Custom DC topic store loaded")
 
     # Create DCClient
     return DCClient(
