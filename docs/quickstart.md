@@ -44,7 +44,7 @@ If you are using your Google Account credentials (with OAuth), you are prompted 
 > Tip: If you are using a Gemini API key, you can also edit the settings file to include the authentication method above the `mcpServers` section:
 
 ```json
-"selectedAuthType": GEMINI_API_KEY
+"selectedAuthType": "GEMINI_API_KEY",
 ```
 
 ## Query Data Commons
