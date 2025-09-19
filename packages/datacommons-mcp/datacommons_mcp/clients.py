@@ -1081,8 +1081,7 @@ def _create_base_topic_store(settings: DCSettings) -> TopicStore:
     # Set base root topic DCIDs, they are separately specified in the settings.
     topic_store.root_topic_dcids = settings.base_root_topic_dcids
 
-    logger.info("Base DC topic store:")
-    topic_store.debug_log()
+    logger.info("Base DC topic store loaded")
 
     return topic_store
 
@@ -1125,6 +1124,9 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         topic_store = (
             topic_store.merge(base_topic_store) if topic_store else base_topic_store
         )
+
+    if topic_store:
+        logger.info("Custom DC topic store loaded")
 
     # Create DCClient
     return DCClient(
