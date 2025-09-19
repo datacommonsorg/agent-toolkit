@@ -14,9 +14,3 @@ This repo contains the MCP tools for fetching public information from [Data Comm
 
 * [Quickstart with Gemini CLI](docs/quickstart.md)
 * [User Guide](docs/user_guide.md)
-
-### Internal Development Docs
-
-* [Developer's Guide](docs/internal/dev.md)
-* [Evaluation Guide](docs/internal/evals.md)
-
