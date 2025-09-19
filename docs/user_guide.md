@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Data Commons [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) service gives AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allows end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, depending on the agent, a user can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
+The [Data Commons](https://datacommons.org) [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) service gives AI agents access to the Data Commons knowledge graph and returns data related to statistical variables, topics, and observations. It allows end users to formulate complex natural-language queries interactively, get data in textual, structured or unstructured formats, and download the data as desired. For example, depending on the agent, a user can answer high-level questions such as "give me the economic indicators of the BRICS countries", view simple tables, and download a CSV file of the data in tabular format.
 
 The MCP server returns data from datacommons.org by default or can be configured for a Custom Data Commons instance. 
 
@@ -26,7 +26,7 @@ The server currently supports the following tools:
 
 To connect to the Data Commons MCP Server, you can use any available AI application that supports MCP, or your own custom agent. 
 
-The server supports both standard MCP transport protocols:
+The server supports both standard MCP [transport protocols](https://modelcontextprotocol.io/docs/learn/architecture#transport-layer):
 - Stdio: For clients that connect directly using local processes
 - Streamable HTTP: For clients that connect remotely or otherwise require HTTP (e.g. Typescript)
 
