@@ -9,14 +9,14 @@ If you are using a custom Data Commons instance, please see the [User Guide](use
 - A free Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
 - Install `uv`, a tool for managing and installing Python packages: install from <https://docs.astral.sh/uv/getting-started/installation/>.
 - Optional but recommended: If you have a Google Cloud Project, get a (free) Gemini-enabled API key from <https://aistudio.google.com/app/apikey>, and set the following environment variable in your shell/startup script:
-   ```
+   ```bash
    export GEMINI_API_KEY="<your key>"
    ```
 
 ## Install and configure Gemini CLI
 
 1. Install Gemini CLI: see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
-2. To configure Gemini CLI to recognize the Data Commons server using your Google Account credentials (with OAuth), edit your `~/.gemini/settings.json` file (or `settings.json` file in another directory) to add the following:
+2. To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file (or `settings.json` file in another directory) to add the following:
 
     ```json
     {
@@ -37,6 +37,15 @@ If you are using a custom Data Commons instance, please see the [User Guide](use
         }
     }
     ```
+If you are using your Google Account credentials (with OAuth), you are prompted to log in.
+
+> Tip: If you are using a Gemini API key, you can also edit the settings file to include the authentication method above the `mcpServers` section:
+
+```json
+"selectedAuthType": GEMINI_API_EY
+```
+
+
 ## Query Data Commons
 
 From any directory, run `gemini`. Once Gemini CLI has started up, you can immediately begin sending natural-language queries! 
