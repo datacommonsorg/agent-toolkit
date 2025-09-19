@@ -24,13 +24,6 @@ To use the server with a Custom Data Commons instance, set additional environmen
 
 Run the server with `uvx`. 
 
-**stdio**
-
-```bash
-uvx datacommons-mcp serve stdio
-```
-Note: Normally when you run locally over Stdio, your [MCP client](#clients) will automatically spawn a subprocess to start the server, so you don't need to run this separately.
-
 **Streamable HTTP**
 
 This runs the server with Streamable HTTP on port 8080. You can access it at `http://localhost:8080/mcp`.
@@ -38,6 +31,14 @@ This runs the server with Streamable HTTP on port 8080. You can access it at `ht
 ```bash
 uvx datacommons-mcp serve http
 ```
+
+**stdio**
+
+```bash
+uvx datacommons-mcp serve stdio
+```
+Note: Normally when you run locally over Stdio, your [MCP client](#clients) will automatically spawn a subprocess to start the server, so you don't need to run this separately.
+
 ## Clients
 
 You can use any MCP-enabled agent/client to connect to the server. See your preferred client's documentation for how to configure it, using the commands listed above. 
