@@ -7,8 +7,8 @@ This repo contains the MCP tools for fetching public information from [Data Comm
 [Data Commons MCP Server package](packages/datacommons-mcp/)
 * PyPI: https://pypi.org/project/datacommons-mcp
 
-## MCP Sample Agents
-[Data Commons Sample Agents package](packages/datacommons-mcp/examples/sample_agents)
+### Sample Agents
+[Data Commons sample agents](packages/datacommons-mcp/examples/sample_agents)
 
 ## Docs
 

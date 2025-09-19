@@ -135,7 +135,7 @@ Once Gemini CLI has started up, you can immediately begin sending natural-langua
 
 ### Use the sample agent
 
-We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent][https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent]. To run it locally:
+We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run it locally:
 
 1. Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
    ```
