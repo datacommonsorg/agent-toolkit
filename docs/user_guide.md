@@ -6,7 +6,7 @@ The [Data Commons](https://datacommons.org) [Model Context Protocol (MCP)](https
 
 The MCP server returns data from datacommons.org by default or can be configured for a Custom Data Commons instance. 
 
-The server is a Python binary based on the [FastMCP 2.0 framework](https://gofastmcp.com). It runs in a Python virtual environment. A prebuilt package is available at https://pypi.org/project/datacommons-mcp/.
+The server is a Python binary based on the [FastMCP 2.0 framework](https://gofastmcp.com). A prebuilt package is available at https://pypi.org/project/datacommons-mcp/.
 
 At this time, there is no centrally deployed server; you run your own server, and any client you want to connect to it.
 
