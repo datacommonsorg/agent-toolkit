@@ -18,7 +18,7 @@ For basic usage against datacommons.org, set the following required environment 
 export DC_API_KEY=<your API key>
 ```
 
-To use the server with a Custom Data Commons instance, set additional environment variables using an `.env` file.  For usage, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md#custom-data-commons).
+To use the server with a Custom Data Commons instance, set additional environment variables using an `.env` file.  For usage, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md#custom-data-commons).
 
 ### Start the server 
 
@@ -43,4 +43,4 @@ Note: Normally when you run locally over Stdio, your [MCP client](#clients) will
 
 You can use any MCP-enabled agent/client to connect to the server. See your preferred client's documentation for how to configure it, using the commands listed above. 
 
-To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/get_started.md). Or try it out with this [Google Colab notebook](https://colab.research.google.com/github/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb).
+To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md). Or try it out with this [Google Colab notebook](https://colab.research.google.com/github/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb).

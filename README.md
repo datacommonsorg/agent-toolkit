@@ -12,7 +12,7 @@ This repo contains the MCP tools for fetching public information from [Data Comm
 
 ## Docs
 
-* [Quickstart with Gemini CLI](docs/quickstart)
+* [Quickstart with Gemini CLI](docs/quickstart.md)
 * [User Guide](docs/user_guide.md)
 
 ### Internal Development Docs
