@@ -106,7 +106,7 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    export DC_API_KEY=<your Data Commons API key>
    export GEMINI_API_KEY=<your Google AI API key>
    ```
-Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
+1. Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
    ```bash
    git clone https://github.com/datacommonsorg/agent-toolkit.git
    ```
