@@ -18,34 +18,34 @@ If you are using a custom Data Commons instance, please see the [User Guide](use
 1. Install Gemini CLI: see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
 2. To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file (or `settings.json` file in another directory) to add the following:
 
-    ```json
-    {
-     ...
-        "mcpServers": {
-            "datacommons-mcp": {
-                "command": "uvx",
-                "args": [
-                    "datacommons-mcp@latest",
-                    "serve",
-                    "stdio"
-                ],
-                "env": {
-                    "DC_API_KEY": "<your Data Commons API key>"
-                },
-                "trust": true
-            }
+```json
+{
+...
+    "mcpServers": {
+       "datacommons-mcp": {
+           "command": "uvx",
+            "args": [
+                "datacommons-mcp@latest",
+                "serve",
+                "stdio"
+            ],
+            "env": {
+                "DC_API_KEY": "<your Data Commons API key>"
+            },
+            "trust": true
         }
-        ...
     }
-    ```
+...
+}
+```
+
 If you are using your Google Account credentials (with OAuth), you are prompted to log in.
 
 > Tip: If you are using a Gemini API key, you can also edit the settings file to include the authentication method above the `mcpServers` section:
 
 ```json
-"selectedAuthType": GEMINI_API_EY
+"selectedAuthType": GEMINI_API_KEY
 ```
-
 
 ## Query Data Commons
 
