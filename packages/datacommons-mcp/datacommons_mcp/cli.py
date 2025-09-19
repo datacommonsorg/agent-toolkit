@@ -10,12 +10,6 @@ def cli() -> None:
     logging.basicConfig(level=logging.INFO)
 
 
-@cli.command()
-def hello() -> None:
-    """Print a hello message."""
-    click.echo("Hello from datacommons-mcp CLI!")
-
-
 @cli.group()
 def serve() -> None:
     """Serve the MCP server in different modes."""
