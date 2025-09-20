@@ -1,46 +1,63 @@
 # Data Commons MCP Server
 
-This is a Model Context Protocol server for fetching public information from Data Commons (datacommons.org or custom instances).
+This is a Model Context Protocol (MCP) server for fetching public statistical data from [Data Commons](https://datacommons.org) instances.
 
-[Data Commons](https://datacommons.org) is an open knowledge repository that provides a unified view across multiple public data sets and statistics. 
+Data Commons is an open knowledge repository that provides a unified view across multiple public data sets and statistics.  This server allows any MCP-enabled agent or client to query the Data Commons knowledge graph.
+
+## Features
+* **MCP-Compliant:** Implements the Model Context Protocol for seamless agent integration.
+* **Data Commons Access:** Fetches public statistics and data from the base datacommons.org knowledge graph.
+* **Custom Instance Support:** Can be configured to work with Custom Data Commons instances.
+* **Flexible Serving:** Runs over both streamable HTTP and stdio.
 
 ## Quickstart
 
 ### Prerequisites
 
-1.  A Data Commons API key. You can get one from [apikeys.datacommons.org](https://apikeys.datacommons.org/).
-2.  `uv`. You can find installation instructions at [https://astral.sh/uv](https://astral.sh/uv).
+1.  You must have a Data Commons API key; create one at [apikeys.datacommons.org](https://apikeys.datacommons.org/).
+2.  Install `uv` by following the [official installation instructions](https://docs.astral.sh/uv/getting-started/installation).
 
 ### Configuration
 
-For basic usage against datacommons.org, set the following required environment variable:
+Set the following required environment variable in your shell:
+
 ```
 export DC_API_KEY=<your API key>
 ```
 
-To use the server with a Custom Data Commons instance, set additional environment variables using an `.env` file.  For usage, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md#custom-data-commons).
-
 ### Start the server 
 
-Run the server with `uvx`. 
+Run the server from your command line in one of two modes:
 
 **Streamable HTTP**
 
-This runs the server with Streamable HTTP on port 8080. You can access it at `http://localhost:8080/mcp`.
+This runs the server with Streamable HTTP.
 
 ```bash
-uvx datacommons-mcp serve http
+# Runs on default port 8080
+uvx datacommons-mcp serve http [--port <PORT>]
 ```
 
+The server will be available at `http://localhost:<port>/mcp`.
+
 **stdio**
+
+This transport mode is intended for local integrations and is programmatically configured within a client (like Gemini CLI settings) to communicate over `stdio`.
 
 ```bash
 uvx datacommons-mcp serve stdio
 ```
-Note: Normally when you run locally over Stdio, your [MCP client](#clients) will automatically spawn a subprocess to start the server, so you don't need to run this separately.
 
 ## Clients
 
-You can use any MCP-enabled agent/client to connect to the server. See your preferred client's documentation for how to configure it, using the commands listed above. 
+You can use any MCP-enabled agent or client to connect to your running server. For example, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md) for guides on connecting:
+* [Google Gemini CLI](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/quickstart.md)
+* [Google ADK natively](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md#use-the-sample-agent)
+* [Google ADK in Colab](https://colab.research.google.com/github/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb)
 
-To use [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) or a sample [Google ADK](https://google.github.io/adk-docs/) agent from Data Commons, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md). Or try it out with this [Google Colab notebook](https://colab.research.google.com/github/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb).
+Or see your preferred client's documentation for how to configure it, using the commands listed above.
+
+## Advanced Configuration
+### Using MCP Tools with a Custom Data Commons
+
+Follow the [Guide for using MCP Tools with Custom Data Commons](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md#custom-data-commons) to set additional environment variables required for custom configuration.
