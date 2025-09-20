@@ -5,10 +5,10 @@ This is a Model Context Protocol (MCP) server for fetching public statistical da
 Data Commons is an open knowledge repository that provides a unified view across multiple public data sets and statistics.  This server allows any MCP-enabled agent or client to query the Data Commons knowledge graph.
 
 ## Features
-* MCP-Compliant: Implements the Model Context Protocol for seamless agent integration.
-* Data Commons Access: Fetches public statistics and data from the base datacommons.org knowledge graph.
-* Custom Instance Support: Can be configured to work with Custom Data Commons instances.
-* Flexible Serving: Runs over both streamable HTTP and stdio.
+* **MCP-Compliant:** Implements the Model Context Protocol for seamless agent integration.
+* **Data Commons Access:** Fetches public statistics and data from the base datacommons.org knowledge graph.
+* **Custom Instance Support:** Can be configured to work with Custom Data Commons instances.
+* **Flexible Serving:** Runs over both streamable HTTP and stdio.
 
 ## Quickstart
 
