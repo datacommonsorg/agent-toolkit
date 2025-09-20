@@ -31,14 +31,11 @@ Run the server from your command line in one of two modes:
 
 **Streamable HTTP**
 
-This runs the server with Streamable HTTP, defaulting to port 8080.
+This runs the server with Streamable HTTP.
 
 ```bash
-uvx datacommons-mcp serve http
-```
-You can specify a different port with the --port argument:
-```bash
-uvx datacommons-mcp serve http --port <port>
+# Runs on default port 8080
+uvx datacommons-mcp serve http [--port <PORT>]
 ```
 
 The server will be available at `http://localhost:<port>/mcp`.
