@@ -142,12 +142,14 @@ class DCClient:
                 entity_type=request.child_place_type,
                 date=request.date_type,
                 filter_facet_ids=request.source_ids,
+                metadata_source="mcp"
             )
         return self.dc.observation.fetch(
             variable_dcids=request.variable_dcid,
             entity_dcids=request.place_dcid,
             date=request.date_type,
             filter_facet_ids=request.source_ids,
+            metadata_source="mcp"
         )
 
     async def fetch_entity_names(self, dcids: list[str]) -> dict:
