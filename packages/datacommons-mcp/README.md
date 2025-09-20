@@ -1,8 +1,8 @@
 # Data Commons MCP Server
 
-This is a Model Context Protocol server for fetching public information from any Data Commons instance.
+This is a Model Context Protocol (MCP) server for fetching public statistical data from [Data Commons](https://datacommons.org) instances.
 
-[Data Commons](https://datacommons.org) is an open knowledge repository that provides a unified view across multiple public data sets and statistics.  This server acts as a bridge, allowing any MCP-enabled agent or client to query this vast repository.
+Data Commons is an open knowledge repository that provides a unified view across multiple public data sets and statistics.  This server allows any MCP-enabled agent or client to query the Data Commons knowledge graph.
 
 ## Features
 * MCP-Compliant: Implements the Model Context Protocol for seamless agent integration.
@@ -41,14 +41,15 @@ You can specify a different port with the --port argument:
 uvx datacommons-mcp serve http --port <port>
 ```
 
-The server will be available at http://localhost:<port>/mcp.
+The server will be available at `http://localhost:<port>/mcp`.
 
 **stdio**
 
 ```bash
 uvx datacommons-mcp serve stdio
 ```
-Note: Normally, an MCP client will automatically spawn this subprocess, so you may not need to run this command manually.
+
+Note: This transport mode is intended for local integrations and is programmatically configured within a client  (like Gemini CLI settings) to communicate over `stdio`.
 
 ## Clients
 
