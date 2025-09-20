@@ -15,7 +15,7 @@ This is a Model Context Protocol server for fetching public information from any
 ### Prerequisites
 
 1.  You must have a Data Commons API key; create one at [apikeys.datacommons.org](https://apikeys.datacommons.org/).
-2.  Install `uv` by following instructions at [https://astral.sh/uv](https://github.com/astral-sh/uv?tab=readme-ov-file#installation).
+2.  Install `uv` by following the [official installation instructions](https://github.com/astral-sh/uv#installation).
 
 ### Configuration
 
