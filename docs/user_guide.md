@@ -60,7 +60,7 @@ For other clients/agents, see the relevant documentation; you should be able to 
 For all instances:
 
 - A Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
-- For running the sample agent or the Colab notebook, a GCP project and any Google API key. For details on supported keys, see <https://google.github.io/adk-docs/get-started/quickstart/#set-up-the-model>.
+- For running the sample agent or the Colab notebook, a GCP project and a Google AI API key. For details on supported keys, see <https://google.github.io/adk-docs/get-started/quickstart/#set-up-the-model>.
 - For running the sample agent locally, or running the server locally in standalone mode, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
 - For running the sample agent locally, install [Git](https://git-scm.com/).
 
