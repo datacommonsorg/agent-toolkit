@@ -193,6 +193,7 @@ class DCClient:
             # Fetch and cache variables for the place
             response = self.dc.observation.fetch_available_statistical_variables(
                 entity_dcids=[place_dcid]
+                metadata_source="mcp"
             )
             unfiltered_variables = response.get(place_dcid, [])
             # Filter out internal variables
