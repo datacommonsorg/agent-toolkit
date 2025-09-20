@@ -42,11 +42,11 @@ The server will be available at `http://localhost:<port>/mcp`.
 
 **stdio**
 
+This transport mode is intended for local integrations and is programmatically configured within a client  (like Gemini CLI settings) to communicate over `stdio`.
+
 ```bash
 uvx datacommons-mcp serve stdio
 ```
-
-Note: This transport mode is intended for local integrations and is programmatically configured within a client  (like Gemini CLI settings) to communicate over `stdio`.
 
 ## Clients
 
