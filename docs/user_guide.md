@@ -104,7 +104,7 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
 1. If you haven't already, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
 1. Clone the `agent-toolkit` repo:
    ```bash
-   git clone https://github.com/agent-toolkit.git
+   git clone https://github.com/datacommonsorg/agent-toolkit.git
    ```
 1. Set the following environment variables in your shell or startup script:
    ```bash
@@ -115,16 +115,11 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    ```bash
    cd agent-toolkit
    ```
-1. To load all agents in the `sample_agents` directory, run the following command:
-   ```bash
-   uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents
-   ```
-   To load a specific agent from the `sample_agents` directory, run the following command:
+1. Run the following command:
    ```bash
    uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/basic_agent
    ```
 1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
-1. If you've loaded all agents, from the upper left-hand drop-down menu, select the agent you wish to use.
 1. From the **Type a message** box, type your query for Data Commons or select another action.
 
 ## Develop your own ADK agent
