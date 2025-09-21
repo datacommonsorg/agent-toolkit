@@ -111,9 +111,9 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    export DC_API_KEY=<your Data Commons API key>
    export GEMINI_API_KEY=<your Google AI API key>
    ```
-1. Go to the root directory of the repo. For example:
+1. Go to the root directory of the repo:
    ```bash
-   cd ~/agent-toolkit
+   cd agent-toolkit
    ```
 1. Run the following command:
    ```bash
