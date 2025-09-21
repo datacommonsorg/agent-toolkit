@@ -99,18 +99,28 @@ To set variables using a `.env` file:
 
 ### Use the sample agent
 
-We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run it locally:
+We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run the web UI locally:
 
+1. If not already installed, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
+1. From the desired directory, clone the `agent-toolkit` repo:
+   ```bash
+   git clone https://github.com/datacommonsorg/agent-toolkit.git
+   ```
 1. Set the following environment variables in your shell or startup script:
    ```bash
    export DC_API_KEY=<your Data Commons API key>
    export GEMINI_API_KEY=<your Google AI API key>
    ```
-1. Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
+1. Go to the root directory of the repo:
    ```bash
-   git clone https://github.com/datacommonsorg/agent-toolkit.git
+   cd agent-toolkit
    ```
-1. more coming...
+1. Run the following command:
+   ```bash
+   uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/basic_agent
+   ```
+1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
+1. From the **Type a message** box, type your query for Data Commons or select another action.
 
 ## Develop your own ADK agent
 
@@ -121,11 +131,11 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
 
 ### Test with MCP Inspector
 
-If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
+If you're interested in getting a deeper understanding of Data Commons tools and API, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful web UI for interactively sending tool calls to the server using JSON messages. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
 
 To use it:
 
-1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
+1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
 1. Ensure you've set up the relevant server [environment variables](#environment-variables). If you're using a `.env` file, go to the directory where the file is stored.
 1. Run:
    ```
@@ -133,8 +143,11 @@ To use it:
    ```
 1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session token>`. 
 1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
-1. In the left pane, click **Connect**. 
-1. more coming...
+1. In the far left pane, click **Connect**. 
+1. Click the **Tools** button to display the Data Commons tools and prompts.
+1. In the left pane, select a tool. 
+1. In the right pane, scroll below the prompts to view the input form.
+1. Enter values for required fields and click **Run Tool**. Data are shown in the **Tool Result** box.
 
 ## Use a remote server/client
 
