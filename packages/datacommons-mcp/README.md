@@ -47,7 +47,6 @@ This transport mode is intended for local integrations and is programmatically c
 ```bash
 uvx datacommons-mcp serve stdio
 ```
-Note: Normally when you run locally over Stdio, your [MCP client](#clients) will automatically spawn a subprocess to start the server, so you don't need to run this separately.
 
 ## Clients
 
