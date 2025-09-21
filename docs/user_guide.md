@@ -101,8 +101,8 @@ To set variables using a `.env` file:
 
 We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run the web UI locally:
 
-1. If you haven't already, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
-1. Clone the `agent-toolkit` repo:
+1. If not already installed, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
+1. From the desired directory, clone the `agent-toolkit` repo:
    ```bash
    git clone https://github.com/datacommonsorg/agent-toolkit.git
    ```
@@ -111,9 +111,9 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    export DC_API_KEY=<your Data Commons API key>
    export GEMINI_API_KEY=<your Google AI API key>
    ```
-1. Go to the root directory of the repo:
+1. Go to the root directory of the repo. For example:
    ```bash
-   cd agent-toolkit
+   cd ~/agent-toolkit
    ```
 1. Run the following command:
    ```bash
