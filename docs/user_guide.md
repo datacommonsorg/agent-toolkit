@@ -49,9 +49,9 @@ At the current time, the following are not supported:
 
 This section shows you how to run a local agent that kicks off the server in a subprocess.
 
-Below we provide specific instructions for the following agents:
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- best for playing with the server; requires minimal setup.
-- A sample basic agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup.
+We provide specific instructions for the following agents:
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- best for playing with the server; requires minimal setup. See the [Quickstart](quickstart.md) for this option.
+- A sample basic agent based on the Google [Agent Development Kit](https://google.github.io/adk-docs/) and [Gemini Flash 2.5](https://deepmind.google/models/gemini/flash/) -- best for interacting with a sample ADK-based web agent; requires some additional setup. See below for this option.
 
 For other clients/agents, see the relevant documentation; you should be able to reuse the commands and arguments detailed below.
 
@@ -60,8 +60,8 @@ For other clients/agents, see the relevant documentation; you should be able to 
 For all instances:
 
 - A Data Commons API key. To obtain an API key, go to <https://apikeys.datacommons.org> and request a key for the `api.datacommons.org` domain.
-- For running the sample agent or the Colab notebook or optionally, Gemini CLI, get a Gemini-enabled API key. To obtain a Gemini API key, go to <https://aistudio.google.com/app/apikey>.
-- For Gemini CLI, running the sample agent locally, or running the server locally in standalone mode, install `uv` to install and manage Python packages; see the instructions at <https://github.com/astral-sh/uv/blob/main/README.md>. 
+- For running the sample agent or the Colab notebook, a GCP project and a Google AI API key. For details on supported keys, see <https://google.github.io/adk-docs/get-started/quickstart/#set-up-the-model>.
+- For running the sample agent locally, or running the server locally in standalone mode, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
 - For running the sample agent locally, install [Git](https://git-scm.com/).
 
 > **Important**: Additionally, for custom Data Commons instances:
@@ -73,7 +73,7 @@ For all instances:
 #### Base Data Commons (datacommons.org)
 
 For basic usage against datacommons.org, set the required `DC_API_KEY` in your shell/startup script (e.g. `.bashrc`).
-```
+```bash
 export DC_API_KEY=<your API key>
 ```
 
@@ -86,7 +86,7 @@ To set variables using a `.env` file:
 1. From Github, download the file [`.env.sample`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/.env.sample) to the desired directory. Or, if you plan to run the sample agent, clone the repo https://github.com/datacommonsorg/agent-toolkit/.
 
 1. From the directory where you saved the sample file, copy it to a new file called `.env`. For example:
-   ```
+   ```bash
    cd ~/agent-toolkit/packages/datacommons-mcp
    cp .env.sample .env
    ```
@@ -97,51 +97,30 @@ To set variables using a `.env` file:
 1. Optionally, set other variables.
 1. Save the file.
 
-### Use Gemini CLI
-
-To install Gemini CLI, see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
-
-We recommend that you use the [Gemini API key](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#option-2-gemini-api-key) or [Vertex API key](https://github.com/google-gemini/gemini-cli?tab=readme-ov-file#option-3-vertex-ai) authentication options if you already have a Google Cloud Platform project, so you don't have to log in for every session. 
-
-```json
-{
-  ...
-  "selectedAuthType": "gemini-api-key",
-  "mcpServers": {
-    "datacommons-mcp": {
-      "command": "uvx",
-      "args": [
-        "datacommons-mcp@latest",
-        "serve",
-        "stdio"
-      ],
-      "env": {
-        "DC_API_KEY": "<your Data Commons API key>"
-      },
-      "trust": true
-    }
-  }
-}
-```
-If you don't have a GCP project and want to use OAuth with your Google account, set `selectedAuthType` to `oauth-personal`.
-
-You can now run the `gemini` command from any directory and it will automatically kick off the MCP server, with the correct environment variables.
-
-> Tip: If you run Gemini from the directory where your `.env` file is stored, you can omit the `env` section above.
-
-Once Gemini CLI has started up, you can immediately begin sending natural-language queries! 
-
-> **Tip**: To ensure that Gemini CLI uses the Data Commons MCP tools, and not its own `GoogleSearch` tool, include a prompt to use Data Commons in your query. For example, use a query like "Use Data Commons tools to answer the following: ..."  You can also add such a prompt to your [`GEMINI.md` file](https://codelabs.developers.google.com/gemini-cli-hands-on#9) so that it's persisted across sessions.
-
 ### Use the sample agent
 
-We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run it locally:
+We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run the web UI locally:
 
-1. Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
-   ```
+1. If not already installed, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
+1. From the desired directory, clone the `agent-toolkit` repo:
+   ```bash
    git clone https://github.com/datacommonsorg/agent-toolkit.git
    ```
-1. more coming...
+1. Set the following environment variables in your shell or startup script:
+   ```bash
+   export DC_API_KEY=<your Data Commons API key>
+   export GEMINI_API_KEY=<your Google AI API key>
+   ```
+1. Go to the root directory of the repo:
+   ```bash
+   cd agent-toolkit
+   ```
+1. Run the following command:
+   ```bash
+   uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/basic_agent
+   ```
+1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
+1. From the **Type a message** box, type your query for Data Commons or select another action.
 
 ## Develop your own ADK agent
 
@@ -152,11 +131,11 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
 
 ### Test with MCP Inspector
 
-If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
+If you're interested in getting a deeper understanding of Data Commons tools and API, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful web UI for interactively sending tool calls to the server using JSON messages. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
 
 To use it:
 
-1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
+1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
 1. Ensure you've set up the relevant server [environment variables](#environment-variables). If you're using a `.env` file, go to the directory where the file is stored.
 1. Run:
    ```
@@ -164,8 +143,11 @@ To use it:
    ```
 1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session token>`. 
 1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
-1. In the left pane, click **Connect**. 
-1. more coming...
+1. In the far left pane, click **Connect**. 
+1. Click the **Tools** button to display the Data Commons tools and prompts.
+1. In the left pane, select a tool. 
+1. In the right pane, scroll below the prompts to view the input form.
+1. Enter values for required fields and click **Run Tool**. Data are shown in the **Tool Result** box.
 
 ## Use a remote server/client
 
@@ -173,7 +155,7 @@ To use it:
 
 1. Ensure you've set up the relevant server [environment variables](#environment-variables). If you're using a `.env` file, go to the directory where the file is stored.
 1. Run:
-   ```
+   ```bash
    uvx datacommons-mcp serve http [--port <port>]
    ```
 By default, the port is 8080 if you don't set it explicitly.
