@@ -41,10 +41,6 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
-### Feedback
-
-- [FAQ entry](https://datacommons.org/faq#:~:text=Q%3A%20How%20can%20I%20send%20feedback%20about%20Data%20Commons%3F) on how to file bugs or feature requests
-
 ## Basic usage
 
 This section shows you how to run a local agent that kicks off the server in a subprocess.
