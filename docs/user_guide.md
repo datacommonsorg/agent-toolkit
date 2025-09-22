@@ -196,7 +196,7 @@ To configure the sample agent to connect to a remote Data Commons server over HT
 ## Feedback
 We use [Google Issue Tracker](https://issuetracker.google.com/) to track bugs and feature requests. All tickets are publicly viewable.
 
-Before opening a new ticket, please see if an existing [feature request](https://issuetracker.google.com/issues?q=componentid:1659535%2B%20type:feature_request) or [bug report](https://issuetracker.google.com/issues?q=componentid:1659535%20type:bug) covering your issue has already been filed. If yes, upvote (click the +1 button ) and subscribe to it. If not, open a new [feature request](https://issuetracker.google.com/issues/new?component=1659535&template=2053233) or [bug report](https://issuetracker.google.com/issues/new?component=1659535&template=2053231).
+Before opening a new ticket, please see if an existing [feature request](https://issuetracker.google.com/issues?q=componentid:1659535%2B%20type:feature_request) or [bug report](https://issuetracker.google.com/issues?q=componentid:1659535%20type:bug) covering your issue has already been filed. If yes, upvote (by clicking the '+1' button) and subscribe to it. If not, open a new [feature request](https://issuetracker.google.com/issues/new?component=1659535&template=2053233) or [bug report](https://issuetracker.google.com/issues/new?component=1659535&template=2053231).
 
 For any issue you file, make sure to indicate that it affects the Data Commons MCP Server.
 
