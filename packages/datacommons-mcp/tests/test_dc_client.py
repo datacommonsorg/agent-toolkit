@@ -287,7 +287,7 @@ class TestDCClientFetchObs:
             entity_dcids="place1",
             date=ObservationDateType.LATEST,
             filter_facet_ids=None,
-            surface_header_value='mcp/0.1.11'
+            surface_header_value="mcp/0.1.11",
         )
         # Verify that the other method was not called
         mocked_datacommons_client.observation.fetch_observations_by_entity_type.assert_not_called()
@@ -318,7 +318,7 @@ class TestDCClientFetchObs:
             entity_type="County",
             date=ObservationDateType.LATEST,
             filter_facet_ids=None,
-            surface_header_value='mcp/0.1.11'
+            surface_header_value="mcp/0.1.11",
         )
         # Verify that the other method was not called
         mocked_datacommons_client.observation.fetch.assert_not_called()
