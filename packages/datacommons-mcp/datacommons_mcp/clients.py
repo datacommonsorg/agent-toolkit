@@ -46,6 +46,7 @@ from datacommons_mcp.data_models.settings import (
     DCSettings,
 )
 from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_caches
+from datacommons_mcp.version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -142,14 +143,14 @@ class DCClient:
                 entity_type=request.child_place_type,
                 date=request.date_type,
                 filter_facet_ids=request.source_ids,
-                metadata_source="mcp"
+                surface_header_value=f"mcp/{__version__}",
             )
         return self.dc.observation.fetch(
             variable_dcids=request.variable_dcid,
             entity_dcids=request.place_dcid,
             date=request.date_type,
             filter_facet_ids=request.source_ids,
-            metadata_source="mcp"
+            surface_header_value=f"mcp/{__version__}",
         )
 
     async def fetch_entity_names(self, dcids: list[str]) -> dict:
@@ -192,8 +193,8 @@ class DCClient:
         if self.variable_cache.get(place_dcid) is None:
             # Fetch and cache variables for the place
             response = self.dc.observation.fetch_available_statistical_variables(
-                entity_dcids=[place_dcid]
-                metadata_source="mcp"
+                entity_dcids=[place_dcid],
+                surface_header_value=f"mcp-{__version__}",
             )
             unfiltered_variables = response.get(place_dcid, [])
             # Filter out internal variables
