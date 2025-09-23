@@ -41,10 +41,6 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
-### Feedback
-
-- [FAQ entry](https://datacommons.org/faq#:~:text=Q%3A%20How%20can%20I%20send%20feedback%20about%20Data%20Commons%3F) on how to file bugs or feature requests
-
 ## Basic usage
 
 This section shows you how to run a local agent that kicks off the server in a subprocess.
@@ -183,7 +179,7 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 ```
 #### Sample agent
 
-To configure the sample agent xxx to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py` with the following:
+To configure the sample agent to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py` with the following:
 
 ```python
     tools=[McpToolset(
@@ -192,3 +188,13 @@ To configure the sample agent xxx to connect to a remote Data Commons server ove
     ...
 )
 ```
+
+## Feedback
+We use [Google Issue Tracker](https://issuetracker.google.com/) to track bugs and feature requests. All tickets are publicly viewable.
+
+Before opening a new ticket, please see if an existing [feature request](https://issuetracker.google.com/issues?q=componentid:1659535%2B%20type:feature_request) or [bug report](https://issuetracker.google.com/issues?q=componentid:1659535%20type:bug) covering your issue has already been filed. If yes, upvote (by clicking the '+1' button) and subscribe to it. If not, open a new [feature request](https://issuetracker.google.com/issues/new?component=1659535&template=2053233) or [bug report](https://issuetracker.google.com/issues/new?component=1659535&template=2053231).
+
+For any issue you file, make sure to indicate that it affects the Data Commons MCP Server.
+
+## Disclaimer
+AI applications using the MCP server can make mistakes, so please double-check responses.
