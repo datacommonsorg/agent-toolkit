@@ -1113,7 +1113,9 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     search_scope = settings.search_scope
 
     # Create DataCommonsClient
-    dc = DataCommonsClient(url=settings.api_base_url, surface_header_value=f"mcp-{__version__}")
+    dc = DataCommonsClient(
+        url=settings.api_base_url, surface_header_value=f"mcp-{__version__}"
+    )
 
     # Create topic store if root_topic_dcids provided
     topic_store: TopicStore | None = None

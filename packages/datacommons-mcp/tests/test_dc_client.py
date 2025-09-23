@@ -1652,7 +1652,9 @@ class TestCreateDCClient:
             assert result.use_search_indicators_endpoint is True  # Default value
             # Should have called DataCommonsClient with computed api_base_url
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
-            mock_dc_client.assert_called_with(url=expected_api_url, surface_header_value='mcp-0.1.11')
+            mock_dc_client.assert_called_with(
+                url=expected_api_url, surface_header_value="mcp-0.1.11"
+            )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
@@ -1703,7 +1705,9 @@ class TestCreateDCClient:
             # Assert
             # Should compute api_base_url by adding /core/api/v2/
             expected_api_url = "https://example.com/core/api/v2/"
-            mock_dc_client.assert_called_with(url=expected_api_url, surface_header_value="mcp-0.1.11")
+            mock_dc_client.assert_called_with(
+                url=expected_api_url, surface_header_value="mcp-0.1.11"
+            )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients._create_base_topic_store")
