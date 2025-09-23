@@ -1653,7 +1653,7 @@ class TestCreateDCClient:
             # Should have called DataCommonsClient with computed api_base_url
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
             mock_dc_client.assert_called_with(
-                url=expected_api_url, surface_header_value="mcp-0.1.11"
+                url=expected_api_url, surface_header_value=f"mcp-{__version__}"
             )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
@@ -1706,7 +1706,7 @@ class TestCreateDCClient:
             # Should compute api_base_url by adding /core/api/v2/
             expected_api_url = "https://example.com/core/api/v2/"
             mock_dc_client.assert_called_with(
-                url=expected_api_url, surface_header_value="mcp-0.1.11"
+                url=expected_api_url, surface_header_value=f"mcp-{__version__}"
             )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
