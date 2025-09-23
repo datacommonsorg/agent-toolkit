@@ -40,6 +40,7 @@ from datacommons_mcp.data_models.search import (
     SearchVariable,
 )
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
+from datacommons_mcp.version import __version__
 
 
 @pytest.fixture
@@ -287,7 +288,6 @@ class TestDCClientFetchObs:
             entity_dcids="place1",
             date=ObservationDateType.LATEST,
             filter_facet_ids=None,
-            surface_header_value="mcp/0.1.11",
         )
         # Verify that the other method was not called
         mocked_datacommons_client.observation.fetch_observations_by_entity_type.assert_not_called()
@@ -318,7 +318,6 @@ class TestDCClientFetchObs:
             entity_type="County",
             date=ObservationDateType.LATEST,
             filter_facet_ids=None,
-            surface_header_value="mcp/0.1.11",
         )
         # Verify that the other method was not called
         mocked_datacommons_client.observation.fetch.assert_not_called()
@@ -1653,7 +1652,7 @@ class TestCreateDCClient:
             assert result.use_search_indicators_endpoint is True  # Default value
             # Should have called DataCommonsClient with computed api_base_url
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
-            mock_dc_client.assert_called_with(url=expected_api_url)
+            mock_dc_client.assert_called_with(url=expected_api_url, surface_header_value='mcp-0.1.11')
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
@@ -1704,7 +1703,7 @@ class TestCreateDCClient:
             # Assert
             # Should compute api_base_url by adding /core/api/v2/
             expected_api_url = "https://example.com/core/api/v2/"
-            mock_dc_client.assert_called_with(url=expected_api_url)
+            mock_dc_client.assert_called_with(url=expected_api_url, surface_header_value="mcp-0.1.11")
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients._create_base_topic_store")

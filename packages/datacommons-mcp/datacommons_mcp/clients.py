@@ -143,14 +143,12 @@ class DCClient:
                 entity_type=request.child_place_type,
                 date=request.date_type,
                 filter_facet_ids=request.source_ids,
-                surface_header_value=f"mcp/{__version__}",
             )
         return self.dc.observation.fetch(
             variable_dcids=request.variable_dcid,
             entity_dcids=request.place_dcid,
             date=request.date_type,
             filter_facet_ids=request.source_ids,
-            surface_header_value=f"mcp/{__version__}",
         )
 
     async def fetch_entity_names(self, dcids: list[str]) -> dict:
@@ -194,7 +192,6 @@ class DCClient:
             # Fetch and cache variables for the place
             response = self.dc.observation.fetch_available_statistical_variables(
                 entity_dcids=[place_dcid],
-                surface_header_value=f"mcp-{__version__}",
             )
             unfiltered_variables = response.get(place_dcid, [])
             # Filter out internal variables
@@ -1116,7 +1113,7 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     search_scope = settings.search_scope
 
     # Create DataCommonsClient
-    dc = DataCommonsClient(url=settings.api_base_url)
+    dc = DataCommonsClient(url=settings.api_base_url, surface_header_value=f"mcp-{__version__}")
 
     # Create topic store if root_topic_dcids provided
     topic_store: TopicStore | None = None
