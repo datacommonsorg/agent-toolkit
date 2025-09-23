@@ -113,7 +113,7 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    ```
 1. Run the following command:
    ```bash
-   uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/basic_agent
+   uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/
    ```
 1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
 1. From the **Type a message** box, type your query for Data Commons or select another action.
@@ -123,7 +123,11 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
 - [Try Data Commons MCP Tools with a Custom Agent](https://github.com/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb) is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
-- The sample [basic agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent) is a simple Python ADK agent you can use to develop locally. See [Use the sample agent](#use-the-sample-agent) above for details.
+- The sample [basic agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent) is a simple Python ADK agent you can use to develop locally. At the most basic level, you can modify its configuration, including:
+   - The [AGENT_INSTRUCTIONS](../packages/packages/datacommons-mcp/examples/sample_agents/basic_agent/instructions.py)
+   - The [AGENT_MODEL](../packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py#L23)
+   - The transport layer protocol: see [Connect to a remote server](#sample-agent) for details
+   To run the custom code, see [Use the sample agent](#use-the-sample-agent) above.
 
 ### Test with MCP Inspector
 
@@ -179,14 +183,22 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 ```
 #### Sample agent
 
-To configure the sample agent to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py` with the following:
+To configure the sample agent to connect to a remote Data Commons server over HTTP, reset imports and agent initialization parameters as follows:
 
 ```python
-    tools=[McpToolset(
-            connection_params=StreamableHTTPConnectionParams(url=f"http://<host>:<port>/mcp")
-        )],
-    ...
+...
+from google.adk.tools.mcp_tool.mcp_toolset import (
+    MCPToolset,
+    StreamableHTTPConnectionParams
 )
+...
+   LlmAgent(...
+      tools=[McpToolset(
+         connection_params=StreamableHTTPConnectionParams(
+            url=f"http://<host>:<port>/mcp"
+         )
+      ],
+   )
 ```
 
 ## Feedback
