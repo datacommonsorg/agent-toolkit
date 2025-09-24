@@ -46,6 +46,7 @@ from datacommons_mcp.data_models.settings import (
     DCSettings,
 )
 from datacommons_mcp.topics import TopicStore, create_topic_store, read_topic_caches
+from datacommons_mcp.version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,7 @@ class DCClient:
         if self.variable_cache.get(place_dcid) is None:
             # Fetch and cache variables for the place
             response = self.dc.observation.fetch_available_statistical_variables(
-                entity_dcids=[place_dcid]
+                entity_dcids=[place_dcid],
             )
             unfiltered_variables = response.get(place_dcid, [])
             # Filter out internal variables
@@ -1112,7 +1113,9 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     search_scope = settings.search_scope
 
     # Create DataCommonsClient
-    dc = DataCommonsClient(url=settings.api_base_url)
+    dc = DataCommonsClient(
+        url=settings.api_base_url, surface_header_value=f"mcp-{__version__}"
+    )
 
     # Create topic store if root_topic_dcids provided
     topic_store: TopicStore | None = None
