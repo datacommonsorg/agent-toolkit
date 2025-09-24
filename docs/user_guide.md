@@ -95,7 +95,7 @@ To set variables using a `.env` file:
 
 ### Use the sample agent
 
-We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run the web UI locally:
+We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run the agent locally:
 
 1. If not already installed, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
 1. From the desired directory, clone the `agent-toolkit` repo:
@@ -111,11 +111,15 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    ```bash
    cd agent-toolkit
    ```
-1. Run the following command:
+1. To run the agent with the web UI (recommended):
    ```bash
    uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/
    ```
-1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
+   To run the agent on the command line:
+   ```bash
+   uvx --from google-adk adk run ./packages/datacommons-mcp/examples/sample_agents/basic_agent
+   ```
+1. For the web UI, point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
 1. From the **Type a message** box, type your query for Data Commons or select another action.
 
 ## Develop your own ADK agent
