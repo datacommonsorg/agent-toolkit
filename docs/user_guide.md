@@ -131,7 +131,7 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
    - The [AGENT_INSTRUCTIONS](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/instructions.py)
    - The [AGENT_MODEL](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py#L23)
    - The transport layer protocol: see [Connect to a remote server](#sample-agent) for details.
-   
+
    To run the custom code, see [Use the sample agent](#use-the-sample-agent) above.
 
 ### Test with MCP Inspector
@@ -205,7 +205,7 @@ from google.adk.tools.mcp_tool.mcp_toolset import (
       ],
    )
 ```
-Run the agent as described in see [Use the sample agent](#use-the-sample-agent) above.
+Run the agent as described in [Use the sample agent](#use-the-sample-agent) above.
 
 ## Feedback
 We use [Google Issue Tracker](https://issuetracker.google.com/) to track bugs and feature requests. All tickets are publicly viewable.
