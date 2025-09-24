@@ -130,7 +130,8 @@ We provide two sample Google Agent Development Kit-based agents you can use as i
 - The sample [basic agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent) is a simple Python ADK agent you can use to develop locally. At the most basic level, you can modify its configuration, including:
    - The [AGENT_INSTRUCTIONS](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/instructions.py)
    - The [AGENT_MODEL](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py#L23)
-   - The transport layer protocol: see [Connect to a remote server](#sample-agent) for details
+   - The transport layer protocol: see [Connect to a remote server](#sample-agent) for details.
+   
    To run the custom code, see [Use the sample agent](#use-the-sample-agent) above.
 
 ### Test with MCP Inspector
