@@ -111,16 +111,24 @@ We provide a basic agent for interacting with the MCP Server in [packages/dataco
    ```bash
    cd agent-toolkit
    ```
-1. To run the agent with the web UI (recommended):
+1. Run the agent using one of the following methods.
+
+#### Web UI (recommended):
+
+1. Run the following command:
    ```bash
    uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/
    ```
-   To run the agent on the command line:
+1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed. 
+1. From the **Type a message** box, type your query for Data Commons or select another action.
+
+#### Command line interface
+
+1. Run the following command:
    ```bash
    uvx --from google-adk adk run ./packages/datacommons-mcp/examples/sample_agents/basic_agent
    ```
-1. For the web UI, point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed.
-1. From the **Type a message** box, type your query for Data Commons or select another action.
+1. Enter your queries at the `User` prompt in the terminal.
 
 ## Develop your own ADK agent
 
