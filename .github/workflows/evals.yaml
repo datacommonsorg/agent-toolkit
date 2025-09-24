@@ -7,6 +7,10 @@ on:
   pull_request_target:
     branches:
       - main
+    # Run evals when code in the datacommons-mcp package changes.
+    paths:
+      - "packages/datacommons-mcp/datacommons_mcp/**"
+      - "packages/datacommons-mcp/evals/**"
 
   # Allows maintainers to manually re-run evals on a specific PR number.
   workflow_dispatch:
