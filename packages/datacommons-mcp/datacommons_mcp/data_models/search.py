@@ -11,6 +11,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class NodeInfo(BaseModel):
+    """Represents node information with name and types."""
+
+    name: str = Field(description="Human-readable name of the node")
+    type_of: list[str] = Field(
+        description="All types of the node (e.g., ['State', 'AdministrativeArea1'])",
+        alias="typeOf",
+    )
+
+
 class SearchMode(str, Enum):
     """Enumeration of search modes for the search_indicators tool."""
 
