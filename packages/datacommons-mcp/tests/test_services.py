@@ -21,6 +21,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
+from datacommons_mcp.data_models.search import NodeInfo
 from datacommons_mcp.exceptions import (
     DataLookupError,
     InvalidDateFormatError,
@@ -43,7 +44,7 @@ class TestGetObservations:
         mock = Mock(spec_set=DCClient)
         mock.search_places = AsyncMock()
         mock.fetch_obs = AsyncMock()
-        mock.fetch_entity_names = AsyncMock()
+        mock.fetch_entity_infos = AsyncMock()
         mock.fetch_entity_types = AsyncMock()
         return mock
 
@@ -820,7 +821,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
         result = await search_indicators(
             client=mock_client,
             query="health",
@@ -828,7 +829,7 @@ class TestSearchIndicators:
 
         assert result.topics is not None
         assert result.variables is not None
-        assert result.dcid_name_mappings is not None
+        assert result.nodes is not None
         assert result.status == "SUCCESS"
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", place_dcids=[], include_topics=True, max_results=10
@@ -854,11 +855,15 @@ class TestSearchIndicators:
                 },
             }
         )
-        mock_client.fetch_entity_names = AsyncMock(
+        mock_client.fetch_entity_infos = AsyncMock(
             return_value={
-                "topic/trade": "Trade",
-                "TradeExports_FRA": "Exports to France",
-                "TradeImports_FRA": "Imports from France",
+                "topic/trade": NodeInfo(name="Trade", typeOf=["Topic"]),
+                "TradeExports_FRA": NodeInfo(
+                    name="Exports to France", typeOf=["StatisticalVariable"]
+                ),
+                "TradeImports_FRA": NodeInfo(
+                    name="Imports from France", typeOf=["StatisticalVariable"]
+                ),
             }
         )
 
@@ -874,6 +879,17 @@ class TestSearchIndicators:
         assert actual_topic_dcids == expected_topic_dcids
         assert actual_variable_dcids == expected_variable_dcids
 
+        # Verify that fetch_entity_infos is called with the correct DCIDs
+        expected_dcids = {
+            "topic/trade",
+            "TradeExports_FRA",
+            "TradeImports_FRA",
+            "country/FRA",
+        }
+        mock_client.fetch_entity_infos.assert_called_once()
+        actual_dcids = set(mock_client.fetch_entity_infos.call_args[0][0])
+        assert actual_dcids == expected_dcids
+
     @pytest.mark.asyncio
     async def test_search_indicators_browse_mode_with_custom_per_search_limit(self):
         """Test search in browse mode with custom per_search_limit parameter."""
@@ -886,8 +902,13 @@ class TestSearchIndicators:
                 "lookups": {"topic/health": "Health", "Count_Person": "Population"},
             }
         )
-        mock_client.fetch_entity_names = AsyncMock(
-            return_value={"topic/health": "Health", "Count_Person": "Population"}
+        mock_client.fetch_entity_infos = AsyncMock(
+            return_value={
+                "topic/health": NodeInfo(name="Health", typeOf=["Topic"]),
+                "Count_Person": NodeInfo(
+                    name="Population", typeOf=["StatisticalVariable"]
+                ),
+            }
         )
 
         await search_indicators(client=mock_client, query="health", per_search_limit=5)
@@ -938,11 +959,15 @@ class TestSearchIndicators:
                 "variables": [{"dcid": "Count_Person"}, {"dcid": "Count_Household"}],
             }
         )
-        mock_client.fetch_entity_names = AsyncMock(
+        mock_client.fetch_entity_infos = AsyncMock(
             return_value={
-                "Count_Person": "Population",
-                "Count_Household": "Households",
-                "country/USA": "USA",
+                "Count_Person": NodeInfo(
+                    name="Population", typeOf=["StatisticalVariable"]
+                ),
+                "Count_Household": NodeInfo(
+                    name="Households", typeOf=["StatisticalVariable"]
+                ),
+                "country/USA": NodeInfo(name="USA", typeOf=["Country"]),
             }
         )
 
@@ -979,12 +1004,16 @@ class TestSearchIndicators:
                 },  # query + Germany (filtered by France)
             ]
         )
-        mock_client.fetch_entity_names = AsyncMock(
+        mock_client.fetch_entity_infos = AsyncMock(
             return_value={
-                "TradeExports_FRA": "Exports to France",
-                "TradeExports_DEU": "Exports to Germany",
-                "country/FRA": "France",
-                "country/DEU": "Germany",
+                "TradeExports_FRA": NodeInfo(
+                    name="Exports to France", typeOf=["StatisticalVariable"]
+                ),
+                "TradeExports_DEU": NodeInfo(
+                    name="Exports to Germany", typeOf=["StatisticalVariable"]
+                ),
+                "country/FRA": NodeInfo(name="France", typeOf=["Country"]),
+                "country/DEU": NodeInfo(name="Germany", typeOf=["Country"]),
             }
         )
 
@@ -1032,7 +1061,7 @@ class TestSearchIndicators:
         # Test valid per_search_limit values with place (so lookup mode is actually used)
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
         mock_client.fetch_indicators = AsyncMock(return_value={"variables": []})
-        mock_client.fetch_entity_names = AsyncMock(return_value={"country/USA": "USA"})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Should not raise for valid values
         await search_indicators(
@@ -1061,8 +1090,12 @@ class TestSearchIndicators:
                 "lookups": {"Count_Person": "Population"},
             }
         )
-        mock_client.fetch_entity_names = AsyncMock(
-            return_value={"Count_Person": "Population"}
+        mock_client.fetch_entity_infos = AsyncMock(
+            return_value={
+                "Count_Person": NodeInfo(
+                    name="Population", typeOf=["StatisticalVariable"]
+                )
+            }
         )
 
         # Call with lookup mode but no places - should automatically fall back to browse mode
@@ -1075,7 +1108,7 @@ class TestSearchIndicators:
         # Should return lookup mode results (variables only)
         assert result.topics == []
         assert result.variables is not None
-        assert result.dcid_name_mappings is not None
+        assert result.nodes is not None
         assert result.status == "SUCCESS"
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", place_dcids=[], include_topics=False, max_results=10
@@ -1096,7 +1129,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Test 1: Single place including topics
         result = await search_indicators(
@@ -1120,7 +1153,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Test 2: Single place variables-only
         result = await search_indicators(
@@ -1151,7 +1184,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Test 3: Multiple places including topics
         result = await search_indicators(
@@ -1179,7 +1212,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Test 1: Maybe bilateral including topics
         result = await search_indicators(
@@ -1225,7 +1258,7 @@ class TestSearchIndicators:
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Test 2: Maybe bilateral variables-only
         result = await search_indicators(
@@ -1272,7 +1305,7 @@ class TestSearchIndicators:
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
         mock_client.fetch_indicators = AsyncMock(return_value={"variables": []})
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         # Test maybe_bilateral=True with places (should work)
         result = await search_indicators(
@@ -1291,7 +1324,7 @@ class TestSearchIndicators:
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
         mock_client.fetch_indicators = AsyncMock(return_value={"variables": []})
-        mock_client.fetch_entity_names = AsyncMock(return_value={})
+        mock_client.fetch_entity_infos = AsyncMock(return_value={})
 
         result = await search_indicators(
             client=mock_client,

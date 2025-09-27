@@ -94,8 +94,8 @@ class SearchResponse(BaseModel):
     variables: list[SearchVariable] = Field(
         description="List of variable objects with dcid and places_with_data"
     )
-    dcid_name_mappings: dict[str, str] = Field(
-        default_factory=dict, description="DCID to name mappings"
+    nodes: dict[str, NodeInfo] = Field(
+        default_factory=dict, description="DCID to NodeInfo mappings (name and types)"
     )
 
     status: str = Field(default="SUCCESS", description="Status of the search operation")
