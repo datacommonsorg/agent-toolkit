@@ -191,7 +191,7 @@ class DCClient:
         if self.variable_cache.get(place_dcid) is None:
             # Fetch and cache variables for the place
             response = self.dc.observation.fetch_available_statistical_variables(
-                entity_dcids=[place_dcid],
+                entity_dcids=[place_dcid]
             )
             unfiltered_variables = response.get(place_dcid, [])
             # Filter out internal variables
