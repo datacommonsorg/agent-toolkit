@@ -15,7 +15,6 @@
 Server module for the DC MCP server.
 """
 
-import asyncio
 import logging
 import types
 from typing import Union, get_args, get_origin
@@ -158,68 +157,6 @@ async def get_observations(
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
-
-
-async def validate_child_place_types(
-    parent_place_name: str, child_place_types: list[str]
-) -> dict[str, bool]:
-    """
-    Checks which of the child place types are valid for the parent place.
-
-    Use this tool to validate the child place types before calling get_observations for those places.
-
-    Example:
-    - For counties in Kenya, you can check for both "County" and "AdministrativeArea1" to determine which is valid.
-      i.e. "validate_child_place_types("Kenya", ["County", "AdministrativeArea1"])"
-
-    The full list of valid child place types are the following:
-    - AdministrativeArea1
-    - AdministrativeArea2
-    - AdministrativeArea3
-    - AdministrativeArea4
-    - AdministrativeArea5
-    - Continent
-    - Country
-    - State
-    - County
-    - City
-    - CensusZipCodeTabulationArea
-    - Town
-    - Village
-
-    Valid child place types can vary by parent place. Here are hints for valid child place types for some of the places:
-    - If parent_place_name is a continent (e.g., "Europe") or the world: "Country"
-    - If parent_place_name is the US or a place within it: "State", "County", "City", "CensusZipCodeTabulationArea", "Town", "Village"
-    - For all other countries: The tool uses a standardized hierarchy: "AdministrativeArea1" (primary division), "AdministrativeArea2" (secondary division), "AdministrativeArea3", "AdministrativeArea4", "AdministrativeArea5".
-      Map commonly used administrative level names to the appropriate administrative area type based on this hierarchy before calling this tool.
-      Use these examples as a guide for mapping:
-      - For India: States typically map to 'AdministrativeArea1', districts typically map to 'AdministrativeArea2'.
-      - For Spain: Autonomous communities typically map to 'AdministrativeArea1', provinces typically map to 'AdministrativeArea2'.
-
-
-    Args:
-        parent_place_name: The name of the parent geographic area (e.g., 'Kenya').
-        child_place_types: The canonical child place types to check for (e.g., 'AdministrativeArea1').
-
-    Returns:
-        A dictionary mapping child place types to a boolean indicating whether they are valid for the parent place.
-    """
-    places = await dc_client.search_places([parent_place_name])
-    place_dcid = places.get(parent_place_name, "")
-    if not place_dcid:
-        return dict.fromkeys(child_place_types, False)
-
-    tasks = [
-        dc_client.child_place_type_exists(
-            place_dcid,
-            child_place_type,
-        )
-        for child_place_type in child_place_types
-    ]
-
-    results = await asyncio.gather(*tasks)
-
-    return dict(zip(child_place_types, results, strict=False))
 
 
 # TODO(clincoln8): Add to optional visualization toolset
