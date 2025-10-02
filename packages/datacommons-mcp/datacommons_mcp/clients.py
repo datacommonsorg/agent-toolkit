@@ -171,7 +171,7 @@ class DCClient:
             type_dcids = response.extract_connected_dcids(dcid, "typeOf")
 
             if name_nodes and type_dcids:
-                result[dcid] = NodeInfo(name=name_nodes[0].value, typeOf=type_dcids)
+                result[dcid] = NodeInfo(name=name_nodes[0].value, type_of=type_dcids)
 
         return result
 

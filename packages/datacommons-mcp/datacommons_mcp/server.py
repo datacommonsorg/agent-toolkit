@@ -110,7 +110,7 @@ async def get_observations(
           2. Use the type that is common to ALL sampled child places
           3. If more than one type is common to all child places, use the most specific type
           4. If there is no common type across all sampled child places, use the majority type (50%+ threshold) if there's a clear majority
-          5. If there is no common type and no clear majority, child `get_observations` calls cannot be made - fall back to individual non-child `get_observations` calls for each place
+          5. If there is no common type and no clear majority, this tool cannot be called with child-place mode - fall back to single-place mode `get_observations` calls for each place
           **Note:** If you used child sampling in `search_indicators` to validate variable existence, you should still get data for ALL children of that type, not just the sampled subset.
 
     * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
@@ -363,33 +363,24 @@ async def search_indicators(
 
       - If provided, the tool will only return indicators that have data for at least one of the specified places.
 
-      - **CRITICAL RULES:**
+      **Place Name Qualification (CRITICAL):**
 
-        - **ALWAYS qualify place names** with geographic context to avoid ambiguity (e.g., `"California, USA"`, `"Paris, France"`, `"Springfield, IL"`).
+      - **ALWAYS qualify place names** with geographic context to avoid ambiguity (e.g., `"California, USA"`, `"Paris, France"`, `"Springfield, IL"`).
 
-        - **ALWAYS specify administrative level** when ambiguous For instance:
-    5     - For the city: `"Madrid, Spain"`
-    6     - For the autonomous community: `"Community of Madrid, Spain"`
-    7     - Similarly, differentiate between `"New York City, USA"` and `"New York State, USA"`.
+      - **ALWAYS specify administrative level** when ambiguous:
+        - For the city: `"Madrid, Spain"`
+        - For the autonomous community: `"Community of Madrid, Spain"`
+        - Similarly, differentiate between `"New York City, USA"` and `"New York State, USA"`.
 
-        - **ALWAYS** use qualified, readable names (e.g., `"California, USA"`, `"Canada"`, `"World"`).
-
-        - **NEVER** use DCIDs (e.g., `"geoId/06"`, `"country/CAN"`).
-
-        - If you get place info from another tool, extract and use *only* the readable name, but always qualify it with geographic context.
-
-        - **CRITICAL:** Always qualify place names to avoid ambiguity (e.g., `"Scotland, UK"` not `"Scotland"`, `"California, USA"` not `"California"`).
-
-      **Place Name Qualification Guidelines:**
-
-      - **Geographic Disambiguation:** Add country/region context (e.g., `"Scotland, UK"` vs `"Scotland County, USA"`)
-      - **Administrative Level Disambiguation:** Specify city vs state vs country level (e.g., `"New York City, USA"` vs `"New York State, USA"`)
       - **Common Ambiguous Cases:**
         - **New York:** `"New York City, USA"` vs `"New York State, USA"`
         - **Madrid:** `"Madrid, Spain"` (city) vs `"Community of Madrid, Spain"`
         - **London:** `"London, UK"` (city) vs `"London, Ontario, Canada"`
         - **Washington:** `"Washington, DC, USA"` vs `"Washington State, USA"`
         - **Springfield:** `"Springfield, IL, USA"` vs `"Springfield, MO, USA"` (add state)
+
+      - **NEVER** use DCIDs (e.g., `"geoId/06"`, `"country/CAN"`).
+      - If you get place info from another tool, extract and use *only* the readable name, but always qualify it with geographic context.
 
       - When searching for indicators related to child places within a larger geographic entity (e.g., states within a country, or countries within a continent/the world), you MUST include the parent entity and a diverse sample of 5-6 of its child places in the `places` list.
        This ensures the discovery of indicators that have data at the child place level. Refer to 'Recipe 4: Sampling Child Places' for detailed examples.
