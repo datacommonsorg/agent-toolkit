@@ -266,8 +266,6 @@ class ToolResponseBaseModel(BaseModel):
 class Node(ToolResponseBaseModel):
     """Represents a Data Commons node, with an optional name, type, and dcid."""
 
-    model_config = {"populate_by_name": True}
-
     dcid: str | None = None
     name: str | None = None
     type_of: list[str] | None = Field(default=None, alias="typeOf")

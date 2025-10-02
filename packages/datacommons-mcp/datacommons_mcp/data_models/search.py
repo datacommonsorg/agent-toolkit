@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 class NodeInfo(BaseModel):
     """Represents node information with name and types."""
 
+    model_config = {"populate_by_name": True}
+
     name: str = Field(description="Human-readable name of the node")
     type_of: list[str] = Field(
         description="All types of the node (e.g., ['State', 'AdministrativeArea1'])",
