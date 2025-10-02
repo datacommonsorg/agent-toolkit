@@ -829,7 +829,7 @@ class TestSearchIndicators:
 
         assert result.topics is not None
         assert result.variables is not None
-        assert result.nodes is not None
+        assert result.dcid_name_mappings is not None
         assert result.status == "SUCCESS"
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", place_dcids=[], include_topics=True, max_results=10
@@ -1108,7 +1108,7 @@ class TestSearchIndicators:
         # Should return lookup mode results (variables only)
         assert result.topics == []
         assert result.variables is not None
-        assert result.nodes is not None
+        assert result.dcid_name_mappings is not None
         assert result.status == "SUCCESS"
         mock_client.fetch_indicators.assert_called_once_with(
             query="health", place_dcids=[], include_topics=False, max_results=10

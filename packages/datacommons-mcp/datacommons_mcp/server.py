@@ -106,7 +106,7 @@ async def get_observations(
         * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County").
           **CRITICAL:** Before calling `get_observations` with `child_place_type`, you **MUST** first call `search_indicators` with child sampling to determine the correct child place type.
           **Child Type Determination Logic:**
-          1. Use the `nodes` field from the `search_indicators` response to examine the types of sampled child places
+          1. Use the `dcid_place_type_mappings` field from the `search_indicators` response to examine the types of sampled child places
           2. Use the type that is common to ALL sampled child places
           3. If more than one type is common to all child places, use the most specific type
           4. If there is no common type across all sampled child places, use the majority type (50%+ threshold) if there's a clear majority
@@ -543,38 +543,30 @@ async def search_indicators(
           "places_with_data": ["geoId/06", "country/CAN", "..."]
         }
       ],
-      "nodes": {
-        "dc/t/TopicDcid": {
-          "name": "Readable Topic Name",
-          "typeOf": ["Topic"]
-        },
-        "dc/v/VariableDcid": {
-          "name": "Readable Variable Name",
-          "typeOf": ["StatisticalVariable"]
-        },
-        "geoId/06": {
-          "name": "California",
-          "typeOf": ["State"]
-        },
-        "country/CAN": {
-          "name": "Canada",
-          "typeOf": ["Country"]
-        }
+      "dcid_name_mappings": {
+        "dc/t/TopicDcid": "Readable Topic Name",
+        "dc/v/VariableDcid": "Readable Variable Name",
+        "geoId/06": "California",
+        "country/CAN": "Canada"
+      },
+      "dcid_place_type_mappings": {
+        "geoId/06": ["State"],
+        "country/CAN": ["Country"]
       },
       "status": "SUCCESS"
     }
 
     ### How to Process the Response
 
-      - `topics`: (Only if `include_topics=True`) Collections of variables and sub-topics. Use `nodes` to get readable names for presentation.
+      - `topics`: (Only if `include_topics=True`) Collections of variables and sub-topics. Use `dcid_name_mappings` to get readable names for presentation.
 
-      - `variables`: Individual data indicators. Use `nodes` to get readable names.
+      - `variables`: Individual data indicators. Use `dcid_name_mappings` to get readable names.
 
       - `places_with_data`: (Only if `places` was in the request) A list of *DCIDs* for the requested places that have data for that specific indicator.
 
-      - `nodes`: A dictionary mapping all DCIDs (topics, variables, and places) in the response to their `NodeInfo` objects containing:
-        - `name`: Human-readable name of the entity
-        - `typeOf`: List of entity types (e.g., `["State"]`, `["Country"]`, `["StatisticalVariable"]`, `["Topic"]`)
+      - `dcid_name_mappings`: A dictionary mapping all DCIDs (topics, variables, and places) in the response to their human-readable names.
+
+      - `dcid_place_type_mappings`: A dictionary mapping place DCIDs to their types (e.g., `["State"]`, `["Country"]`). Use this for child place type determination in `get_observations`.
 
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """

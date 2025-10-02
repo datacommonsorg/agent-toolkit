@@ -526,10 +526,19 @@ async def search_indicators(
     # Fetch lookups
     lookups = await _fetch_and_update_lookups(client, list(all_dcids))
 
+    place_dcids = set(place_dcids_map.values())
+    dcid_name_mappings = {}
+    dcid_place_type_mappings = {}
+    for dcid, info in lookups.items():
+        dcid_name_mappings[dcid] = info.name
+        if dcid in place_dcids:
+            dcid_place_type_mappings[dcid] = info.type_of
+
     # Create unified response
     return SearchResponse(
         status="SUCCESS",
-        nodes=lookups,
+        dcid_name_mappings=dcid_name_mappings,
+        dcid_place_type_mappings=dcid_place_type_mappings,
         topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
     )
