@@ -15,7 +15,10 @@
 Server module for the DC MCP server.
 """
 
+import json
 import logging
+import os
+import sys
 import types
 from typing import Union, get_args, get_origin
 
@@ -23,7 +26,7 @@ from fastmcp import FastMCP
 from pydantic import ValidationError
 
 import datacommons_mcp.settings as settings
-from datacommons_mcp.clients import create_dc_client
+from datacommons_mcp.clients import DCClient, create_dc_client
 from datacommons_mcp.data_models.charts import (
     CHART_CONFIG_MAP,
     DataCommonsChartConfig,
@@ -49,21 +52,47 @@ from datacommons_mcp.services import (
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Create client based on settings
-try:
-    dc_settings = settings.get_dc_settings()
-    logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
-    dc_client = create_dc_client(dc_settings)
-except ValidationError as e:
-    logger.error("Settings error: %s", e)
-    raise
-except Exception as e:
-    logger.error("Failed to create DC client: %s", e)
-    raise
+# Global variables for lazy initialization
+dc_client = None
+dc_settings = None
+
+
+def initialize_client() -> DCClient:
+    """Initialize the DC client with settings from environment."""
+    global dc_client, dc_settings
+
+    if dc_client is not None:
+        return dc_client
+
+    print("Initializing Data Commons client...", file=sys.stderr)
+
+    # Check for API key in environment
+    api_key = os.environ.get("DC_API_KEY", "")
+    if not api_key:
+        print("ERROR: DC_API_KEY not found in environment", file=sys.stderr)
+        print("Available env vars:", list(os.environ.keys()), file=sys.stderr)
+        raise ValueError("DC_API_KEY environment variable is required but not set")
+
+    print(f"Found DC_API_KEY ({len(api_key)} chars)", file=sys.stderr)
+
+    try:
+        dc_settings = settings.get_dc_settings()
+        logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
+        dc_client = create_dc_client(dc_settings)
+        print("✓ Data Commons client initialized successfully", file=sys.stderr)
+        return dc_client
+    except ValidationError as e:
+        logger.error("Settings error: %s", e)
+        print(f"Settings validation error: {e}", file=sys.stderr)
+        raise
+    except Exception as e:
+        logger.error("Failed to create DC client: %s", e)
+        print(f"Client creation error: {e}", file=sys.stderr)
+        raise
+
 
 mcp = FastMCP(
     "DC MCP Server",
-    stateless_http=True,
 )
 
 
@@ -145,18 +174,29 @@ async def get_observations(
         - `alternative_sources`: Details about other available data sources.
 
     """
-    # TODO(keyurs): Remove place_name parameter from the service call.
-    return await get_observations_service(
-        client=dc_client,
-        variable_dcid=variable_dcid,
-        place_dcid=place_dcid,
-        place_name=None,
-        child_place_type=child_place_type,
-        source_override=source_override,
-        date=date,
-        date_range_start=date_range_start,
-        date_range_end=date_range_end,
-    )
+    try:
+        # Initialize client if not already done
+        client = initialize_client()
+
+        # TODO(keyurs): Remove place_name parameter from the service call.
+        return await get_observations_service(
+            client=client,
+            variable_dcid=variable_dcid,
+            place_dcid=place_dcid,
+            place_name=None,
+            child_place_type=child_place_type,
+            source_override=source_override,
+            date=date,
+            date_range_start=date_range_start,
+            date_range_end=date_range_end,
+        )
+    except Exception as e:
+        logger.exception("Error in get_observations: %s", e)
+        print(f"ERROR in get_observations: {type(e).__name__}: {e}", file=sys.stderr)
+        import traceback
+
+        traceback.print_exc(file=sys.stderr)
+        raise
 
 
 # TODO(clincoln8): Add to optional visualization toolset
@@ -315,7 +355,7 @@ async def get_datacommons_chart_config(
 @mcp.tool()
 async def search_indicators(
     query: str,
-    places: list[str] | None = None,
+    places: list[str] | str | None = None,
     per_search_limit: int = 10,
     *,
     include_topics: bool = True,
@@ -561,9 +601,30 @@ async def search_indicators(
 
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
+    # Initialize client if not already done
+    client = initialize_client()
+
+    # WORKAROUND: MCP protocol sometimes sends arrays as JSON strings
+    # If places is a string that looks like a JSON array, parse it
+    if places is not None and isinstance(places, str):
+        try:
+            parsed_places = json.loads(places)
+            if isinstance(parsed_places, list):
+                places = parsed_places
+                print(
+                    f"Deserialized places parameter from JSON string: {places}",
+                    file=sys.stderr,
+                )
+        except (json.JSONDecodeError, TypeError):
+            # If it fails to parse, keep the original value
+            print(
+                f"Warning: places parameter is a string but not valid JSON: {places}",
+                file=sys.stderr,
+            )
+
     # Call the real search_indicators service
     return await search_indicators_service(
-        client=dc_client,
+        client=client,
         query=query,
         places=places,
         per_search_limit=per_search_limit,

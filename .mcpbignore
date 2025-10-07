@@ -1,0 +1,33 @@
+# Python cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+
+# Tests
+**/tests/
+**/test_*.py
+**/evals/
+
+# Development files
+.git
+.gitignore
+build-extension.sh
+pyproject.toml
+uv.lock
+notebooks/
+docs/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/

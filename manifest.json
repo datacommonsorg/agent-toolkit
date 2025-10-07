@@ -1,0 +1,51 @@
+{
+  "manifest_version": "0.2",
+  "name": "datacommons-mcp",
+  "version": "1.0.0",
+  "description": "Tools and agents for interacting with the Data Commons Knowledge Graph using the Model Context Protocol (MCP).",
+  "author": {
+    "name": "DataCommons",
+    "url": "https://github.com/datacommonsorg/agent-toolkit"
+  },
+  "homepage": "https://github.com/datacommonsorg/agent-toolkit",
+  "documentation": "https://github.com/datacommonsorg/agent-toolkit/blob/main/README.md",
+  "support": "https://github.com/datacommonsorg/agent-toolkit/issues",
+  "server": {
+    "type": "python",
+    "entry_point": "datacommons_mcp/run_server.py",
+    "mcp_config": {
+      "command": "python",
+      "args": [
+        "${__dirname}/datacommons_mcp/run_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "${__dirname}:${__dirname}/lib",
+        "DC_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_observations",
+      "description": "Get statistical observations from Data Commons"
+    },
+    {
+      "name": "search_indicators",
+      "description": "Search for statistical indicators and variables"
+    }
+  ],
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "DataCommons API Key",
+      "description": "API key for accessing Data Commons. Get yours at https://datacommons.org/",
+      "required": true,
+      "sensitive": true
+    }
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/datacommonsorg/agent-toolkit"
+  }
+}
