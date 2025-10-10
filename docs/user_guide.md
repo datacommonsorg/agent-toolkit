@@ -185,7 +185,7 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 
 ```jsonc
 {
-// ... (other configuration above)
+// ... (additional configuration)
 "mcpServers": {
     "datacommons-mcp": {
       "httpUrl": "http://<host>:<port>/mcp"
