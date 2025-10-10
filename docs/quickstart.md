@@ -13,7 +13,7 @@
 
 ```json
 {
-...
+// ...
     "mcpServers": {
        "datacommons-mcp": {
            "command": "uvx",
@@ -28,7 +28,7 @@
             "trust": true
         }
     }
-...
+// ...
 }
 ```
 
