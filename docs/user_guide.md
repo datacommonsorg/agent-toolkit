@@ -183,14 +183,14 @@ Below we provide instructions for Gemini CLI and a sample ADK agent. If you're u
 
 To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file) with the following:
 
-```json
+```jsonc
 {
-// ...
+// ... (other configuration above)
 "mcpServers": {
     "datacommons-mcp": {
       "httpUrl": "http://<host>:<port>/mcp"
-    }
-    // ...
+    },
+    // ... (other mcpServers entries)
   }
 }
 ```
