@@ -69,7 +69,8 @@ jobs:
           source wheel_test_venv/bin/activate
 
           # Find the built wheel file and install it
-          WHEEL_FILE=$(find packages/datacommons-mcp/dist -name "*.whl")
+          # Use an absolute path to avoid ambiguity
+          WHEEL_FILE=$(find ${{ github.workspace }}/packages/datacommons-mcp/dist -name "*.whl")
           echo "Installing wheel: $WHEEL_FILE"
           uv pip install "$WHEEL_FILE"
 
