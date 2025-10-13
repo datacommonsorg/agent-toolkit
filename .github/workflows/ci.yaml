@@ -68,8 +68,10 @@ jobs:
           uv venv wheel_test_venv
           source wheel_test_venv/bin/activate
 
-          # Install the wheel into the active environment
-          uv pip install packages/datacommons-mcp/dist/*.whl
+          # Find the built wheel file and install it
+          WHEEL_FILE=$(find packages/datacommons-mcp/dist -name "*.whl")
+          echo "Installing wheel: $WHEEL_FILE"
+          uv pip install "$WHEEL_FILE"
 
           # Start the server in the background
           echo "Starting server in background, logging to server.log..."
