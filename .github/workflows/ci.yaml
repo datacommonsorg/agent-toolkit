@@ -63,6 +63,8 @@ jobs:
         run: uv build
  
       - name: Test running server from installed wheel
+        env:
+          DC_API_KEY: test
         run: |
           # Create and activate a temporary environment
           uv venv wheel_test_venv
