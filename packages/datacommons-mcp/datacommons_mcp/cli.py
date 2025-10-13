@@ -32,7 +32,7 @@ def http(host: str, port: int) -> None:
         click.echo(f"Streamable HTTP endpoint: http://{host}:{port}/mcp")
         click.echo("Press CTRL+C to stop")
 
-        mcp.run(host=host, port=port, transport="streamable-http")
+        mcp.run(host=host, port=port, transport="streamable-http", stateless_http=True)
 
     except ImportError as e:
         click.echo(f"Error importing server: {e}", err=True)

@@ -85,7 +85,7 @@ jobs:
           # Poll the server to see if it's healthy, with a 15-second timeout
           echo "Waiting for server to become healthy..."
           for i in {1..15}; do
-            if curl -s --fail http://localhost:8088/mcp > /dev/null; then
+            if curl -s --fail http://localhost:8088/health > /dev/null; then
               echo "Server started successfully!"
               kill $SERVER_PID
               exit 0
