@@ -64,12 +64,14 @@ jobs:
  
       - name: Test running server from installed wheel
         run: |
-          # Create a temporary environment with the wheel installed
+          # Create and activate a temporary environment
           uv venv wheel_test_venv
-          wheel_test_venv/bin/uv pip install packages/datacommons-mcp/dist/*.whl
-
-          # Activate the environment and start the server in the background
           source wheel_test_venv/bin/activate
+
+          # Install the wheel into the active environment
+          uv pip install packages/datacommons-mcp/dist/*.whl
+
+          # Start the server in the background
           echo "Starting server in background, logging to server.log..."
           # Redirect stdout and stderr to a log file
           datacommons-mcp serve http --port 8088 &> server.log &
