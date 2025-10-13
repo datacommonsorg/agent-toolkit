@@ -56,3 +56,39 @@ jobs:
         # Run unit tests if code in the datacommons-mcp package or tests directory changed
         if: steps.filter.outputs.run_tests == 'true'
         run: uv run --extra test pytest -k "not eval"
+
+      - name: Build wheel
+        # Build from the package directory
+        working-directory: packages/datacommons-mcp
+        run: uv build
+ 
+      - name: Test running server from installed wheel
+        run: |
+          # Create a temporary environment with the wheel installed
+          uv venv wheel_test_venv
+          wheel_test_venv/bin/uv pip install packages/datacommons-mcp/dist/*.whl
+
+          # Activate the environment and start the server in the background
+          source wheel_test_venv/bin/activate
+          echo "Starting server in background, logging to server.log..."
+          # Redirect stdout and stderr to a log file
+          datacommons-mcp serve http --port 8088 &> server.log &
+          SERVER_PID=$!
+
+          # Poll the server to see if it's healthy, with a 15-second timeout
+          echo "Waiting for server to become healthy..."
+          for i in {1..15}; do
+            if curl -s --fail http://localhost:8088/mcp > /dev/null; then
+              echo "Server started successfully!"
+              kill $SERVER_PID
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Error: Server did not start in time."
+          echo "--- Server Logs (server.log) ---"
+          cat server.log
+          echo "--------------------------------"
+          kill $SERVER_PID
+          exit 1
