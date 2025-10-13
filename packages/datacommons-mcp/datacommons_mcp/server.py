@@ -67,9 +67,11 @@ mcp = FastMCP(
     "DC MCP Server",
 )
 
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
     return PlainTextResponse("OK")
+
 
 @mcp.tool()
 async def get_observations(
