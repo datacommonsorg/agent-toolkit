@@ -42,20 +42,20 @@ jobs:
         # This will install all dependencies from the workspace pyproject.toml
         run: uv sync
 
-      # - name: Check formatting with Ruff
-      #   # Run from the package directory
-      #   working-directory: packages/datacommons-mcp
-      #   # The --check flag will fail if the code is not formatted correctly
-      #   run: uv run ruff format --check
+      - name: Check formatting with Ruff
+        # Run from the package directory
+        working-directory: packages/datacommons-mcp
+        # The --check flag will fail if the code is not formatted correctly
+        run: uv run ruff format --check
 
-      # - name: Lint with Ruff
-      #   working-directory: packages/datacommons-mcp
-      #   run: uv run ruff check
+      - name: Lint with Ruff
+        working-directory: packages/datacommons-mcp
+        run: uv run ruff check
 
-      # - name: Run tests with pytest. Skip eval tests.
-      #   # Run unit tests if code in the datacommons-mcp package or tests directory changed
-      #   if: steps.filter.outputs.run_tests == 'true'
-      #   run: uv run --extra test pytest -k "not eval"
+      - name: Run tests with pytest. Skip eval tests.
+        # Run unit tests if code in the datacommons-mcp package or tests directory changed
+        if: steps.filter.outputs.run_tests == 'true'
+        run: uv run --extra test pytest -k "not eval"
 
       - name: Build wheel
         # Build from the package directory
