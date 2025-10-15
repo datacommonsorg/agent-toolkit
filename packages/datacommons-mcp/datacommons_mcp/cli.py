@@ -49,13 +49,13 @@ def stdio() -> None:
         click.echo(f"Version: {__version__}", err=True)
         click.echo("Server is ready to receive requests via stdin/stdout", err=True)
 
-        mcp.run(transport="stdio", show_banner=False)
+        mcp.run(transport="stdio")
 
     except ImportError as e:
         click.echo(f"Error importing server: {e}", err=True)
         sys.exit(1)
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     """Main entry point for the CLI."""
     cli()
