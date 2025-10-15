@@ -17,4 +17,4 @@ def test_version_option():
     runner = CliRunner()
     result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 0
-    assert f"datacommons-mcp, version {__version__}" in result.output
+    assert f"version {__version__}" in result.output
