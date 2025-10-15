@@ -76,7 +76,7 @@ jobs:
           # Use an absolute path to avoid ambiguity
           WHEEL_FILE=$(find ${{ github.workspace }}/dist -name "*.whl")
           echo "Installing wheel: $WHEEL_FILE"
-          uv pip install "$WHEEL_FILE"
+          uv pip install --quiet "$WHEEL_FILE"
 
           # Start the server in the background
           echo "Starting server in background, logging to server.log..."
@@ -101,3 +101,30 @@ jobs:
           echo "--------------------------------"
           kill $SERVER_PID
           exit 1
+
+      - name: Test stdio server from installed wheel
+        env:
+          DC_API_KEY: test
+        run: |
+          # Create and activate a temporary environment
+          uv venv wheel_test_venv
+          source wheel_test_venv/bin/activate
+
+          # Find and install the wheel
+          WHEEL_FILE=$(find ${{ github.workspace }}/dist -name "*.whl")
+          uv pip install --quiet "$WHEEL_FILE"
+
+          # A simple MCP request to get the server's tool manifest
+          MCP_REQUEST='{"mcp_version":"2.0","request_id":"1","tool_code":"mcp.get_manifest"}'
+
+          echo "Testing stdio server with manifest request..."
+          RESPONSE=$(echo "$MCP_REQUEST" | datacommons-mcp serve stdio)
+          echo "Server Response: $RESPONSE"
+
+          # Check if the response contains a known tool name, indicating success
+          if echo "$RESPONSE" | grep -q "search_indicators"; then
+            echo "Stdio server responded successfully."
+          else
+            echo "Error: Did not receive a valid response from stdio server."
+            exit 1
+          fi
