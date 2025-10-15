@@ -41,8 +41,7 @@ jobs:
         working-directory: packages/datacommons-mcp
         run: uv run ruff check
 
-  # Determines if source code has changed to avoid running
-  # subsequent jobs unnecessarily.
+  # Determines if source code has changed to avoid running subsequent jobs unnecessarily.
   dc-mcp-path-filter:
     runs-on: ubuntu-latest
     outputs:
