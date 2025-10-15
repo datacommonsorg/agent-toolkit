@@ -25,11 +25,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["datacommons_mcp"]
 
-# [tool.setuptools.packages.find]
-# where = ["."]
-# include = ["datacommons_mcp*"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["datacommons_mcp*"]
 
 [tool.setuptools.package-data]
 datacommons_mcp = ["**/*.json"]
