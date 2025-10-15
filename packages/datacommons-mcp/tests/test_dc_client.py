@@ -34,6 +34,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationRequest,
 )
 from datacommons_mcp.data_models.search import (
+    NodeInfo,
     SearchResult,
     SearchTask,
     SearchTopic,
@@ -1811,3 +1812,52 @@ class TestCreateDCClient:
                 mock_custom_store.merge.assert_called_once_with(mock_base_store)
             else:
                 mock_custom_store.merge.assert_not_called()
+
+
+class TestFetchEntityInfos:
+    """Test the fetch_entity_infos method."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_entity_infos(self):
+        """Test successful fetch of entity information."""
+
+        # Mock data - simple dict from dcid to name and typeOf
+        mock_data = {
+            "geoId/06": {"name": "California", "typeOf": ["State"]},
+            "country/USA": {"name": "United States", "typeOf": ["Country"]},
+        }
+
+        # Mock the underlying DC client
+        mock_dc = Mock()
+        mock_response = Mock()
+        mock_dc.node.fetch_property_values.return_value = mock_response
+
+        # Mock the extract_connected_nodes method for names
+        def mock_extract_connected_nodes(dcid, property_name):
+            if property_name == "name" and dcid in mock_data:
+                return [Mock(value=mock_data[dcid]["name"])]
+            return []
+
+        # Mock the extract_connected_dcids method for types
+        def mock_extract_connected_dcids(dcid, property_name):
+            if property_name == "typeOf" and dcid in mock_data:
+                return mock_data[dcid]["typeOf"]
+            return []
+
+        mock_response.extract_connected_nodes.side_effect = mock_extract_connected_nodes
+        mock_response.extract_connected_dcids.side_effect = mock_extract_connected_dcids
+
+        client = DCClient(dc=mock_dc)
+        result = await client.fetch_entity_infos(["geoId/06", "country/USA"])
+
+        # Verify the entire result
+        expected_result = {
+            "geoId/06": NodeInfo(name="California", typeOf=["State"]),
+            "country/USA": NodeInfo(name="United States", typeOf=["Country"]),
+        }
+        assert result == expected_result
+
+        # Verify the underlying methods were called
+        mock_dc.node.fetch_property_values.assert_called_once_with(
+            node_dcids=["geoId/06", "country/USA"], properties=["name", "typeOf"]
+        )

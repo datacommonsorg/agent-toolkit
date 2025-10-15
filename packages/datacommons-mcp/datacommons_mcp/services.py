@@ -35,6 +35,7 @@ from datacommons_mcp.data_models.observations import (
     TimeSeriesPoint,
 )
 from datacommons_mcp.data_models.search import (
+    NodeInfo,
     SearchResponse,
     SearchResult,
     SearchTask,
@@ -525,10 +526,19 @@ async def search_indicators(
     # Fetch lookups
     lookups = await _fetch_and_update_lookups(client, list(all_dcids))
 
+    place_dcids = set(place_dcids_map.values())
+    dcid_name_mappings = {}
+    dcid_place_type_mappings = {}
+    for dcid, info in lookups.items():
+        dcid_name_mappings[dcid] = info.name
+        if dcid in place_dcids:
+            dcid_place_type_mappings[dcid] = info.type_of
+
     # Create unified response
     return SearchResponse(
         status="SUCCESS",
-        dcid_name_mappings=lookups,
+        dcid_name_mappings=dcid_name_mappings,
+        dcid_place_type_mappings=dcid_place_type_mappings,
         topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
     )
@@ -687,13 +697,15 @@ async def _search_vector(
     return await _merge_search_results(results)
 
 
-async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
-    """Fetch names for all DCIDs and return as lookups dictionary."""
+async def _fetch_and_update_lookups(
+    client: DCClient, dcids: list[str]
+) -> dict[str, NodeInfo]:
+    """Fetch entity information for all DCIDs and return as nodes dictionary."""
     if not dcids:
         return {}
 
     try:
-        return await client.fetch_entity_names(dcids)
+        return await client.fetch_entity_infos(dcids)
     except Exception:  # noqa: BLE001
         # If fetching fails, return empty dict (not an error)
         return {}

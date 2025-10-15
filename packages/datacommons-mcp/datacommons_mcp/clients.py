@@ -33,6 +33,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationRequest,
 )
 from datacommons_mcp.data_models.search import (
+    NodeInfo,
     SearchIndicator,
     SearchResponse,
     SearchResult,
@@ -154,6 +155,26 @@ class DCClient:
     async def fetch_entity_names(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_entity_names(entity_dcids=dcids)
         return {dcid: name.value for dcid, name in response.items() if name}
+
+    async def fetch_entity_infos(self, dcids: list[str]) -> dict[str, NodeInfo]:
+        """Fetch entity information including name and type for a list of DCIDs."""
+
+        # Fetch both name and typeOf properties in a single call
+        response = self.dc.node.fetch_property_values(
+            node_dcids=dcids, properties=["name", "typeOf"]
+        )
+
+        result = {}
+        for dcid in dcids:
+            # Extract name from nodes (name properties have .value attribute)
+            name_nodes = response.extract_connected_nodes(dcid, "name")
+            # Extract type from DCIDs (typeOf properties have .dcid attribute)
+            type_dcids = response.extract_connected_dcids(dcid, "typeOf")
+
+            if name_nodes and type_dcids:
+                result[dcid] = NodeInfo(name=name_nodes[0].value, type_of=type_dcids)
+
+        return result
 
     async def fetch_entity_types(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_property_values(

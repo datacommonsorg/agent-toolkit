@@ -15,7 +15,6 @@
 Server module for the DC MCP server.
 """
 
-import asyncio
 import logging
 import types
 from typing import Union, get_args, get_origin
@@ -62,10 +61,7 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP(
-    "DC MCP Server",
-    stateless_http=True,
-)
+mcp = FastMCP("DC MCP Server")
 
 
 @mcp.tool()
@@ -104,9 +100,14 @@ async def get_observations(
 
     * **Mode Selection**:
         * To get data for the specified place (e.g., California), **do not** provide `child_place_type`.
-        * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County"). Use the `validate_child_place_types` tool to find valid types.
-          **CRITICAL:** Before calling `get_observations` with `child_place_type`, you **MUST** first call the `validate_child_place_types` tool to find valid types.
-          Only proceed with `get_observations` if `validate_child_place_types` confirms that the `child_place_type` is valid for the specified parent place.
+        * To get data for all its children (e.g., all counties in California), you **must also** provide the `child_place_type` (e.g., "County").
+          **CRITICAL:** Before calling `get_observations` with `child_place_type`, you **MUST** first call `search_indicators` with child sampling to determine the correct child place type.
+          **Child Type Determination Logic:**
+          1. Use the `dcid_place_type_mappings` field from the `search_indicators` response to examine the types of sampled child places
+          2. Use the type that is common to ALL sampled child places
+          3. If more than one type is common to all child places, use the most specific type
+          4. If there is no common type across all sampled child places, use the majority type (50%+ threshold) if there's a clear majority
+          5. If there is no common type and no clear majority, this tool cannot be called with child-place mode - fall back to single-place mode `get_observations` calls for each place
           **Note:** If you used child sampling in `search_indicators` to validate variable existence, you should still get data for ALL children of that type, not just the sampled subset.
 
     * **Data Volume Constraint**: When using **Child Places Mode** (when `child_place_type` is set), you **must** be conservative with your date range to avoid requesting too much data.
@@ -153,69 +154,6 @@ async def get_observations(
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
-
-
-@mcp.tool()
-async def validate_child_place_types(
-    parent_place_name: str, child_place_types: list[str]
-) -> dict[str, bool]:
-    """
-    Checks which of the child place types are valid for the parent place.
-
-    Use this tool to validate the child place types before calling get_observations for those places.
-
-    Example:
-    - For counties in Kenya, you can check for both "County" and "AdministrativeArea1" to determine which is valid.
-      i.e. "validate_child_place_types("Kenya", ["County", "AdministrativeArea1"])"
-
-    The full list of valid child place types are the following:
-    - AdministrativeArea1
-    - AdministrativeArea2
-    - AdministrativeArea3
-    - AdministrativeArea4
-    - AdministrativeArea5
-    - Continent
-    - Country
-    - State
-    - County
-    - City
-    - CensusZipCodeTabulationArea
-    - Town
-    - Village
-
-    Valid child place types can vary by parent place. Here are hints for valid child place types for some of the places:
-    - If parent_place_name is a continent (e.g., "Europe") or the world: "Country"
-    - If parent_place_name is the US or a place within it: "State", "County", "City", "CensusZipCodeTabulationArea", "Town", "Village"
-    - For all other countries: The tool uses a standardized hierarchy: "AdministrativeArea1" (primary division), "AdministrativeArea2" (secondary division), "AdministrativeArea3", "AdministrativeArea4", "AdministrativeArea5".
-      Map commonly used administrative level names to the appropriate administrative area type based on this hierarchy before calling this tool.
-      Use these examples as a guide for mapping:
-      - For India: States typically map to 'AdministrativeArea1', districts typically map to 'AdministrativeArea2'.
-      - For Spain: Autonomous communities typically map to 'AdministrativeArea1', provinces typically map to 'AdministrativeArea2'.
-
-
-    Args:
-        parent_place_name: The name of the parent geographic area (e.g., 'Kenya').
-        child_place_types: The canonical child place types to check for (e.g., 'AdministrativeArea1').
-
-    Returns:
-        A dictionary mapping child place types to a boolean indicating whether they are valid for the parent place.
-    """
-    places = await dc_client.search_places([parent_place_name])
-    place_dcid = places.get(parent_place_name, "")
-    if not place_dcid:
-        return dict.fromkeys(child_place_types, False)
-
-    tasks = [
-        dc_client.child_place_type_exists(
-            place_dcid,
-            child_place_type,
-        )
-        for child_place_type in child_place_types
-    ]
-
-    results = await asyncio.gather(*tasks)
-
-    return dict(zip(child_place_types, results, strict=False))
 
 
 # TODO(clincoln8): Add to optional visualization toolset
@@ -422,15 +360,24 @@ async def search_indicators(
 
       - If provided, the tool will only return indicators that have data for at least one of the specified places.
 
-      - **CRITICAL RULES:**
+      **Place Name Qualification (CRITICAL):**
 
-        - **ALWAYS** use readable names (e.g., `"California"`, `"Canada"`, `"World"`).
+      - **ALWAYS qualify place names** with geographic context to avoid ambiguity (e.g., `"California, USA"`, `"Paris, France"`, `"Springfield, IL"`).
 
-        - **NEVER** use DCIDs (e.g., `"geoId/06"`, `"country/CAN"`).
+      - **ALWAYS specify administrative level** when ambiguous:
+        - For the city: `"Madrid, Spain"`
+        - For the autonomous community: `"Community of Madrid, Spain"`
+        - Similarly, differentiate between `"New York City, USA"` and `"New York State, USA"`.
 
-        - If you get place info from another tool, extract and use *only* the readable name.
+      - **Common Ambiguous Cases:**
+        - **New York:** `"New York City, USA"` vs `"New York State, USA"`
+        - **Madrid:** `"Madrid, Spain"` (city) vs `"Community of Madrid, Spain"`
+        - **London:** `"London, UK"` (city) vs `"London, Ontario, Canada"`
+        - **Washington:** `"Washington, DC, USA"` vs `"Washington State, USA"`
+        - **Springfield:** `"Springfield, IL, USA"` vs `"Springfield, MO, USA"` (add state)
 
-        - If a place is ambiguous (e.g., "Scotland" could be a country or a US county), add a qualifier (e.g., `"Scotland, UK"`).
+      - **NEVER** use DCIDs (e.g., `"geoId/06"`, `"country/CAN"`).
+      - If you get place info from another tool, extract and use *only* the readable name, but always qualify it with geographic context.
 
       - When searching for indicators related to child places within a larger geographic entity (e.g., states within a country, or countries within a continent/the world), you MUST include the parent entity and a diverse sample of 5-6 of its child places in the `places` list.
        This ensures the discovery of indicators that have data at the child place level. Refer to 'Recipe 4: Sampling Child Places' for detailed examples.
@@ -452,11 +399,14 @@ async def search_indicators(
         - **Example 1: Child places of a country**
           - **Call:**
             * `query="population"`
-            * `places=["India", "Uttar Pradesh", "Maharashtra", "Tripura", "Bihar", "Kerala"]`
+            * `places=["India", "Uttar Pradesh, India", "Maharashtra, India", "Tripura, India", "Bihar, India", "Kerala, India"]`
           - **Logic:**
             1. Include the parent ("India") to find parent-level indicators.
             2. Include 5-6 *diverse* child places (e.g., try to pick large/small, north/south/east/west, if known).
             3. The results for these 5-6 places are a *proxy* for all children.
+            4. If a sampled child place shows data for an indicator, assume that data is available for all child places of that type for that indicator.
+                Conversely, if, after sampling, no child place shows data for a specific indicator, assume that data is not available for any of the child places
+                for that indicator.
 
         - **Example 2: Child places of the World (Countries)**
           - **Call:**
@@ -467,6 +417,14 @@ async def search_indicators(
             2. Include 5-6 *diverse* child countries (e.g., from different continents, different economies).
             3. This sampling helps discover the correct indicator DCID used for the `Country` place type, which you can then use in other tools (like `fetch_data` with a parent=`World` and child_type=`Country`).
 
+        - **Example 3: Administrative Level Sampling**
+
+          - **Goal:** Check data availability for different administrative levels (e.g., "population of US cities" vs "population of US states").
+
+          - **Call:**
+            * **For Cities:** `query="population"`, `places=["USA", "New York City, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA", "Phoenix, USA"]`
+            * **For States:** `query="population"`, `places=["USA", "California, USA", "Texas, USA", "Florida, USA", "New York State, USA", "Pennsylvania, USA"]`
+          - **Logic:** Specify the exact administrative level you want to sample to avoid confusion between city and state data.
 
       - **Recipe 3: Potentially Bilateral Data**
 
@@ -543,15 +501,15 @@ async def search_indicators(
 
       - **Agent Follow-up:** After showing the World data, consider asking if the user would like to see data for a different, more specific place if it seems helpful for the conversation.
 
-      - **Example agent response:** "Here is a general overview of the data topics available for the World. You can also ask for this information for a specific place, like 'Africa', 'India', 'California', or 'Paris'."
+      - **Example agent response:** "Here is a general overview of the data topics available for the World. You can also ask for this information for a specific place, like 'Africa', 'India', 'California, USA', or 'Paris, France'."
 
     **Scenario 2: Ambiguous Place Names**
 
-      - **Problem:** User asks for "Scotland", tool returns "Scotland County, USA".
+      - **Problem 1:** Geographic ambiguity - User asks for "Scotland", tool returns "Scotland County, USA".
+      - **Solution:** Re-run with qualified name: `places=["Scotland, UK"]`
 
-      - **Solution:** Re-run the call with a qualified place name.
-
-      - **Call:** `places=["Scotland, UK"]` or `places=["Scotland, United Kingdom"]`
+      - **Problem 2:** Administrative level ambiguity - User asks for "New York", tool returns state-level data when city-level was intended.
+      - **Solution:** Specify administrative level: `places=["New York City, USA"]` vs `places=["New York State, USA"]`
 
     ### Response Structure
 
@@ -579,6 +537,10 @@ async def search_indicators(
         "geoId/06": "California",
         "country/CAN": "Canada"
       },
+      "dcid_place_type_mappings": {
+        "geoId/06": ["State"],
+        "country/CAN": ["Country"]
+      },
       "status": "SUCCESS"
     }
 
@@ -590,7 +552,9 @@ async def search_indicators(
 
       - `places_with_data`: (Only if `places` was in the request) A list of *DCIDs* for the requested places that have data for that specific indicator.
 
-      - `dcid_name_mappings`: A dictionary to map all DCIDs (topics, variables, and places) in the response to their human-readable names.
+      - `dcid_name_mappings`: A dictionary mapping all DCIDs (topics, variables, and places) in the response to their human-readable names.
+
+      - `dcid_place_type_mappings`: A dictionary mapping place DCIDs to their types (e.g., `["State"]`, `["Country"]`). Use this for child place type determination in `get_observations`.
 
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """

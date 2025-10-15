@@ -41,10 +41,6 @@ At the current time, the following are not supported:
 - Events
 - Exploring nodes and relationships in the graph
 
-### Feedback
-
-- [FAQ entry](https://datacommons.org/faq#:~:text=Q%3A%20How%20can%20I%20send%20feedback%20about%20Data%20Commons%3F) on how to file bugs or feature requests
-
 ## Basic usage
 
 This section shows you how to run a local agent that kicks off the server in a subprocess.
@@ -99,33 +95,60 @@ To set variables using a `.env` file:
 
 ### Use the sample agent
 
-We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run it locally:
+We provide a basic agent for interacting with the MCP Server in [packages/datacommons-mcp/examples/sample_agents/basic_agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent). To run the agent locally:
 
+1. If not already installed, install `uv` for managing and installing Python packages; see the instructions at <https://docs.astral.sh/uv/getting-started/installation/>. 
+1. From the desired directory, clone the `agent-toolkit` repo:
+   ```bash
+   git clone https://github.com/datacommonsorg/agent-toolkit.git
+   ```
 1. Set the following environment variables in your shell or startup script:
    ```bash
    export DC_API_KEY=<your Data Commons API key>
    export GEMINI_API_KEY=<your Google AI API key>
    ```
-1. Clone the Data Commons `agent-toolkit` repo: from the desired directory where you would like to save the code, run:
+1. Go to the root directory of the repo:
    ```bash
-   git clone https://github.com/datacommonsorg/agent-toolkit.git
+   cd agent-toolkit
    ```
-1. more coming...
+1. Run the agent using one of the following methods.
+
+#### Web UI (recommended):
+
+1. Run the following command:
+   ```bash
+   uvx --from google-adk adk web ./packages/datacommons-mcp/examples/sample_agents/
+   ```
+1. Point your browser to the address and port displayed on the screen (e.g. `http://127.0.0.1:8000/`). The Agent Development Kit Dev UI is displayed. 
+1. From the **Type a message** box, type your query for Data Commons or select another action.
+
+#### Command line interface
+
+1. Run the following command:
+   ```bash
+   uvx --from google-adk adk run ./packages/datacommons-mcp/examples/sample_agents/basic_agent
+   ```
+1. Enter your queries at the `User` prompt in the terminal.
 
 ## Develop your own ADK agent
 
 We provide two sample Google Agent Development Kit-based agents you can use as inspiration for building your own agent:
 
 - [Try Data Commons MCP Tools with a Custom Agent](https://github.com/datacommonsorg/agent-toolkit/blob/main/notebooks/datacommons_mcp_tools_with_custom_agent.ipynb) is a Google Colab tutorial that shows how to build an ADK Python agent step by step. 
-- The sample [basic agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent) is a simple Python ADK agent you can use to develop locally. See [Use the sample agent](#use-the-sample-agent) above for details.
+- The sample [basic agent](https://github.com/datacommonsorg/agent-toolkit/tree/main/packages/datacommons-mcp/examples/sample_agents/basic_agent) is a simple Python ADK agent you can use to develop locally. At the most basic level, you can modify its configuration, including:
+   - The [AGENT_INSTRUCTIONS](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/instructions.py)
+   - The [AGENT_MODEL](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py#L23)
+   - The transport layer protocol: see [Connect to a remote server](#sample-agent) for details.
+
+   To run the custom code, see [Use the sample agent](#use-the-sample-agent) above.
 
 ### Test with MCP Inspector
 
-If you're interested in getting a deeper understanding of Data Commons tools and tool calls, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful tool for interactively sending tool calls to the server. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
+If you're interested in getting a deeper understanding of Data Commons tools and API, the [MCP Inspector](https://modelcontextprotocol.io/legacy/tools/inspector) is a useful web UI for interactively sending tool calls to the server using JSON messages. It runs locally and spawns a server. It uses token-based OAuth for authentication, which it generates itself, so you don't need to specify any keys.
 
 To use it:
 
-1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://github.com/astral-sh/uv/blob/main/README.md).
+1. If not already installed on your system, install [`node.js`](https://nodejs.org/en/download) and [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
 1. Ensure you've set up the relevant server [environment variables](#environment-variables). If you're using a `.env` file, go to the directory where the file is stored.
 1. Run:
    ```
@@ -133,8 +156,11 @@ To use it:
    ```
 1. Open the Inspector via the pre-filled session token URL which is printed to terminal on server startup. It should look like `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<session token>`. 
 1. Click on the link to open the browser. The tool is prepopulated with all relevant variables.
-1. In the left pane, click **Connect**. 
-1. more coming...
+1. In the far left pane, click **Connect**. 
+1. Click the **Tools** button to display the Data Commons tools and prompts.
+1. In the left pane, select a tool. 
+1. In the right pane, scroll below the prompts to view the input form.
+1. Enter values for required fields and click **Run Tool**. Data are shown in the **Tool Result** box.
 
 ## Use a remote server/client
 
@@ -157,25 +183,44 @@ Below we provide instructions for Gemini CLI and a sample ADK agent. If you're u
 
 To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file) with the following:
 
-```json
+```jsonc
 {
-...
+// ... (additional configuration)
 "mcpServers": {
     "datacommons-mcp": {
       "httpUrl": "http://<host>:<port>/mcp"
     }
-    ...
+    // ... (other mcpServers entries)
   }
 }
 ```
 #### Sample agent
 
-To configure the sample agent xxx to connect to a remote Data Commons server over HTTP, replace the `mcpToolset` section in the agent initialization code in `packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py` with the following:
+To configure the sample agent to connect to a remote Data Commons MCP server over HTTP, you need to modify the code in [`basic_agent/agent.py`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py).  Set import modules and agent initialization parameters as follows:
 
 ```python
-    tools=[McpToolset(
-            connection_params=StreamableHTTPConnectionParams(url=f"http://<host>:<port>/mcp")
-        )],
-    ...
+from google.adk.tools.mcp_tool.mcp_toolset import (
+   MCPToolset,
+   StreamableHTTPConnectionParams
 )
+
+root_agent = LlmAgent(
+      # ...
+      tools=[McpToolset(
+         connection_params=StreamableHTTPConnectionParams(
+            url=f"http://<host>:<port>/mcp"
+         )
+      )],
+   )
 ```
+Run the agent as described in [Use the sample agent](#use-the-sample-agent) above.
+
+## Feedback
+We use [Google Issue Tracker](https://issuetracker.google.com/) to track bugs and feature requests. All tickets are publicly viewable.
+
+Before opening a new ticket, please see if an existing [feature request](https://issuetracker.google.com/issues?q=componentid:1659535%2B%20type:feature_request) or [bug report](https://issuetracker.google.com/issues?q=componentid:1659535%20type:bug) covering your issue has already been filed. If yes, upvote (by clicking the '+1' button) and subscribe to it. If not, open a new [feature request](https://issuetracker.google.com/issues/new?component=1659535&template=2053233) or [bug report](https://issuetracker.google.com/issues/new?component=1659535&template=2053231).
+
+For any issue you file, make sure to indicate that it affects the Data Commons MCP Server.
+
+## Disclaimer
+AI applications using the MCP server can make mistakes, so please double-check responses.

@@ -21,6 +21,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check for changed test paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            run_tests:
+              - 'packages/datacommons-mcp/datacommons_mcp/**'
+              - 'packages/datacommons-mcp/tests/**'
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -44,4 +53,6 @@ jobs:
         run: uv run ruff check
 
       - name: Run tests with pytest. Skip eval tests.
+        # Run unit tests if code in the datacommons-mcp package or tests directory changed
+        if: steps.filter.outputs.run_tests == 'true'
         run: uv run --extra test pytest -k "not eval"
