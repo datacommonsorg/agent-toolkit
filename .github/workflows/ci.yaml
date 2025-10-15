@@ -11,6 +11,12 @@ on:
 jobs:
   ci-checks:
     runs-on: ubuntu-latest
+
+    # Run tests on python 3.11 and 3.12
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
     steps:
       - name: Return success
         run: |
