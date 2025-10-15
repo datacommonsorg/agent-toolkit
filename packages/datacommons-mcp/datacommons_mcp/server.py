@@ -61,10 +61,7 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP(
-    "DC MCP Server",
-    stateless_http=True,
-)
+mcp = FastMCP("DC MCP Server")
 
 
 @mcp.tool()
