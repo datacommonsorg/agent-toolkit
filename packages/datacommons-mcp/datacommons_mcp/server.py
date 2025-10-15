@@ -63,9 +63,7 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP(
-    "DC MCP Server",
-)
+mcp = FastMCP("DC MCP Server")
 
 
 @mcp.custom_route("/health", methods=["GET"])
