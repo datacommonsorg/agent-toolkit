@@ -12,6 +12,7 @@ def test_main_calls_cli():
         cli_module.main()
         mock_cli.assert_called_once()
 
+
 def test_version_option():
     """Tests the --version flag."""
     runner = CliRunner()
