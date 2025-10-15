@@ -9,10 +9,33 @@ on:
       - main
 
 jobs:
-  ci-checks:
+  lint-and-format:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # Run tests on python 3.11 and 3.12
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check formatting with Ruff
+        working-directory: packages/datacommons-mcp
+        run: uv run ruff format --check
+
+      - name: Lint with Ruff
+        working-directory: packages/datacommons-mcp
+        run: uv run ruff check
+
+  unit-tests:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
@@ -39,31 +62,34 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        # This will install all dependencies from the workspace pyproject.toml
         run: uv sync
 
-      - name: Check formatting with Ruff
-        # Run from the package directory
-        working-directory: packages/datacommons-mcp
-        # The --check flag will fail if the code is not formatted correctly
-        run: uv run ruff format --check
-
-      - name: Lint with Ruff
-        working-directory: packages/datacommons-mcp
-        run: uv run ruff check
-
       - name: Run tests with pytest. Skip eval tests.
-        # Run unit tests if code in the datacommons-mcp package or tests directory changed
         if: steps.filter.outputs.run_tests == 'true'
         run: uv run --extra test pytest -k "not eval"
 
  
+  build-and-test-wheel:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: pip install uv
+
       - name: Build wheel
-        # Build from the package directory
         working-directory: packages/datacommons-mcp
         run: uv build
  
-
       - name: Test running server from installed wheel
         env:
           DC_API_KEY: test
@@ -101,3 +127,27 @@ jobs:
           echo "--------------------------------"
           kill $SERVER_PID
           exit 1
+
+  ci-checks:
+    # This job aggregates the status of all parallel CI jobs.
+    # It's used as the single required status check in branch protection rules.
+    runs-on: ubuntu-latest
+    needs:
+      - lint-and-format
+      - unit-tests
+      - build-and-test-wheel
+    # The 'if: always()' ensures this job runs even if dependencies fail,
+    # correctly reporting a "failure" status for the PR.
+    if: always()
+    steps:
+      - name: Report overall CI status
+        run: |
+          if [[ "${{ needs.lint-and-format.result }}" == "success" && \
+                "${{ needs.unit-tests.result }}" == "success" && \
+                "${{ needs.build-and-test-wheel.result }}" == "success" ]]; then
+            echo "All CI checks passed!"
+            exit 0
+          else
+            echo "One or more CI checks failed."
+            exit 1
+          fi
