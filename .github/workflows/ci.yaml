@@ -9,19 +9,6 @@ on:
       - main
 
 jobs:
-  ci-checks:
-    runs-on: ubuntu-latest
-
-    # Run tests on python 3.11 and 3.12
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
-    steps:
-      - name: Return success
-        run: |
-          exit 0
-
   lint-and-format:
     runs-on: ubuntu-latest
     steps:
@@ -141,7 +128,7 @@ jobs:
           kill $SERVER_PID
           exit 1
 
-  ci-status:
+  ci-final-status:
     # This job aggregates the status of all parallel CI jobs.
     # It's used as the single required status check in branch protection rules.
     runs-on: ubuntu-latest
