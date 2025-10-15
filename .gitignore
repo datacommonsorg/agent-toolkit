@@ -189,5 +189,7 @@ Thumbs.db
 # Gemini
 gemini.md
 /.idea
-/tmp
-/.gemini
+/.gemini/
+
+# Temporary files
+/tmp/
