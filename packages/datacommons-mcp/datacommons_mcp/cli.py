@@ -8,7 +8,7 @@ from .version import __version__
 
 @click.group()
 @click.version_option(version=__version__)
-def cli() -> None:  # pragma: no cover
+def cli() -> None:
     """DataCommons MCP CLI - Model Context Protocol server for Data Commons."""
     logging.basicConfig(level=logging.INFO)
 
@@ -56,6 +56,6 @@ def stdio() -> None:
         sys.exit(1)
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     """Main entry point for the CLI."""
     cli()
