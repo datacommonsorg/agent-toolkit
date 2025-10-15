@@ -37,3 +37,11 @@ class InvalidDateFormatError(_ErrorStrMixin, ValueError):
 
 class InvalidDateRangeError(_ErrorStrMixin, ValueError):
     """Raised when a start date is later than end date for a date range."""
+
+
+class APIKeyValidationError(_ErrorStrMixin, Exception):
+    """Base class for API key validation errors."""
+
+
+class InvalidAPIKeyError(APIKeyValidationError):
+    """Raised when the API key is determined to be invalid."""
