@@ -8,6 +8,13 @@ on:
     branches:
       - main
 
+# Add concurrency control to cancel redundant runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+
+# NOTE: Add new jobs to `ci-final-status.needs` to make them required!
 jobs:
   lint-and-format:
     runs-on: ubuntu-latest
@@ -34,16 +41,15 @@ jobs:
         working-directory: packages/datacommons-mcp
         run: uv run ruff check
 
-  unit-tests:
+  # Determines if source code has changed to avoid running
+  # subsequent jobs unnecessarily.
+  dc-mcp-path-filter:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
+    outputs:
+      run_downstream_jobs: ${{ steps.filter.outputs.run_tests }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Check for changed test paths
         id: filter
         uses: dorny/paths-filter@v3
@@ -52,6 +58,19 @@ jobs:
             run_tests:
               - 'packages/datacommons-mcp/datacommons_mcp/**'
               - 'packages/datacommons-mcp/tests/**'
+              - 'packages/datacommons-mcp/pyproject.toml'
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: dc-mcp-path-filter
+    if: needs.dc-mcp-path-filter.outputs.run_downstream_jobs == 'true'
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -65,12 +84,12 @@ jobs:
         run: uv sync
 
       - name: Run tests with pytest. Skip eval tests.
-        if: steps.filter.outputs.run_tests == 'true'
         run: uv run --extra test pytest -k "not eval"
-
  
   build-and-test-wheel:
     runs-on: ubuntu-latest
+    needs: dc-mcp-path-filter
+    if: needs.dc-mcp-path-filter.outputs.run_downstream_jobs == 'true'
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
@@ -97,19 +116,17 @@ jobs:
           # Create and activate a temporary environment
           uv venv wheel_test_venv
           source wheel_test_venv/bin/activate
-
+          
           # Find the built wheel file and install it
-          # Use an absolute path to avoid ambiguity
           WHEEL_FILE=$(find ${{ github.workspace }}/dist -name "*.whl")
           echo "Installing wheel: $WHEEL_FILE"
           uv pip install --quiet "$WHEEL_FILE"
-
+          
           # Start the server in the background
           echo "Starting server in background, logging to server.log..."
-          # Redirect stdout and stderr to a log file
           datacommons-mcp serve http --port 8088 &> server.log &
           SERVER_PID=$!
-
+          
           # Poll the server to see if it's healthy, with a 15-second timeout
           echo "Waiting for server to become healthy..."
           for i in {1..15}; do
@@ -120,7 +137,7 @@ jobs:
             fi
             sleep 1
           done
-
+         
           echo "Error: Server did not start in time."
           echo "--- Server Logs (server.log) ---"
           cat server.log
@@ -129,25 +146,20 @@ jobs:
           exit 1
 
   ci-final-status:
-    # This job aggregates the status of all parallel CI jobs.
-    # It's used as the single required status check in branch protection rules.
     runs-on: ubuntu-latest
     needs:
       - lint-and-format
       - unit-tests
       - build-and-test-wheel
-    # The 'if: always()' ensures this job runs even if dependencies fail,
-    # correctly reporting a "failure" status for the PR.
-    if: always()
+    if: always() # Ensures this job runs even if depenendencies fail.
     steps:
       - name: Report overall CI status
         run: |
-          if [[ "${{ needs.lint-and-format.result }}" == "success" && \
-                "${{ needs.unit-tests.result }}" == "success" && \
-                "${{ needs.build-and-test-wheel.result }}" == "success" ]]; then
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" || \
+                "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more CI checks failed or were cancelled."
+            exit 1
+          else
             echo "All CI checks passed!"
             exit 0
-          else
-            echo "One or more CI checks failed."
-            exit 1
           fi
