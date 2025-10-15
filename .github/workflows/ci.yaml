@@ -110,7 +110,7 @@ jobs:
  
       - name: Test running server from installed wheel
         env:
-          DC_API_KEY: test
+          DC_API_KEY: test # DC_API_KEY is required to start the server successfully, the value is not checked.
         run: |
           # Create and activate a temporary environment
           uv venv wheel_test_venv
