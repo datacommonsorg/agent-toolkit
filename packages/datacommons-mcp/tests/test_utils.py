@@ -14,11 +14,10 @@
 
 import pytest
 import requests
-import requests_mock
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
-from datacommons_mcp.utils import filter_by_date, validate_api_key
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
+from datacommons_mcp.utils import filter_by_date, validate_api_key
 
 
 class TestFilterByDate:
@@ -54,7 +53,9 @@ class TestFilterByDate:
 
 class TestValidateAPIKey:
     def test_validate_api_key_success(self, requests_mock):
-        requests_mock.get("https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=200)
+        requests_mock.get(
+            "https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=200
+        )
         api_key_to_test = "my-test-api-key"
         assert validate_api_key(api_key_to_test) is True
         assert requests_mock.last_request.headers["X-API-Key"] == api_key_to_test
@@ -64,7 +65,9 @@ class TestValidateAPIKey:
             validate_api_key(None)
 
     def test_validate_api_key_invalid(self, requests_mock):
-        requests_mock.get("https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=403)
+        requests_mock.get(
+            "https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=403
+        )
         with pytest.raises(InvalidAPIKeyError):
             validate_api_key("invalid_key")
 

@@ -20,6 +20,8 @@ from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange, ObservationDate
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 
+logger = logging.getLogger(__name__)
+
 
 def validate_api_key(api_key: str | None) -> bool:
     """
@@ -39,7 +41,7 @@ def validate_api_key(api_key: str | None) -> bool:
         raise InvalidAPIKeyError("DC_API_KEY is not set.")
 
     try:
-        response = requests.get(
+        response = requests.get(  # noqa: S113
             "https://api.datacommons.org/v2/node?nodes=geoId/06",
             headers={"X-API-Key": api_key},
         )
@@ -51,13 +53,13 @@ def validate_api_key(api_key: str | None) -> bool:
     except requests.exceptions.HTTPError as e:
         raise APIKeyValidationError(
             f"Failed to validate API key due to a server error: {e}"
-        )
+        ) from e
     except requests.exceptions.RequestException as e:
         raise APIKeyValidationError(
             f"Failed to validate API key due to a network error: {e}"
-        )
+        ) from e
 
-    logging.info("Data Commons API key validation successful.")
+    logger.info("Data Commons API key validation successful.")
     return True
 
 

@@ -4,9 +4,9 @@ import sys
 
 import click
 
-from .version import __version__
-from .utils import validate_api_key
 from .exceptions import APIKeyValidationError, InvalidAPIKeyError
+from .utils import validate_api_key
+from .version import __version__
 
 
 @click.group()
@@ -16,7 +16,7 @@ def cli() -> None:
     logging.basicConfig(level=logging.INFO)
 
 
-@cli.group(context_settings=dict(allow_interspersed_args=True))
+@cli.group(context_settings={"allow_interspersed_args": True})
 @click.option(
     "--skip-api-key-validation",
     is_flag=True,
@@ -24,7 +24,7 @@ def cli() -> None:
     help="Skip the validation of the DC_API_KEY at startup.",
 )
 @click.pass_context
-def serve(ctx, skip_api_key_validation: bool) -> None:
+def serve(ctx: click.Context, *, skip_api_key_validation: bool) -> None:
     """Serve the MCP server in different modes."""
     if not skip_api_key_validation:
         try:
