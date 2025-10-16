@@ -1,5 +1,4 @@
 version = 1
-revision = 2
 requires-python = ">=3.11, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -378,16 +377,16 @@ provides-extras = ["test"]
 
 [[package]]
 name = "datacommons-client"
-version = "2.1.1"
+version = "2.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/62/1c8a2f964d35f78bb91a0533bc69a5a1b3991773e6ae22ee4bd5b63e0b6c/datacommons_client-2.1.1.tar.gz", hash = "sha256:22cf0d3f6e6095964d30284c17a345f5dd88f80e1c375831e15df58631eedf05", size = 54504, upload-time = "2025-06-10T21:24:06.69Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/58/9d8db839f1efea99f740b76158ca9dd746173811dadc180e32be1f0717ba/datacommons_client-2.1.2.tar.gz", hash = "sha256:ac15d18fc10b32b8e88e59ad5fd045e638c7ac8a29dd5f82275a032bcc72437d", size = 58790, upload-time = "2025-10-16T13:36:04.222Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/d9/c262b29f8f4702aa770636557b44d54cab8f315e3cadb4b52d0b544243fd/datacommons_client-2.1.1-py3-none-any.whl", hash = "sha256:ecb87cb29df48477b6324c6deaae7b9aa017899981249144e93aeb4902e4a44a", size = 70034, upload-time = "2025-06-10T21:24:05.313Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/c2/b6d640f2c8f69481502eb0149e25857e0739f20a75ccc720124cf9ecde11/datacommons_client-2.1.2-py3-none-any.whl", hash = "sha256:5cde8160bceffa9b0f2339f7014ea41df018eb13bf7774889b2b4a1ea1141f08", size = 75536, upload-time = "2025-10-16T13:36:03.322Z" },
 ]
 
 [[package]]
