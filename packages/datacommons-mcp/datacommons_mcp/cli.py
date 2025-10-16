@@ -21,7 +21,13 @@ def serve() -> None:
 @serve.command()
 @click.option("--host", default="localhost", help="Host to bind.")
 @click.option("--port", default=8080, help="Port to bind.", type=int)
-def http(host: str, port: int) -> None:
+@click.option(
+    "--no-api-key-validation",
+    is_flag=True,
+    default=False,
+    help="Skip the validation of the DC_API_KEY at startup.",
+)
+def http(host: str, port: int, no_api_key_validation: bool) -> None:
     """Start the MCP server in Streamable HTTP mode."""
     try:
         from datacommons_mcp.server import mcp
@@ -40,7 +46,13 @@ def http(host: str, port: int) -> None:
 
 
 @serve.command()
-def stdio() -> None:
+@click.option(
+    "--no-api-key-validation",
+    is_flag=True,
+    default=False,
+    help="Skip the validation of the DC_API_KEY at startup.",
+)
+def stdio(no_api_key_validation: bool) -> None:
     """Start the MCP server in stdio mode."""
     try:
         from datacommons_mcp.server import mcp

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import httpx
+import logging
 from datacommons_client.models.observation import Observation
 
 from datacommons_mcp.data_models.observations import DateRange, ObservationDate
@@ -52,6 +53,7 @@ async def validate_api_key(api_key: str) -> bool:
             raise APIKeyValidationError(
                 f"Failed to validate API key due to a network error: {e}"
             )
+    logging.info("Data Commons API key validation successful.")
     return True
 
 
