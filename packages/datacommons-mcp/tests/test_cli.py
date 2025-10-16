@@ -40,7 +40,7 @@ def test_serve_validates_key_by_default(mock_validate, mock_run):
 def test_serve_skip_validation_flag(mock_validate, mock_run):
     """Tests that the --skip-api-key-validation flag works."""
     runner = CliRunner()
-    runner.invoke(cli, ["serve", "--skip-api-key-validation", "http"])
+    runner.invoke(cli, ["serve", "http", "--skip-api-key-validation"])
     mock_validate.assert_not_called()
     mock_run.assert_called_once()
 
