@@ -1,3 +1,4 @@
+import os
 from unittest import mock
 
 from click.testing import CliRunner
@@ -22,6 +23,7 @@ def test_version_option():
     assert f"version {__version__}" in result.output
 
 
+@mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch("datacommons_mcp.cli.validate_api_key")
 def test_serve_validates_key_by_default(mock_validate, mock_run):
@@ -32,6 +34,7 @@ def test_serve_validates_key_by_default(mock_validate, mock_run):
     mock_run.assert_called_once()
 
 
+@mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch("datacommons_mcp.cli.validate_api_key")
 def test_serve_skip_validation_flag(mock_validate, mock_run):
@@ -42,6 +45,7 @@ def test_serve_skip_validation_flag(mock_validate, mock_run):
     mock_run.assert_called_once()
 
 
+@mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch(
     "datacommons_mcp.cli.validate_api_key", side_effect=InvalidAPIKeyError("Test error")
