@@ -183,9 +183,13 @@ cython_debug/
 ehthumbs.db
 Thumbs.db
 
-# VSCode
+# IDE files
 .vscode
+/.idea/
 
 # Gemini
 gemini.md
-/.idea
+/.gemini/
+
+# Temporary files
+/tmp/
