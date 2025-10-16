@@ -1,9 +1,12 @@
 import logging
+import os
 import sys
 
 import click
 
 from .version import __version__
+from .utils import validate_api_key
+from .exceptions import APIKeyValidationError, InvalidAPIKeyError
 
 
 @click.group()
@@ -13,21 +16,31 @@ def cli() -> None:
     logging.basicConfig(level=logging.INFO)
 
 
-@cli.group()
-def serve() -> None:
+@cli.group(context_settings=dict(allow_interspersed_args=True))
+@click.option(
+    "--skip-api-key-validation",
+    is_flag=True,
+    default=False,
+    help="Skip the validation of the DC_API_KEY at startup.",
+)
+@click.pass_context
+def serve(ctx, skip_api_key_validation: bool) -> None:
     """Serve the MCP server in different modes."""
+    if not skip_api_key_validation:
+        try:
+            validate_api_key(os.getenv("DC_API_KEY"))
+        except (InvalidAPIKeyError, APIKeyValidationError) as e:
+            click.echo(str(e), err=True)
+            sys.stderr.flush()
+            ctx.exit(1)
+    else:
+        click.echo("Skipping API key validation as requested.")
 
 
 @serve.command()
 @click.option("--host", default="localhost", help="Host to bind.")
 @click.option("--port", default=8080, help="Port to bind.", type=int)
-@click.option(
-    "--no-api-key-validation",
-    is_flag=True,
-    default=False,
-    help="Skip the validation of the DC_API_KEY at startup.",
-)
-def http(host: str, port: int, no_api_key_validation: bool) -> None:
+def http(host: str, port: int) -> None:
     """Start the MCP server in Streamable HTTP mode."""
     try:
         from datacommons_mcp.server import mcp
@@ -46,13 +59,7 @@ def http(host: str, port: int, no_api_key_validation: bool) -> None:
 
 
 @serve.command()
-@click.option(
-    "--no-api-key-validation",
-    is_flag=True,
-    default=False,
-    help="Skip the validation of the DC_API_KEY at startup.",
-)
-def stdio(no_api_key_validation: bool) -> None:
+def stdio() -> None:
     """Start the MCP server in stdio mode."""
     try:
         from datacommons_mcp.server import mcp
