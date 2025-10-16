@@ -22,16 +22,15 @@ from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 
 logger = logging.getLogger(__name__)
 
+VALIDATION_API_URL = "https://api.datacommons.org/v2/node?nodes=geoId/06"
 
-def validate_api_key(api_key: str | None) -> bool:
+
+def validate_api_key(api_key: str | None) -> None:
     """
     Validates the Data Commons API key by making a simple API call.
 
     Args:
         api_key: The Data Commons API key to validate.
-
-    Returns:
-        True if the API key is valid.
 
     Raises:
         InvalidAPIKeyError: If the API key is missing, invalid, or has expired.
@@ -41,9 +40,10 @@ def validate_api_key(api_key: str | None) -> bool:
         raise InvalidAPIKeyError("DC_API_KEY is not set.")
 
     try:
-        response = requests.get(  # noqa: S113
-            "https://api.datacommons.org/v2/node?nodes=geoId/06",
+        response = requests.get(
+            VALIDATION_API_URL,
             headers={"X-API-Key": api_key},
+            timeout=10,  # 10-second timeout
         )
         if 400 <= response.status_code < 500:
             raise InvalidAPIKeyError(
@@ -60,7 +60,6 @@ def validate_api_key(api_key: str | None) -> bool:
         ) from e
 
     logger.info("Data Commons API key validation successful.")
-    return True
 
 
 def filter_by_date(

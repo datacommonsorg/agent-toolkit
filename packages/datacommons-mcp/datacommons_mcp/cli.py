@@ -31,6 +31,11 @@ def serve(ctx: click.Context, *, skip_api_key_validation: bool) -> None:
             validate_api_key(os.getenv("DC_API_KEY"))
         except (InvalidAPIKeyError, APIKeyValidationError) as e:
             click.echo(str(e), err=True)
+            click.echo(
+                "To obtain an API key, go to https://apikeys.datacommons.org and "
+                "request a key for the api.datacommons.org domain.",
+                err=True,
+            )
             sys.stderr.flush()
             ctx.exit(1)
     else:

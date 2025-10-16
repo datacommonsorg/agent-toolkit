@@ -1,6 +1,6 @@
 # Copyright 2025 Google LLC.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under a`pache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -17,7 +17,11 @@ import requests
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
-from datacommons_mcp.utils import filter_by_date, validate_api_key
+from datacommons_mcp.utils import (
+    VALIDATION_API_URL,
+    filter_by_date,
+    validate_api_key,
+)
 
 
 class TestFilterByDate:
@@ -53,11 +57,9 @@ class TestFilterByDate:
 
 class TestValidateAPIKey:
     def test_validate_api_key_success(self, requests_mock):
-        requests_mock.get(
-            "https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=200
-        )
+        requests_mock.get(VALIDATION_API_URL, status_code=200)
         api_key_to_test = "my-test-api-key"
-        assert validate_api_key(api_key_to_test) is True
+        validate_api_key(api_key_to_test)  # Should not raise an exception
         assert requests_mock.last_request.headers["X-API-Key"] == api_key_to_test
 
     def test_validate_api_key_no_key(self):
@@ -65,15 +67,13 @@ class TestValidateAPIKey:
             validate_api_key(None)
 
     def test_validate_api_key_invalid(self, requests_mock):
-        requests_mock.get(
-            "https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=403
-        )
+        requests_mock.get(VALIDATION_API_URL, status_code=403)
         with pytest.raises(InvalidAPIKeyError):
             validate_api_key("invalid_key")
 
     def test_validate_api_key_network_error(self, requests_mock):
         requests_mock.get(
-            "https://api.datacommons.org/v2/node?nodes=geoId/06",
+            VALIDATION_API_URL,
             exc=requests.exceptions.RequestException("Network error"),
         )
         with pytest.raises(APIKeyValidationError):
