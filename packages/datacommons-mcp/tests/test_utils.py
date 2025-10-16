@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import pytest
+import requests
+import requests_mock
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
-from datacommons_mcp.utils import filter_by_date
+from datacommons_mcp.utils import filter_by_date, validate_api_key
+from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 
 
 class TestFilterByDate:
@@ -47,3 +50,28 @@ class TestFilterByDate:
     def test_empty_result(self, observations):
         date_filter = DateRange(start_date="2025", end_date="2026")
         assert len(filter_by_date(observations, date_filter)) == 0
+
+
+class TestValidateAPIKey:
+    def test_validate_api_key_success(self, requests_mock):
+        requests_mock.get("https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=200)
+        api_key_to_test = "my-test-api-key"
+        assert validate_api_key(api_key_to_test) is True
+        assert requests_mock.last_request.headers["X-API-Key"] == api_key_to_test
+
+    def test_validate_api_key_no_key(self):
+        with pytest.raises(InvalidAPIKeyError, match="DC_API_KEY is not set."):
+            validate_api_key(None)
+
+    def test_validate_api_key_invalid(self, requests_mock):
+        requests_mock.get("https://api.datacommons.org/v2/node?nodes=geoId/06", status_code=403)
+        with pytest.raises(InvalidAPIKeyError):
+            validate_api_key("invalid_key")
+
+    def test_validate_api_key_network_error(self, requests_mock):
+        requests_mock.get(
+            "https://api.datacommons.org/v2/node?nodes=geoId/06",
+            exc=requests.exceptions.RequestException("Network error"),
+        )
+        with pytest.raises(APIKeyValidationError):
+            validate_api_key("any_key")
