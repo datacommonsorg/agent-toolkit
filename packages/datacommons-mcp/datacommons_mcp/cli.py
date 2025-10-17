@@ -32,7 +32,7 @@ def _validate_mode_options(ctx: Context, mode: str) -> None:
         param.name
         for param in ctx.command.params
         if isinstance(param, Option)
-        and ctx.get__parameter_source(param.name) is not ParameterSource.DEFAULT
+        and ctx.get_parameter_source(param.name) is not ParameterSource.DEFAULT
     }
     allowed_options = COMMON_OPTIONS.union(MODE_SPECIFIC_OPTIONS.get(mode, set()))
     invalidly_used_options = provided_options - allowed_options
