@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 VALIDATION_API_URL = "https://api.datacommons.org/v2/node?nodes=geoId/06"
 
 
-def validate_api_key(api_key: str | None) -> None:
+def validate_api_key(api_key: str) -> None:
     """
     Validates the Data Commons API key by making a simple API call.
 
@@ -33,12 +33,9 @@ def validate_api_key(api_key: str | None) -> None:
         api_key: The Data Commons API key to validate.
 
     Raises:
-        InvalidAPIKeyError: If the API key is missing, invalid, or has expired.
+        InvalidAPIKeyError: If the API key is invalid or has expired.
         APIKeyValidationError: For other network-related validation errors.
     """
-    if not api_key:
-        raise InvalidAPIKeyError("DC_API_KEY is not set.")
-
     try:
         response = requests.get(
             VALIDATION_API_URL,

@@ -32,7 +32,7 @@ def _validate_mode_options(ctx: Context, mode: str) -> None:
         param.name
         for param in ctx.command.params
         if isinstance(param, Option)
-        and ctx.get_parameter_source(param.name) is not ParameterSource.DEFAULT
+        and ctx.get__parameter_source(param.name) is not ParameterSource.DEFAULT
     }
     allowed_options = COMMON_OPTIONS.union(MODE_SPECIFIC_OPTIONS.get(mode, set()))
     invalidly_used_options = provided_options - allowed_options
@@ -49,7 +49,10 @@ def _run_api_key_validation(ctx: Context, *, skip_validation: bool) -> None:
     """Runs the API key validation unless skipped."""
     if not skip_validation:
         try:
-            validate_api_key(os.getenv("DC_API_KEY"))
+            api_key = os.getenv("DC_API_KEY")
+            if not api_key:
+                raise InvalidAPIKeyError("DC_API_KEY is not set.")
+            validate_api_key(api_key)
         except (InvalidAPIKeyError, APIKeyValidationError) as e:
             click.echo(str(e), err=True)
             click.echo(
@@ -60,7 +63,7 @@ def _run_api_key_validation(ctx: Context, *, skip_validation: bool) -> None:
             sys.stderr.flush()
             ctx.exit(1)
     else:
-        click.echo("Skipping API key validation as requested.")
+        click.echo("Skipping API key validation as requested.", err=True)
 
 
 def _run_http_server(host: str, port: int) -> None:
