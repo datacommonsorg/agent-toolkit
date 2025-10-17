@@ -333,7 +333,11 @@ class DCClient:
         }
 
         endpoint_url = f"{self.sv_search_base_url}/api/nl/search-indicators"
-        headers = {"Content-Type": "application/json"}
+        # 'x-surface' indicates to mixer that this call is coming from the MCP server
+        headers = {
+            "Content-Type": "application/json",
+            "x-surface": f"mcp-{__version__}"
+        }
         try:
             response = await asyncio.to_thread(
                 requests.get,
@@ -656,7 +660,11 @@ class DCClient:
         results_map = {}
         skip_topics_param = "&skip_topics=true" if skip_topics else ""
         endpoint_url = f"{self.sv_search_base_url}/api/nl/search-vector"
-        headers = {"Content-Type": "application/json"}
+        # 'x-surface' indicates to mixer that this call is coming from the MCP server
+        headers = {
+            "Content-Type": "application/json",
+            "x-surface": f"mcp-{__version__}"
+        }
 
         # Use precomputed indices based on configured search scope
         indices = self.search_indices
@@ -719,7 +727,11 @@ class DCClient:
         """
         results_map = {}
         endpoint_url = f"{self.sv_search_base_url}/api/nl/search-indicators"
-        headers = {"Content-Type": "application/json"}
+        # 'x-surface' indicates to mixer that this call is coming from the MCP server
+        headers = {
+            "Content-Type": "application/json",
+            "x-surface": f"mcp-{__version__}"
+        }
 
         # Use precomputed indices based on configured search scope
         indices = self.search_indices
