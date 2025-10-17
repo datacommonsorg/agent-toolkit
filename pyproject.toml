@@ -37,11 +37,13 @@ datacommons-mcp = { workspace = true }
 [tool.uv.workspace]
 members = ["packages/*"]
 
-[tool.ruff.lint]
+[tool.ruff]
 # TODO(clincoln8): Implement lint checks for ipynb's (including pre-push hook).
 exclude = [
     "**/*.ipynb",  # Ignores all notebooks
 ]
+
+[tool.ruff.lint]
 # Visit https://docs.astral.sh/ruff/rules/ for detailed rule descriptions.
 extend-select = [
   "ERA",  # removes commented-out code from Python files.

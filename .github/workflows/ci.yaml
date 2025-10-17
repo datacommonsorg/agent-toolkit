@@ -123,7 +123,7 @@ jobs:
           
           # Start the server in the background
           echo "Starting server in background, logging to server.log..."
-          datacommons-mcp serve http --port 8088 &> server.log &
+          datacommons-mcp serve http --port 8088 --skip-api-key-validation &> server.log &
           SERVER_PID=$!
           
           # Poll the server to see if it's healthy, with a 15-second timeout
