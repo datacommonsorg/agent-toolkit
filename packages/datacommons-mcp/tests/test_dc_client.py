@@ -27,7 +27,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 import requests
 from datacommons_client.client import DataCommonsClient
-from datacommons_mcp.clients import SURFACE, DCClient, create_dc_client
+from datacommons_mcp.clients import SURFACE_HEADER_VALUE, DCClient, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationDateType,
@@ -1617,7 +1617,7 @@ class TestCreateDCClient:
             assert result.use_search_indicators_endpoint is True  # Default value
             mock_dc_client.assert_called_with(
                 api_key="test_api_key",
-                surface_header_value=SURFACE,
+                surface_header_value=SURFACE_HEADER_VALUE,
             )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
@@ -1657,7 +1657,7 @@ class TestCreateDCClient:
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
             mock_dc_client.assert_called_with(
                 url=expected_api_url,
-                surface_header_value=SURFACE,
+                surface_header_value=SURFACE_HEADER_VALUE,
             )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
@@ -1711,7 +1711,7 @@ class TestCreateDCClient:
             expected_api_url = "https://example.com/core/api/v2/"
             mock_dc_client.assert_called_with(
                 url=expected_api_url,
-                surface_header_value=SURFACE,
+                surface_header_value=SURFACE_HEADER_VALUE,
             )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")

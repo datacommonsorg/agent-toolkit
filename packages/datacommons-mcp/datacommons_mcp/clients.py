@@ -57,10 +57,10 @@ DCID_TOPIC_PREFIX = "topic/"
 # This is here temporarily because of validation in the DataCommonsClient
 # that surface headers must only contain numbers, which will be updated
 # shortly to include release candidates (TODO: lucysking)
-SURFACE = f"mcp-{__version__.replace('rc', '.')}"
+SURFACE_HEADER_VALUE = f"mcp-{__version__.replace('rc', '.')}"
 
-# 'x-surface' indicates to mixer that this call is coming from the MCP server
-SURFACE_HEADER: dict[str, str] = {"x-surface": SURFACE}
+# 'x-surface' indicates to DC APIs that this call is coming from the MCP server
+SURFACE_HEADER: dict[str, str] = {"x-surface": SURFACE_HEADER_VALUE}
 
 
 class DCClient:
@@ -1129,7 +1129,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     # Create DataCommonsClient
     dc = DataCommonsClient(
         api_key=settings.api_key,
-        surface_header_value=SURFACE,
+        surface_header_value=SURFACE_HEADER_VALUE,
     )
 
     # Create DCClient
@@ -1152,7 +1152,7 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     # Create DataCommonsClient
     dc = DataCommonsClient(
         url=settings.api_base_url,
-        surface_header_value=SURFACE,
+        surface_header_value=SURFACE_HEADER_VALUE,
     )
 
     # Create topic store if root_topic_dcids provided
