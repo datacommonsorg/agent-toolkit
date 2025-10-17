@@ -336,7 +336,7 @@ class DCClient:
         # 'x-surface' indicates to mixer that this call is coming from the MCP server
         headers = {
             "Content-Type": "application/json",
-            "x-surface": f"mcp-{__version__}"
+            "x-surface": f"mcp-{__version__}",
         }
         try:
             response = await asyncio.to_thread(
@@ -663,7 +663,7 @@ class DCClient:
         # 'x-surface' indicates to mixer that this call is coming from the MCP server
         headers = {
             "Content-Type": "application/json",
-            "x-surface": f"mcp-{__version__}"
+            "x-surface": f"mcp-{__version__}",
         }
 
         # Use precomputed indices based on configured search scope
@@ -730,7 +730,7 @@ class DCClient:
         # 'x-surface' indicates to mixer that this call is coming from the MCP server
         headers = {
             "Content-Type": "application/json",
-            "x-surface": f"mcp-{__version__}"
+            "x-surface": f"mcp-{__version__}",
         }
 
         # Use precomputed indices based on configured search scope
