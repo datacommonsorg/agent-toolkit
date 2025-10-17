@@ -1616,7 +1616,9 @@ class TestCreateDCClient:
             assert result.base_index == "base_uae_mem"
             assert result.custom_index is None
             assert result.use_search_indicators_endpoint is True  # Default value
-            mock_dc_client.assert_called_once_with(api_key="test_api_key")
+            mock_dc_client.assert_called_with(
+                api_key="test_api_key", surface_header_value=f"mcp-{__version__}"
+            )
 
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
