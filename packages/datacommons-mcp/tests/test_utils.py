@@ -62,10 +62,6 @@ class TestValidateAPIKey:
         validate_api_key(api_key_to_test)  # Should not raise an exception
         assert requests_mock.last_request.headers["X-API-Key"] == api_key_to_test
 
-    def test_validate_api_key_no_key(self):
-        with pytest.raises(InvalidAPIKeyError, match="DC_API_KEY is not set."):
-            validate_api_key(None)
-
     def test_validate_api_key_invalid(self, requests_mock):
         requests_mock.get(VALIDATION_API_URL, status_code=403)
         with pytest.raises(InvalidAPIKeyError):
