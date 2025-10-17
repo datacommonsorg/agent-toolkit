@@ -1114,7 +1114,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     topic_store = _create_base_topic_store(settings)
 
     # Create DataCommonsClient
-    dc = DataCommonsClient(api_key=settings.api_key)
+    dc = DataCommonsClient(api_key=settings.api_key, surface_header_value=f"mcp-{__version__}")
 
     # Create DCClient
     return DCClient(
