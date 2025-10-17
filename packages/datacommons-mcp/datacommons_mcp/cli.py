@@ -47,23 +47,24 @@ def _validate_mode_options(ctx: Context, mode: str) -> None:
 
 def _run_api_key_validation(ctx: Context, *, skip_validation: bool) -> None:
     """Runs the API key validation unless skipped."""
-    if not skip_validation:
-        try:
-            api_key = os.getenv("DC_API_KEY")
-            if not api_key:
-                raise InvalidAPIKeyError("DC_API_KEY is not set.")
-            validate_api_key(api_key)
-        except (InvalidAPIKeyError, APIKeyValidationError) as e:
-            click.echo(str(e), err=True)
-            click.echo(
-                "To obtain an API key, go to https://apikeys.datacommons.org and "
-                "request a key for the api.datacommons.org domain.",
-                err=True,
-            )
-            sys.stderr.flush()
-            ctx.exit(1)
-    else:
+    if skip_validation:
         click.echo("Skipping API key validation as requested.", err=True)
+        return
+
+    try:
+        api_key = os.getenv("DC_API_KEY")
+        if not api_key:
+            raise InvalidAPIKeyError("DC_API_KEY is not set.")
+        validate_api_key(api_key)
+    except (InvalidAPIKeyError, APIKeyValidationError) as e:
+        click.echo(str(e), err=True)
+        click.echo(
+            "To obtain an API key, go to https://apikeys.datacommons.org and "
+            "request a key for the api.datacommons.org domain.",
+            err=True,
+        )
+        sys.stderr.flush()
+        ctx.exit(1)
 
 
 def _run_http_server(host: str, port: int) -> None:
