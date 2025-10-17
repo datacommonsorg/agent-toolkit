@@ -13,9 +13,15 @@
 # limitations under the License.
 
 import pytest
+import requests
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
-from datacommons_mcp.utils import filter_by_date
+from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
+from datacommons_mcp.utils import (
+    VALIDATION_API_URL,
+    filter_by_date,
+    validate_api_key,
+)
 
 
 class TestFilterByDate:
@@ -47,3 +53,24 @@ class TestFilterByDate:
     def test_empty_result(self, observations):
         date_filter = DateRange(start_date="2025", end_date="2026")
         assert len(filter_by_date(observations, date_filter)) == 0
+
+
+class TestValidateAPIKey:
+    def test_validate_api_key_success(self, requests_mock):
+        requests_mock.get(VALIDATION_API_URL, status_code=200)
+        api_key_to_test = "my-test-api-key"
+        validate_api_key(api_key_to_test)  # Should not raise an exception
+        assert requests_mock.last_request.headers["X-API-Key"] == api_key_to_test
+
+    def test_validate_api_key_invalid(self, requests_mock):
+        requests_mock.get(VALIDATION_API_URL, status_code=403)
+        with pytest.raises(InvalidAPIKeyError):
+            validate_api_key("invalid_key")
+
+    def test_validate_api_key_network_error(self, requests_mock):
+        requests_mock.get(
+            VALIDATION_API_URL,
+            exc=requests.exceptions.RequestException("Network error"),
+        )
+        with pytest.raises(APIKeyValidationError):
+            validate_api_key("any_key")
