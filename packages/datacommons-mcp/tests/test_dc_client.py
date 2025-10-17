@@ -27,7 +27,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 import requests
 from datacommons_client.client import DataCommonsClient
-from datacommons_mcp.clients import DCClient, create_dc_client, _trim_rc_from_version
+from datacommons_mcp.clients import DCClient, _trim_rc_from_version, create_dc_client
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.observations import (
     ObservationDateType,
