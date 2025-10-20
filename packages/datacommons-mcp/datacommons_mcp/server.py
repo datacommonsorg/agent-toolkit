@@ -40,6 +40,7 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.data_models.search import (
     SearchResponse,
+    SearchVariable,
 )
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
@@ -67,7 +68,9 @@ mcp = FastMCP("DC MCP Server")
 
 
 @mcp.custom_route("/health", methods=["GET"])
-async def health_check(request: Request) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
+async def health_check(
+    request: Request
+) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
     return PlainTextResponse("OK")
 
 
@@ -320,6 +323,7 @@ async def get_datacommons_chart_config(
 async def search_indicators(
     query: str,
     places: list[str] | None = None,
+    parent_place: str | None = None,
     per_search_limit: int = 10,
     *,
     include_topics: bool = True,
@@ -364,10 +368,18 @@ async def search_indicators(
     **2. `places` (list[str], optional)**
 
       - A list of English, human-readable place names to filter indicators by.
-
       - If provided, the tool will only return indicators that have data for at least one of the specified places.
+      - When `parent_place` is used, this parameter should **only** contain a sample of child places.
+      - When `parent_place` is **not** used, this can contain any place.
 
-      **Place Name Qualification (CRITICAL):**
+    **3. `parent_place` (str, optional)**
+
+      - An English, human-readable name for a parent place.
+      - Use this **only** when searching for indicators about a *type* of child place (e.g., "states in India").
+      - When using this parameter, you **must** also provide a sample of child places in the `places` parameter.
+
+    **Place Name Qualification (CRITICAL):**
+    The following rules apply to **both** the `places` and `parent_place` parameters.
 
       - **ALWAYS qualify place names** with geographic context to avoid ambiguity (e.g., `"California, USA"`, `"Paris, France"`, `"Springfield, IL"`).
 
@@ -385,11 +397,10 @@ async def search_indicators(
 
       - **NEVER** use DCIDs (e.g., `"geoId/06"`, `"country/CAN"`).
       - If you get place info from another tool, extract and use *only* the readable name, but always qualify it with geographic context.
+      - When searching for indicators related to child places within a larger geographic entity (e.g., states within a country, or countries within a continent/the world), you MUST include the parent entity in the `parent_place` parameter and a diverse sample of 5-6 of its child places in the `places` list.
+      - This ensures the discovery of indicators that have data at the child place level. Refer to 'Recipe 4: Sampling Child Places' for detailed examples.
 
-      - When searching for indicators related to child places within a larger geographic entity (e.g., states within a country, or countries within a continent/the world), you MUST include the parent entity and a diverse sample of 5-6 of its child places in the `places` list.
-       This ensures the discovery of indicators that have data at the child place level. Refer to 'Recipe 4: Sampling Child Places' for detailed examples.
-
-      **How to Use the `places` Parameter (Recipes):**
+    **How to Use Place Parameters (Recipes):**
 
       - **Recipe 1: Data for a Specific Place**
 
@@ -406,9 +417,10 @@ async def search_indicators(
         - **Example 1: Child places of a country**
           - **Call:**
             * `query="population"`
-            * `places=["India", "Uttar Pradesh, India", "Maharashtra, India", "Tripura, India", "Bihar, India", "Kerala, India"]`
+            * `parent_place="India"`
+            * `places=["Uttar Pradesh, India", "Maharashtra, India", "Tripura, India", "Bihar, India", "Kerala, India"]`
           - **Logic:**
-            1. Include the parent ("India") to find parent-level indicators.
+            1. Include the parent place ("India"). The tool uses this for context and to return its DCID.
             2. Include 5-6 *diverse* child places (e.g., try to pick large/small, north/south/east/west, if known).
             3. The results for these 5-6 places are a *proxy* for all children.
             4. If a sampled child place shows data for an indicator, assume that data is available for all child places of that type for that indicator.
@@ -418,9 +430,10 @@ async def search_indicators(
         - **Example 2: Child places of the World (Countries)**
           - **Call:**
             * `query="GDP"`
-            * `places=["World", "USA", "China", "Germany", "Nigeria", "Brazil"]`
+            * `parent_place="World"`
+            * `places=["USA", "China", "Germany", "Nigeria", "Brazil"]`
           - **Logic:**
-            1. Include the parent ("World").
+            1. Include the parent place ("World").
             2. Include 5-6 *diverse* child countries (e.g., from different continents, different economies).
             3. This sampling helps discover the correct indicator DCID used for the `Country` place type, which you can then use in other tools (like `fetch_data` with a parent=`World` and child_type=`Country`).
 
@@ -429,8 +442,8 @@ async def search_indicators(
           - **Goal:** Check data availability for different administrative levels (e.g., "population of US cities" vs "population of US states").
 
           - **Call:**
-            * **For Cities:** `query="population"`, `places=["USA", "New York City, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA", "Phoenix, USA"]`
-            * **For States:** `query="population"`, `places=["USA", "California, USA", "Texas, USA", "Florida, USA", "New York State, USA", "Pennsylvania, USA"]`
+            * **For Cities:** `query="population"`, `parent_place="USA"`, `places=["New York City, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA", "Phoenix, USA"]`
+            * **For States:** `query="population"`, `parent_place="USA"`, `places=["California, USA", "Texas, USA", "Florida, USA", "New York State, USA", "Pennsylvania, USA"]`
           - **Logic:** Specify the exact administrative level you want to sample to avoid confusion between city and state data.
 
       - **Recipe 3: Potentially Bilateral Data**
@@ -451,11 +464,11 @@ async def search_indicators(
 
         - **Goal:** Find indicators for a query without checking any specific place (e.g., "what trade data do you have").
 
-        - **Call:** `query="trade"`. Do not set `places`.
+        - **Call:** `query="trade"`. Do not set `places` or `parent_place`.
 
         - **Result:** The tool returns matching indicators, but `places_with_data` will be empty.
 
-    **3. `per_search_limit` (int, optional, default=10, max=100)**
+    **4. `per_search_limit` (int, optional, default=10, max=100)**
 
       - Maximum results per search.
 
@@ -463,7 +476,7 @@ async def search_indicators(
         - Use the default value (10) unless the user specifies a different limit
         - Don't assume the user wants more or fewer results
 
-    **4. `include_topics` (bool, optional, default=True)**
+    **5. `include_topics` (bool, optional, default=True)**
 
       - **Primary Rule:** If a user explicitly states what they want, follow their request. Otherwise, use these guidelines:
 
@@ -489,7 +502,7 @@ async def search_indicators(
 
         - **Returns:** Variables only.
 
-    **5. `maybe_bilateral` (bool, optional, default=False)**
+    **6. `maybe_bilateral` (bool, optional, default=False)**
 
       - Set to `True` if the query implies a relationship *between* places (e.g., "trade", "migration", "exports to France").
 
@@ -565,11 +578,22 @@ async def search_indicators(
 
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
+    if True:
+        return SearchResponse(
+            variables=[
+                SearchVariable(dcid="dc/v/FakeVariableForTesting"),
+            ],
+            dcid_name_mappings={
+                "dc/v/FakeVariableForTesting": "Fake Variable for Testing"
+            },
+            status="SUCCESS_FAKE_RESPONSE",
+        )
     # Call the real search_indicators service
     return await search_indicators_service(
         client=dc_client,
         query=query,
         places=places,
+        parent_place=parent_place,
         per_search_limit=per_search_limit,
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
