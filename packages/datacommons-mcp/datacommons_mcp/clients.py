@@ -53,11 +53,7 @@ logger = logging.getLogger(__name__)
 
 DCID_TOPIC_PREFIX = "topic/"
 
-# Replaces 'rc' with '.' in a version string if present.
-# This is here temporarily because of validation in the DataCommonsClient
-# that surface headers must only contain numbers, which will be updated
-# shortly to include release candidates (TODO: lucysking)
-SURFACE_HEADER_VALUE = f"mcp-{__version__.replace('rc', '.')}"
+SURFACE_HEADER_VALUE = f"mcp-{__version__}"
 
 # 'x-surface' indicates to DC APIs that this call is coming from the MCP server
 SURFACE_HEADER: dict[str, str] = {"x-surface": SURFACE_HEADER_VALUE}
