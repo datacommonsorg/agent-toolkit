@@ -576,6 +576,8 @@ async def search_indicators(
 
       - `dcid_place_type_mappings`: A dictionary mapping place DCIDs to their types (e.g., `["State"]`, `["Country"]`). Use this for child place type determination in `get_observations`.
 
+      - `resolved_parent_place`: (Only if `parent_place` was in the request) The resolved node information for the parent place.
+
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
     if True:

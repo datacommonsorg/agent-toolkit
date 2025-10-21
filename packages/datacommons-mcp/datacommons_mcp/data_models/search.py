@@ -102,5 +102,9 @@ class SearchResponse(BaseModel):
     dcid_place_type_mappings: dict[str, list[str]] = Field(
         default_factory=dict, description="Place DCID to type mappings"
     )
+    resolved_parent_place: NodeInfo | None = Field(
+        None,
+        description="The resolved node information for the parent place, if one was provided.",
+    )
 
     status: str = Field(default="SUCCESS", description="Status of the search operation")
