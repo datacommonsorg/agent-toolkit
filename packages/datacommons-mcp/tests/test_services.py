@@ -21,7 +21,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import NodeInfo
+from datacommons_mcp.data_models.search import NodeInfo, ResolvedPlace
 from datacommons_mcp.exceptions import (
     DataLookupError,
     InvalidDateFormatError,
@@ -1374,8 +1374,8 @@ class TestSearchIndicators:
             parent_place="USA",
         )
 
-        assert result.resolved_parent_place == NodeInfo(
-            name="United States", dcid="country/USA", typeOf=["Country"]
+        assert result.resolved_parent_place == ResolvedPlace(
+            dcid="country/USA", name="United States", type_of=["Country"]
         )
 
         # Verify that existence check was done on children only

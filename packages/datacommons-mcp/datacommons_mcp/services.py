@@ -37,6 +37,7 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.data_models.search import (
     NodeInfo,
+    ResolvedPlace,
     SearchResponse,
     SearchResult,
     SearchTask,
@@ -582,6 +583,16 @@ async def search_indicators(
         if dcid in place_dcids:
             dcid_place_type_mappings[dcid] = info.type_of
 
+    resolved_parent_place = None
+    if place_context.parent_place_dcid:
+        parent_info = lookups.get(place_context.parent_place_dcid)
+        if parent_info:
+            resolved_parent_place = ResolvedPlace(
+                dcid=place_context.parent_place_dcid,
+                name=parent_info.name,
+                type_of=parent_info.type_of,
+            )
+
     # Create unified response
     return SearchResponse(
         status="SUCCESS",
@@ -589,9 +600,7 @@ async def search_indicators(
         dcid_place_type_mappings=dcid_place_type_mappings,
         topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
-        resolved_parent_place=lookups.get(place_context.parent_place_dcid)
-        if place_context.parent_place_dcid
-        else None,
+        resolved_parent_place=resolved_parent_place,
     )
 
 
