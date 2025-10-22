@@ -580,16 +580,6 @@ async def search_indicators(
 
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
-    if True:
-        return SearchResponse(
-            variables=[
-                SearchVariable(dcid="dc/v/FakeVariableForTesting"),
-            ],
-            dcid_name_mappings={
-                "dc/v/FakeVariableForTesting": "Fake Variable for Testing"
-            },
-            status="SUCCESS_FAKE_RESPONSE",
-        )
     # Call the real search_indicators service
     return await search_indicators_service(
         client=dc_client,

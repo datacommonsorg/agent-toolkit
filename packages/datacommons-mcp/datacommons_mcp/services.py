@@ -16,6 +16,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from datetime import datetime
+from typing import NamedTuple
 
 from datacommons_client.models.observation import ByVariable
 
@@ -46,6 +47,12 @@ from datacommons_mcp.exceptions import DataLookupError
 from datacommons_mcp.utils import filter_by_date
 
 logger = logging.getLogger(__name__)
+
+
+class _SearchPlaceContext(NamedTuple):
+    parent_place_dcid: str | None
+    query_places: list[str] | None
+    query_place_dcids_map: dict[str, str]
 
 
 async def _validate_and_build_request(
@@ -484,10 +491,46 @@ async def get_observations(
     )
 
 
+async def _resolve_and_partition_places(
+    client: DCClient,
+    places: list[str] | None,
+    parent_place: str | None,
+) -> _SearchPlaceContext:
+    """Resolves all place names and partitions them into parent and query places."""
+    places_to_resolve = places.copy() if places else []
+    if parent_place:
+        places_to_resolve.append(parent_place)
+
+    if not places_to_resolve:
+        return _SearchPlaceContext(
+            parent_place_dcid=None, query_places=places, query_place_dcids_map={}
+        )
+
+    place_dcids_map = await _resolve_places(client, places_to_resolve)
+
+    if parent_place:
+        parent_place_dcid = place_dcids_map.get(parent_place)
+        query_place_dcids_map = {
+            place: dcid
+            for place, dcid in place_dcids_map.items()
+            if place != parent_place
+        }
+    else:
+        parent_place_dcid = None
+        query_place_dcids_map = place_dcids_map
+
+    return _SearchPlaceContext(
+        parent_place_dcid=parent_place_dcid,
+        query_places=places,
+        query_place_dcids_map=query_place_dcids_map,
+    )
+
+
 async def search_indicators(
     client: DCClient,
     query: str,
     places: list[str] | None = None,
+    parent_place: str | None = None,
     per_search_limit: int = 10,
     *,
     include_topics: bool = True,
@@ -500,16 +543,19 @@ async def search_indicators(
     if not query.strip():
         # Always include topics for such queries
         include_topics = True
-        if not places:
+        if not places and not parent_place:
             # Default to World if no places are specified for such queries
             places = ["World"]
 
-    # Resolve place names to DCIDs
-    place_dcids_map = await _resolve_places(client, places)
+    # Resolve and partition places
+    place_context = await _resolve_and_partition_places(client, places, parent_place)
 
     # Create search tasks based on place parameters
     search_tasks = _create_search_tasks(
-        query, places, place_dcids_map, maybe_bilateral=maybe_bilateral
+        query,
+        place_context.query_places,
+        place_context.query_place_dcids_map,
+        maybe_bilateral=maybe_bilateral,
     )
 
     # Use search-vector or temp impl of search-indicators endpoint
@@ -522,11 +568,13 @@ async def search_indicators(
 
     # Collect all DCIDs for lookups
     all_dcids = _collect_all_dcids(search_result, search_tasks)
+    if place_context.parent_place_dcid:
+        all_dcids.add(place_context.parent_place_dcid)
 
     # Fetch lookups
     lookups = await _fetch_and_update_lookups(client, list(all_dcids))
 
-    place_dcids = set(place_dcids_map.values())
+    place_dcids = set(place_context.query_place_dcids_map.values())
     dcid_name_mappings = {}
     dcid_place_type_mappings = {}
     for dcid, info in lookups.items():
@@ -541,6 +589,9 @@ async def search_indicators(
         dcid_place_type_mappings=dcid_place_type_mappings,
         topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
+        resolved_parent_place=lookups.get(place_context.parent_place_dcid)
+        if place_context.parent_place_dcid
+        else None,
     )
 
 
