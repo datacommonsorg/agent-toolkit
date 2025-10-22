@@ -435,7 +435,7 @@ async def search_indicators(
           - **Logic:**
             1. Include the parent place ("World").
             2. Include 5-6 *diverse* child countries (e.g., from different continents, different economies).
-            3. This sampling helps discover the correct indicator DCID used for the `Country` place type, which you can then use in other tools (like `fetch_data` with a parent=`World` and child_type=`Country`).
+            3. This sampling helps discover the correct indicator DCID used for the `Country` place type, which you can then use in other tools (like `get_observations` with the parent's DCID in the `place_dcid` parameter and `child_place_type='Country'`).
 
         - **Example 3: Administrative Level Sampling**
 
