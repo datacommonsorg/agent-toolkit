@@ -40,7 +40,6 @@ from datacommons_mcp.data_models.observations import (
 )
 from datacommons_mcp.data_models.search import (
     SearchResponse,
-    SearchVariable,
 )
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
@@ -68,9 +67,7 @@ mcp = FastMCP("DC MCP Server")
 
 
 @mcp.custom_route("/health", methods=["GET"])
-async def health_check(
-    request: Request
-) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
+async def health_check(request: Request) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
     return PlainTextResponse("OK")
 
 
