@@ -538,7 +538,7 @@ async def search_indicators(
 ) -> SearchResponse:
     """Search for topics and/or variables."""
     # Validate parameters
-    _validate_search_parameters(per_search_limit)
+    _validate_search_parameters(per_search_limit, places, parent_place)
 
     if not query.strip():
         # Always include topics for such queries
@@ -646,11 +646,15 @@ def _create_search_tasks(
 
 def _validate_search_parameters(
     per_search_limit: int,
+    places: list[str] | None = None,
+    parent_place: str | None = None,
 ) -> None:
     """Validate search parameters
 
     Args:
         per_search_limit: Maximum results per search
+        places: List of places to search for
+        parent_place: Parent place to filter results
 
     Raises:
         ValueError: If any parameter validation fails
@@ -658,6 +662,9 @@ def _validate_search_parameters(
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
         raise ValueError("per_search_limit must be between 1 and 100")
+
+    if parent_place and not places:
+        raise ValueError("`places` must be specified when `parent_place` is provided.")
 
 
 async def _resolve_places(
