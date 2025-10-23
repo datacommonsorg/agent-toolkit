@@ -129,6 +129,13 @@ uv run ruff check # to check files
 uv run ruff format # to format files
 ```
 
+#### VS Code Integration
+Install the [Ruff VS Code extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) to get:
+- Automatic formatting on save
+- Inline error highlighting and suggestions
+- Real-time linting as you type
+
+
 #### Pre Push Hook
 To install a pre push hook for auto formatting and pytesting, run:
 ```bash
