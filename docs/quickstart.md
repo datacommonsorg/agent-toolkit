@@ -11,9 +11,9 @@
 1. Install Gemini CLI: see instructions at https://github.com/google-gemini/gemini-cli#quick-install. 
 2. To configure Gemini CLI to recognize the Data Commons server, edit your `~/.gemini/settings.json` file to add the following:
 
-```json
+```jsonc
 {
-...
+// ...
     "mcpServers": {
        "datacommons-mcp": {
            "command": "uvx",
@@ -28,7 +28,7 @@
             "trust": true
         }
     }
-...
+// ...
 }
 ```
 

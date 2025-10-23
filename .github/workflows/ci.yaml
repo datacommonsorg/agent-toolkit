@@ -8,19 +8,47 @@ on:
     branches:
       - main
 
+# Add concurrency control to cancel redundant runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+
+# NOTE: Add new jobs to `ci-final-status.needs` to make them required!
 jobs:
-  ci-checks:
+  lint-and-format:
     runs-on: ubuntu-latest
-
-    # Run tests on python 3.11 and 3.12
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check formatting with Ruff
+        working-directory: packages/datacommons-mcp
+        run: uv run ruff format --check
+
+      - name: Lint with Ruff
+        working-directory: packages/datacommons-mcp
+        run: uv run ruff check
+
+  # Determines if source code has changed to avoid running subsequent jobs unnecessarily.
+  dc-mcp-path-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      run_downstream_jobs: ${{ steps.filter.outputs.run_tests }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Check for changed test paths
         id: filter
         uses: dorny/paths-filter@v3
@@ -29,6 +57,19 @@ jobs:
             run_tests:
               - 'packages/datacommons-mcp/datacommons_mcp/**'
               - 'packages/datacommons-mcp/tests/**'
+              - 'packages/datacommons-mcp/pyproject.toml'
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: dc-mcp-path-filter
+    if: needs.dc-mcp-path-filter.outputs.run_downstream_jobs == 'true'
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -39,20 +80,85 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        # This will install all dependencies from the workspace pyproject.toml
         run: uv sync
 
-      - name: Check formatting with Ruff
-        # Run from the package directory
-        working-directory: packages/datacommons-mcp
-        # The --check flag will fail if the code is not formatted correctly
-        run: uv run ruff format --check
-
-      - name: Lint with Ruff
-        working-directory: packages/datacommons-mcp
-        run: uv run ruff check
-
       - name: Run tests with pytest. Skip eval tests.
-        # Run unit tests if code in the datacommons-mcp package or tests directory changed
-        if: steps.filter.outputs.run_tests == 'true'
         run: uv run --extra test pytest -k "not eval"
+ 
+  build-and-test-wheel:
+    runs-on: ubuntu-latest
+    needs: dc-mcp-path-filter
+    if: needs.dc-mcp-path-filter.outputs.run_downstream_jobs == 'true'
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Build wheel
+        working-directory: packages/datacommons-mcp
+        run: uv build
+ 
+      - name: Test running server from installed wheel
+        env:
+          DC_API_KEY: test # DC_API_KEY is required to start the server successfully, the value is not checked.
+        run: |
+          # Create and activate a temporary environment
+          uv venv wheel_test_venv
+          source wheel_test_venv/bin/activate
+          
+          # Find the built wheel file and install it
+          WHEEL_FILE=$(find ${{ github.workspace }}/dist -name "*.whl")
+          echo "Installing wheel: $WHEEL_FILE"
+          uv pip install --quiet "$WHEEL_FILE"
+          
+          # Start the server in the background
+          echo "Starting server in background, logging to server.log..."
+          datacommons-mcp serve http --port 8088 --skip-api-key-validation &> server.log &
+          SERVER_PID=$!
+          
+          # Poll the server to see if it's healthy, with a 15-second timeout
+          echo "Waiting for server to become healthy..."
+          for i in {1..15}; do
+            if curl -s --fail http://localhost:8088/health > /dev/null; then
+              echo "Server started successfully!"
+              kill $SERVER_PID
+              exit 0
+            fi
+            sleep 1
+          done
+         
+          echo "Error: Server did not start in time."
+          echo "--- Server Logs (server.log) ---"
+          cat server.log
+          echo "--------------------------------"
+          kill $SERVER_PID
+          exit 1
+
+  ci-final-status:
+    runs-on: ubuntu-latest
+    needs:
+      - lint-and-format
+      - unit-tests
+      - build-and-test-wheel
+    if: always() # Ensures this job runs even if depenendencies fail.
+    steps:
+      - name: Report overall CI status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" || \
+                "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more CI checks failed or were cancelled."
+            exit 1
+          else
+            echo "All CI checks passed!"
+            exit 0
+          fi

@@ -21,6 +21,8 @@ from typing import Union, get_args, get_origin
 
 from fastmcp import FastMCP
 from pydantic import ValidationError
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
@@ -61,10 +63,12 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP(
-    "DC MCP Server",
-    stateless_http=True,
-)
+mcp = FastMCP("DC MCP Server")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
+    return PlainTextResponse("OK")
 
 
 @mcp.tool()

@@ -183,14 +183,14 @@ Below we provide instructions for Gemini CLI and a sample ADK agent. If you're u
 
 To configure Gemini CLI to connect to a remote Data Commons server over HTTP, replace the `mcpServers` section in `~/.gemini/settings.json` (or other `settings.json` file) with the following:
 
-```json
+```jsonc
 {
-...
+// ... (additional configuration)
 "mcpServers": {
     "datacommons-mcp": {
       "httpUrl": "http://<host>:<port>/mcp"
     }
-    ...
+    // ... (other mcpServers entries)
   }
 }
 ```
@@ -199,18 +199,18 @@ To configure Gemini CLI to connect to a remote Data Commons server over HTTP, re
 To configure the sample agent to connect to a remote Data Commons MCP server over HTTP, you need to modify the code in [`basic_agent/agent.py`](https://github.com/datacommonsorg/agent-toolkit/blob/main/packages/datacommons-mcp/examples/sample_agents/basic_agent/agent.py).  Set import modules and agent initialization parameters as follows:
 
 ```python
-...
 from google.adk.tools.mcp_tool.mcp_toolset import (
    MCPToolset,
    StreamableHTTPConnectionParams
 )
-...
-   LlmAgent(...
+
+root_agent = LlmAgent(
+      # ...
       tools=[McpToolset(
          connection_params=StreamableHTTPConnectionParams(
             url=f"http://<host>:<port>/mcp"
          )
-      ],
+      )],
    )
 ```
 Run the agent as described in [Use the sample agent](#use-the-sample-agent) above.
