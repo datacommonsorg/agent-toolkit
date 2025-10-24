@@ -509,16 +509,12 @@ async def _resolve_and_partition_places(
 
     place_dcids_map = await _resolve_places(client, places_to_resolve)
 
+    query_place_dcids_map = place_dcids_map.copy()
+    parent_place_dcid = None
+
     if parent_place:
+        query_place_dcids_map.pop(parent_place, None)
         parent_place_dcid = place_dcids_map.get(parent_place)
-        query_place_dcids_map = {
-            place: dcid
-            for place, dcid in place_dcids_map.items()
-            if place != parent_place
-        }
-    else:
-        parent_place_dcid = None
-        query_place_dcids_map = place_dcids_map
 
     return _SearchPlaceContext(
         parent_place_dcid=parent_place_dcid,
