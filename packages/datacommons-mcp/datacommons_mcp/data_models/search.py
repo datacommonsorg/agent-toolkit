@@ -11,6 +11,31 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class NodeInfo(BaseModel):
+    """Represents node information with name and types."""
+
+    model_config = {"populate_by_name": True}
+
+    name: str = Field(description="Human-readable name of the node")
+    type_of: list[str] = Field(
+        description="All types of the node (e.g., ['State', 'AdministrativeArea1'])",
+        alias="typeOf",
+    )
+
+
+class ResolvedPlace(BaseModel):
+    """Represents a place that has been successfully resolved to a DCID."""
+
+    model_config = {"populate_by_name": True}
+
+    dcid: str = Field(description="The resolved DCID of the place")
+    name: str = Field(description="Human-readable name of the node")
+    type_of: list[str] = Field(
+        description="All types of the node (e.g., ['State', 'AdministrativeArea1'])",
+        alias="typeOf",
+    )
+
+
 class SearchMode(str, Enum):
     """Enumeration of search modes for the search_indicators tool."""
 
@@ -85,7 +110,14 @@ class SearchResponse(BaseModel):
         description="List of variable objects with dcid and places_with_data"
     )
     dcid_name_mappings: dict[str, str] = Field(
-        default_factory=dict, description="DCID to name mappings"
+        default_factory=dict, description="DCID to human-readable name mappings"
+    )
+    dcid_place_type_mappings: dict[str, list[str]] = Field(
+        default_factory=dict, description="Place DCID to type mappings"
+    )
+    resolved_parent_place: ResolvedPlace | None = Field(
+        None,
+        description="The resolved node information for the parent place, if one was provided.",
     )
 
     status: str = Field(default="SUCCESS", description="Status of the search operation")

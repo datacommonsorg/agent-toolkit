@@ -33,6 +33,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check for changed test paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            run_evals:
+              - 'packages/datacommons-mcp/datacommons_mcp/**'
+              - 'packages/datacommons-mcp/evals/**'
+
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
@@ -48,6 +57,8 @@ jobs:
         run: pip install uv
 
       - name: Run agent evals with pytest
+        # Run evals if code in the datacommons-mcp package or evals directory changed
+        if: steps.filter.outputs.run_evals == 'true'
         run: uv run --extra test pytest -k "eval"
         env:
           DC_API_KEY: ${{ secrets.DC_API_KEY }}

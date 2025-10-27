@@ -12,9 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
+import requests
 from datacommons_client.models.observation import Observation
 
 from datacommons_mcp.data_models.observations import DateRange, ObservationDate
+from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
+
+logger = logging.getLogger(__name__)
+
+VALIDATION_API_URL = "https://api.datacommons.org/v2/node?nodes=geoId/06"
+
+
+def validate_api_key(api_key: str) -> None:
+    """
+    Validates the Data Commons API key by making a simple API call.
+
+    Args:
+        api_key: The Data Commons API key to validate.
+
+    Raises:
+        InvalidAPIKeyError: If the API key is invalid or has expired.
+        APIKeyValidationError: For other network-related validation errors.
+    """
+    try:
+        response = requests.get(
+            VALIDATION_API_URL,
+            headers={"X-API-Key": api_key},
+            timeout=10,  # 10-second timeout
+        )
+        if 400 <= response.status_code < 500:
+            raise InvalidAPIKeyError(
+                f"API key is invalid or has expired. Status: {response.status_code}"
+            )
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        raise APIKeyValidationError(
+            f"Failed to validate API key due to a server error: {e}"
+        ) from e
+    except requests.exceptions.RequestException as e:
+        raise APIKeyValidationError(
+            f"Failed to validate API key due to a network error: {e}"
+        ) from e
+
+    logger.info("Data Commons API key validation successful.")
 
 
 def filter_by_date(

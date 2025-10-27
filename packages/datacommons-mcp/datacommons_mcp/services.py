@@ -16,6 +16,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from datetime import datetime
+from typing import NamedTuple
 
 from datacommons_client.models.observation import ByVariable
 
@@ -35,6 +36,8 @@ from datacommons_mcp.data_models.observations import (
     TimeSeriesPoint,
 )
 from datacommons_mcp.data_models.search import (
+    NodeInfo,
+    ResolvedPlace,
     SearchResponse,
     SearchResult,
     SearchTask,
@@ -45,6 +48,12 @@ from datacommons_mcp.exceptions import DataLookupError
 from datacommons_mcp.utils import filter_by_date
 
 logger = logging.getLogger(__name__)
+
+
+class _SearchPlaceContext(NamedTuple):
+    parent_place_dcid: str | None
+    query_places: list[str] | None
+    query_place_dcids_map: dict[str, str]
 
 
 async def _validate_and_build_request(
@@ -483,10 +492,42 @@ async def get_observations(
     )
 
 
+async def _resolve_and_partition_places(
+    client: DCClient,
+    places: list[str] | None,
+    parent_place: str | None,
+) -> _SearchPlaceContext:
+    """Resolves all place names and partitions them into parent and query places."""
+    places_to_resolve = places.copy() if places else []
+    if parent_place:
+        places_to_resolve.append(parent_place)
+
+    if not places_to_resolve:
+        return _SearchPlaceContext(
+            parent_place_dcid=None, query_places=places, query_place_dcids_map={}
+        )
+
+    place_dcids_map = await _resolve_places(client, places_to_resolve)
+
+    query_place_dcids_map = place_dcids_map.copy()
+    parent_place_dcid = None
+
+    if parent_place:
+        query_place_dcids_map.pop(parent_place, None)
+        parent_place_dcid = place_dcids_map.get(parent_place)
+
+    return _SearchPlaceContext(
+        parent_place_dcid=parent_place_dcid,
+        query_places=places,
+        query_place_dcids_map=query_place_dcids_map,
+    )
+
+
 async def search_indicators(
     client: DCClient,
     query: str,
     places: list[str] | None = None,
+    parent_place: str | None = None,
     per_search_limit: int = 10,
     *,
     include_topics: bool = True,
@@ -494,21 +535,24 @@ async def search_indicators(
 ) -> SearchResponse:
     """Search for topics and/or variables."""
     # Validate parameters
-    _validate_search_parameters(per_search_limit)
+    _validate_search_parameters(per_search_limit, places, parent_place)
 
     if not query.strip():
         # Always include topics for such queries
         include_topics = True
-        if not places:
+        if not places and not parent_place:
             # Default to World if no places are specified for such queries
             places = ["World"]
 
-    # Resolve place names to DCIDs
-    place_dcids_map = await _resolve_places(client, places)
+    # Resolve and partition places
+    place_context = await _resolve_and_partition_places(client, places, parent_place)
 
     # Create search tasks based on place parameters
     search_tasks = _create_search_tasks(
-        query, places, place_dcids_map, maybe_bilateral=maybe_bilateral
+        query,
+        place_context.query_places,
+        place_context.query_place_dcids_map,
+        maybe_bilateral=maybe_bilateral,
     )
 
     # Use search-vector or temp impl of search-indicators endpoint
@@ -521,16 +565,38 @@ async def search_indicators(
 
     # Collect all DCIDs for lookups
     all_dcids = _collect_all_dcids(search_result, search_tasks)
+    if place_context.parent_place_dcid:
+        all_dcids.add(place_context.parent_place_dcid)
 
     # Fetch lookups
     lookups = await _fetch_and_update_lookups(client, list(all_dcids))
 
+    place_dcids = set(place_context.query_place_dcids_map.values())
+    dcid_name_mappings = {}
+    dcid_place_type_mappings = {}
+    for dcid, info in lookups.items():
+        dcid_name_mappings[dcid] = info.name
+        if dcid in place_dcids:
+            dcid_place_type_mappings[dcid] = info.type_of
+
+    resolved_parent_place = None
+    if place_context.parent_place_dcid:
+        parent_info = lookups.get(place_context.parent_place_dcid)
+        if parent_info:
+            resolved_parent_place = ResolvedPlace(
+                dcid=place_context.parent_place_dcid,
+                name=parent_info.name,
+                type_of=parent_info.type_of,
+            )
+
     # Create unified response
     return SearchResponse(
         status="SUCCESS",
-        dcid_name_mappings=lookups,
+        dcid_name_mappings=dcid_name_mappings,
+        dcid_place_type_mappings=dcid_place_type_mappings,
         topics=list(search_result.topics.values()),
         variables=list(search_result.variables.values()),
+        resolved_parent_place=resolved_parent_place,
     )
 
 
@@ -585,11 +651,15 @@ def _create_search_tasks(
 
 def _validate_search_parameters(
     per_search_limit: int,
+    places: list[str] | None = None,
+    parent_place: str | None = None,
 ) -> None:
     """Validate search parameters
 
     Args:
         per_search_limit: Maximum results per search
+        places: List of places to search for
+        parent_place: Parent place to filter results
 
     Raises:
         ValueError: If any parameter validation fails
@@ -597,6 +667,9 @@ def _validate_search_parameters(
     # Validate per_search_limit parameter
     if not 1 <= per_search_limit <= 100:
         raise ValueError("per_search_limit must be between 1 and 100")
+
+    if parent_place and not places:
+        raise ValueError("`places` must be specified when `parent_place` is provided.")
 
 
 async def _resolve_places(
@@ -687,13 +760,15 @@ async def _search_vector(
     return await _merge_search_results(results)
 
 
-async def _fetch_and_update_lookups(client: DCClient, dcids: list[str]) -> dict:
-    """Fetch names for all DCIDs and return as lookups dictionary."""
+async def _fetch_and_update_lookups(
+    client: DCClient, dcids: list[str]
+) -> dict[str, NodeInfo]:
+    """Fetch entity information for all DCIDs and return as nodes dictionary."""
     if not dcids:
         return {}
 
     try:
-        return await client.fetch_entity_names(dcids)
+        return await client.fetch_entity_infos(dcids)
     except Exception:  # noqa: BLE001
         # If fetching fails, return empty dict (not an error)
         return {}
