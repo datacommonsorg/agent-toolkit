@@ -40,7 +40,7 @@ class DCSettings(BaseSettings):
 
     model_config = _MODEL_CONFIG
 
-    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
+    api_key: str = Field(default="",alias="DC_API_KEY", description="API key for Data Commons")
 
     use_search_indicators_endpoint: bool = Field(
         default=True,
