@@ -40,9 +40,9 @@ class DCSettings(BaseSettings):
 
     model_config = _MODEL_CONFIG
 
-    # API key validation happens in cli.py. Default key in settings is empty to handle skip
-    # validation scenarios where api key issues should be handled at tool call time instead of
-    # server start up.
+    # Default the API key to an empty string to defer validation.
+    # When `--skip-api-key-validation` is used, key issues are handled
+    # at tool-call time instead of at server startup.
     api_key: str = Field(
         default="", alias="DC_API_KEY", description="API key for Data Commons"
     )
