@@ -44,6 +44,7 @@ def test_serve_skip_validation_flag(mock_validate, mock_run):
     mock_validate.assert_not_called()
     mock_run.assert_called_once()
 
+
 @mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch(
