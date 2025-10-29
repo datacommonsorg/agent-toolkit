@@ -152,11 +152,6 @@ class TestCustomSettings:
 class TestSettingsValidation:
     """Test suite for generic settings validation."""
 
-    def test_missing_api_key_raises_error(self, isolated_env):
-        """Tests that a ValueError is raised if DC_API_KEY is missing."""
-        with isolated_env({}), pytest.raises(ValueError, match="DC_API_KEY"):
-            get_dc_settings()
-
     def test_invalid_dc_type_raises_error(self, isolated_env):
         """Tests that a ValueError is raised for an invalid DC_TYPE."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "invalid"}

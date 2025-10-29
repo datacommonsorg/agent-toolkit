@@ -34,7 +34,7 @@ def test_serve_validates_key_by_default(mock_validate, mock_run):
     mock_run.assert_called_once()
 
 
-@mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
+@mock.patch.dict(os.environ, {})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch("datacommons_mcp.cli.validate_api_key")
 def test_serve_skip_validation_flag(mock_validate, mock_run):
@@ -43,7 +43,6 @@ def test_serve_skip_validation_flag(mock_validate, mock_run):
     runner.invoke(cli, ["serve", "http", "--skip-api-key-validation"])
     mock_validate.assert_not_called()
     mock_run.assert_called_once()
-
 
 @mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
