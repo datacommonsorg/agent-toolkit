@@ -157,6 +157,14 @@ To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project
    ```python
    __version__ = "0.1.3"  # or whatever the new version should be
    ```
+   Use the following guidance for selecting the new version number (MAJOR.MINOR.PATCH):
+   *   Increment the **patch** version (third number) for minor fixes or internal implementation details that don't impact agentic clients.
+   *   Increment the **minor** version (second number) for changes to tool descriptions, minor changes to tool output structure, or larger internal implementation changes. These changes would be visible to the agentic client but likely not have a major impact.
+   *   Increment the **major** version (first number) for changes to the toolset offering, such as deleting, adding, or significantly changing a tool's "contract" with the agentic client.
+
+   > **IMPORTANT**: Major version changes require a corresponding update to the `datacommons` Gemini CLI extension's context file and a new release of the extension at https://github.com/gemini-cli-extensions/datacommons.
+
+
 
 2. **Automatic publishing**: When your PR is merged to the main branch, the [GitHub Actions workflow](.github/workflows/build-and-publish-datacommons-mcp.yaml) will:
    - Detect the version bump
