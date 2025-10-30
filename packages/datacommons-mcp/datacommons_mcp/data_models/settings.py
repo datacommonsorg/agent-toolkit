@@ -65,9 +65,9 @@ class BaseDCSettings(DCSettings):
         alias="DC_TYPE",
         description="Type of Data Commons (must be 'base')",
     )
-    sv_search_base_url: str = Field(
+    search_root: str = Field(
         default="https://datacommons.org",
-        alias="DC_SV_SEARCH_BASE_URL",
+        alias="DC_SEARCH_ROOT",
         description="Search base URL for base DC",
     )
     base_index: str = Field(
@@ -90,11 +90,6 @@ class BaseDCSettings(DCSettings):
         default=None,
         alias="DC_API_ROOT",
         description="API root for local development",
-    )
-    search_root: str | None = Field(
-        default=None,
-        alias="DC_SEARCH_ROOT",
-        description="Search root for local development",
     )
 
     @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
