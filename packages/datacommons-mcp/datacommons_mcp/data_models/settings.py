@@ -86,6 +86,16 @@ class BaseDCSettings(DCSettings):
         alias="DC_BASE_ROOT_TOPIC_DCIDS",
         description="List of root topic DCIDs for base DC",
     )
+    api_root: str | None = Field(
+        default=None,
+        alias="DC_API_ROOT",
+        description="API root for local development",
+    )
+    search_root: str | None = Field(
+        default=None,
+        alias="DC_SEARCH_ROOT",
+        description="Search root for local development",
+    )
 
     @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
     @classmethod
