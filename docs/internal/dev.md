@@ -164,7 +164,6 @@ To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project
            * **IMPORTANT**: Major version changes require a corresponding update to the `datacommons` Gemini CLI extension's context file and a new release of the extension at https://github.com/gemini-cli-extensions/datacommons.
 
 
-
 2. **Automatic publishing**: When your PR is merged to the main branch, the [GitHub Actions workflow](.github/workflows/build-and-publish-datacommons-mcp.yaml) will:
    - Detect the version bump
    - Build the package
