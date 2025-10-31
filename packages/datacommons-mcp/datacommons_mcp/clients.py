@@ -1128,6 +1128,8 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         "surface_header_value": SURFACE_HEADER_VALUE,
     }
     if settings.api_root:
+        logger.info("Using API root for base DC: %s", settings.api_root)
+        logger.info("Using search root for base DC: %s", settings.search_root)
         dc_client_args["url"] = settings.api_root
     dc = DataCommonsClient(**dc_client_args)
 

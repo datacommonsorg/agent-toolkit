@@ -89,7 +89,7 @@ class BaseDCSettings(DCSettings):
     api_root: str | None = Field(
         default=None,
         alias="DC_API_ROOT",
-        description="API root for local development",
+        description="API root for local api instance",
     )
 
     @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
