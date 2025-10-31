@@ -159,6 +159,7 @@ Use the following guidance for selecting the new version number (MAJOR.MINOR.PAT
 *   Increment the **major** version (first number) for changes to the toolset offering, such as deleting, adding, or significantly changing a tool's "contract" with the agentic client.
       * **IMPORTANT**: Major version changes require a corresponding update to the `datacommons` Gemini CLI extension's context file and a new release of the extension at https://github.com/gemini-cli-extensions/datacommons.
 
+#### Pre Release Versioning
 **For pre-releases**, you can append `rcN` (e.g., `0.2.0rc1`) to the version number, where `N` is an incrementing number starting from 1. These release candidates will be published to PyPI but are not automatically installed by tools like `pip` or `uv` unless explicitly specified, allowing for testing before a final release. 
 
    * **Note on RC Versioning:** Always base your release candidate number on the upcoming stable version. For example, the first RC for the 1.3.0 release should be 1.3.0rc1. This ensures that package managers like uv and pip will correctly treat 1.3.0 as the final, newer version once it's published. 
