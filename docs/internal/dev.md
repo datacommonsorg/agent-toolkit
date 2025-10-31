@@ -169,7 +169,7 @@ To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project
 
 1. **Update the version**: Edit `packages/datacommons-mcp/datacommons_mcp/version.py` and increment the version number:
    ```python
-   __version__ = "0.1.3"  # see "Versioning guidance" above 
+   __version__ = "x.y.z"  # see "Versioning guidance" above 
    ```
 
 2. **Automatic publishing**: When your PR is merged to the main branch, the [GitHub Actions workflow](.github/workflows/build-and-publish-datacommons-mcp.yaml) will:
