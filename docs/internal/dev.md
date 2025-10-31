@@ -151,7 +151,7 @@ git push origin $BRANCH --no-verify
 
 ## Releasing to PyPI <a name="release"></a>
 
-### Versioning guidiance
+### Versioning guidiance <a name="release-versioning"></a>
 
 Use the following guidance for selecting the new version number (MAJOR.MINOR.PATCH):
 *   Increment the **patch** version (third number) for minor fixes or internal implementation details that don't impact agentic clients.
@@ -172,6 +172,9 @@ To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project
    ```python
    __version__ = "x.y.z"  # see "Versioning guidance" above 
    ```
+
+   * **Reminder**: When incrementing the major version, the DC GCLI extension will need to be manually updated to reflect the changes. Review the [Versioning guidance](#release-versioning) above for more details.
+
 
 2. **Automatic publishing**: When your PR is merged to the main branch, the [GitHub Actions workflow](.github/workflows/build-and-publish-datacommons-mcp.yaml) will:
    - Detect the version bump
