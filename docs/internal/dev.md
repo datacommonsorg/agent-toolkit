@@ -154,14 +154,14 @@ git push origin $BRANCH --no-verify
 ### Versioning guidiance
 
 Use the following guidance for selecting the new version number (MAJOR.MINOR.PATCH):
-    *   Increment the **patch** version (third number) for minor fixes or internal implementation details that don't impact agentic clients.
-    *   Increment the **minor** version (second number) for changes to tool descriptions, minor changes to tool output structure, or larger internal implementation changes. These changes would be visible to the agentic client but likely not have a major impact.
-    *   Increment the **major** version (first number) for changes to the toolset offering, such as deleting, adding, or significantly changing a tool's "contract" with the agentic client.
-           * **IMPORTANT**: Major version changes require a corresponding update to the `datacommons` Gemini CLI extension's context file and a new release of the extension at https://github.com/gemini-cli-extensions/datacommons.
+*   Increment the **patch** version (third number) for minor fixes or internal implementation details that don't impact agentic clients.
+*   Increment the **minor** version (second number) for changes to tool descriptions, minor changes to tool output structure, or larger internal implementation changes. These changes would be visible to the agentic client but likely not have a major impact.
+*   Increment the **major** version (first number) for changes to the toolset offering, such as deleting, adding, or significantly changing a tool's "contract" with the agentic client.
+      * **IMPORTANT**: Major version changes require a corresponding update to the `datacommons` Gemini CLI extension's context file and a new release of the extension at https://github.com/gemini-cli-extensions/datacommons.
 
-   **For pre-releases**, you can append `rcN` (e.g., `0.2.0rc1`) to the version number, where `N` is an incrementing number starting from 1. These release candidates will be published to PyPI but are not automatically installed by tools like `pip` or `uv` unless explicitly specified, allowing for testing before a final release. 
+**For pre-releases**, you can append `rcN` (e.g., `0.2.0rc1`) to the version number, where `N` is an incrementing number starting from 1. These release candidates will be published to PyPI but are not automatically installed by tools like `pip` or `uv` unless explicitly specified, allowing for testing before a final release. 
 
-      * > Note on RC Versioning: Always base your release candidate number on the upcoming stable version. For example, the first RC for the 1.3.0 release should be 1.3.0rc1. This ensures that package managers like uv and pip will correctly treat 1.3.0 as the final, newer version once it's published. 
+   * **Note on RC Versioning:** Always base your release candidate number on the upcoming stable version. For example, the first RC for the 1.3.0 release should be 1.3.0rc1. This ensures that package managers like uv and pip will correctly treat 1.3.0 as the final, newer version once it's published. 
 
 ### Steps to publish a new version
 
