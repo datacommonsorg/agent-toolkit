@@ -168,7 +168,7 @@ Use the following guidance for selecting the new version number (MAJOR.MINOR.PAT
 
 When a **major** version is released, it signifies changes to the toolset that require a corresponding update to the context file in the `datacommons` Gemini CLI extension ([DATACOMMONS.md](https://github.com/gemini-cli-extensions/datacommons/blob/main/DATACOMMONS.md)).
 
-This involves updating the extension's context file with instructions of how to orchestrate the tools, update the allowlisted versions of the DC MCP server in the extension config, and publishing a new release of the extension at https://github.com/gemini-cli-extensions/datacommons. More details on releasing the extension are in the internal Data Commons team docs.
+This involves updating the extension's context file with instructions of how to orchestrate the tools, update the allowlisted versions of the DC MCP server in the extension config, and publishing a new release of the extension. More details on the extension and releasing it are in the internal Data Commons team docs.
 
 ### Steps to publish a new version
 
