@@ -149,14 +149,37 @@ git push origin $BRANCH --no-verify
 ```
 
 
-## Publishing a New Version
+## Releasing to PyPI <a name="release"></a>
+
+### Versioning guidiance <a name="release-versioning"></a>
+
+Use the following guidance for selecting the new version number (MAJOR.MINOR.PATCH):
+*   Increment the **patch** version (third number) for minor fixes or internal implementation details that don't impact agentic clients.
+*   Increment the **minor** version (second number) for changes to tool descriptions, minor changes to tool output structure, or larger internal implementation changes. These changes would be visible to the agentic client but likely not have a major impact.
+*   Increment the **major** version (first number) for changes to the toolset offering, such as deleting, adding, or significantly changing a tool's "contract" with the agentic client.
+      * **IMPORTANT**: Major version changes require follow-up updates to the Gemini CLI extension. See [How version affects the Gemini CLI extension](#gcli-extension) for details.
+
+#### Pre Release Versioning
+**For pre-releases**, you can append `rcN` (e.g., `0.2.0rc1`) to the version number, where `N` is an incrementing number starting from 1. These release candidates will be published to PyPI but are not automatically installed by tools like `pip` or `uv` unless explicitly specified, allowing for testing before a final release. 
+
+   * **Note on RC Versioning:** Always base your release candidate number on the upcoming stable version. For example, the first RC for the 1.3.0 release should be 1.3.0rc1. This ensures that package managers like uv and pip will correctly treat 1.3.0 as the final, newer version once it's published. 
+
+#### How version affects the Gemini CLI extension <a name="gcli-extension"></a>
+
+When a **major** version is released, it signifies changes to the toolset that require a corresponding update to the context file in the `datacommons` Gemini CLI extension ([DATACOMMONS.md](https://github.com/gemini-cli-extensions/datacommons/blob/main/DATACOMMONS.md)).
+
+This involves updating the extension's context file with instructions of how to orchestrate the tools, update the allowlisted versions of the DC MCP server in the extension config, and publishing a new release of the extension. More details on the extension and releasing it are in the internal Data Commons team docs.
+
+### Steps to publish a new version
 
 To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project/datacommons-mcp):
 
 1. **Update the version**: Edit `packages/datacommons-mcp/datacommons_mcp/version.py` and increment the version number:
    ```python
-   __version__ = "0.1.3"  # or whatever the new version should be
+   __version__ = "x.y.z"  # see "Versioning guidance" above 
    ```
+
+   * **Reminder**: If you are incrementing the major version, see [How version affects the Gemini CLI extension](#gcli-extension).
 
 2. **Automatic publishing**: When your PR is merged to the main branch, the [GitHub Actions workflow](.github/workflows/build-and-publish-datacommons-mcp.yaml) will:
    - Detect the version bump
