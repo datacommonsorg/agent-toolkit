@@ -6,7 +6,7 @@ import os
 
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.tools.mcp_tool.mcp_toolset import (
-    MCPToolset,
+    McpToolset,
     StdioConnectionParams,
     StdioServerParameters,
 )
@@ -28,7 +28,7 @@ root_agent = LlmAgent(
     name="basic_agent",
     instruction=AGENT_INSTRUCTIONS,
     tools=[
-        MCPToolset(
+        McpToolset(
             connection_params=StdioConnectionParams(
                 timeout=10,
                 server_params=StdioServerParameters(

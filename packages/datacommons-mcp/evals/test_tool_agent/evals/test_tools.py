@@ -4,11 +4,11 @@ import pandas as pd
 import pytest
 
 # Assuming this is the correct import path for your evaluator
-from evals.evaluator.agent_evaluator import AgentEvaluator
+from evals.evaluator.new_agent_evaluator import AgentEvaluator
 
 # --- Configuration ---
 GET_OBSERVATIONS_DATA_DIR = pathlib.Path(__file__).parent / "data/get_observations"
-TEST_FILES = sorted(GET_OBSERVATIONS_DATA_DIR.glob("*.test.json"))
+TEST_FILES = sorted(GET_OBSERVATIONS_DATA_DIR.glob("*date_params.test.json"))
 REPORT_OUTPUT_DIR = "reports/"
 REPORT_OUTPUT_BASE_FILENAME = "evaluation-report"
 
@@ -64,13 +64,29 @@ class TestAgentEvaluation:
         if "overall_eval_status" in result_df.columns:
             failed_rows = result_df[result_df["overall_eval_status"] == "FAILED"]
             if not failed_rows.empty:
-                failed_metrics = (
-                    failed_rows["metric_name"].unique()
-                    if "metric_name" in result_df.columns
-                    else ["unknown"]
-                )
+                # Count failures by metric type
+                failure_summary = []
+
+                if "tool_eval_status" in result_df.columns:
+                    tool_failures = len(
+                        failed_rows[failed_rows["tool_eval_status"] == "FAILED"]
+                    )
+                    if tool_failures > 0:
+                        failure_summary.append(f"tool_eval: {tool_failures} failures")
+
+                if "response_eval_status" in result_df.columns:
+                    response_failures = len(
+                        failed_rows[failed_rows["response_eval_status"] == "FAILED"]
+                    )
+                    if response_failures > 0:
+                        failure_summary.append(
+                            f"response_eval: {response_failures} failures"
+                        )
+
                 pytest.fail(
-                    f"Evaluation FAILED for {path.name}. Failed metrics: {list(failed_metrics)}. {len(failed_rows)} failed evaluations found."
+                    f"Evaluation FAILED for {path.name}.\n"
+                    f"Failed metrics summary: {', '.join(failure_summary) if failure_summary else 'unknown failures'}\n"
+                    f"Total failed evaluations: {len(failed_rows)}"
                 )
 
     @classmethod
@@ -147,8 +163,8 @@ def create_styled_html_report(
     try:
         # Create format dictionary with numeric formatting and pre-wrap columns
         format_dict = {
-            "average_score": "{:.3f}",
-            "line_score": "{:.3f}",
+            "tool_call_score": "{:.3f}",
+            "response_evaluation_score": "{:.3f}",
         }
 
         # Add pre-wrap formatting for specified columns
@@ -158,9 +174,22 @@ def create_styled_html_report(
 
         # Apply styles using the .style accessor
         styled_df = (
-            df.style.apply(style_status, subset=["overall_eval_status"])
+            df.style.apply(
+                style_status,
+                subset=[
+                    "overall_eval_status",
+                    "tool_eval_status",
+                    "response_eval_status",
+                ],
+            )
             .format(format_dict)
-            .bar(subset=["line_score"], vmin=0, vmax=1.0, align="zero", color="#5bc0de")
+            .bar(
+                subset=["tool_call_score"],
+                vmin=0,
+                vmax=1.0,
+                align="zero",
+                color="#5bc0de",
+            )
             .set_properties(
                 **{
                     "font-family": "Helvetica, Arial, sans-serif",

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -361,6 +361,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "requests-mock" },
+    { name = "rouge-score" },
 ]
 
 [package.metadata]
@@ -374,6 +375,7 @@ requires-dist = [
     { name = "pytest-asyncio", specifier = ">=1.1.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.1.0" },
     { name = "requests-mock", marker = "extra == 'test'" },
+    { name = "rouge-score", marker = "extra == 'test'" },
     { name = "ruff", specifier = ">=0.12.5" },
 ]
 provides-extras = ["test"]
