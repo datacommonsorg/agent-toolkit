@@ -3,7 +3,7 @@ name = "datacommons-mcp"
 dynamic = ["version"]
 description = "Data Commons MCP server."
 readme = "README.md"
-requires-python = ">=3.11, <4.0"
+requires-python = ">=3.11, <3.14"
 dependencies = [
     "fastapi",
     "uvicorn",
