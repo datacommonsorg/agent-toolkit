@@ -7,6 +7,7 @@ on:
   pull_request_target:
     branches:
       - main
+      - eval-reports
     paths:
       # Run evals if code in the datacommons-mcp package or evals directory changed
       - "packages/datacommons-mcp/datacommons_mcp/**"
