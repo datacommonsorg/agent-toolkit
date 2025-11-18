@@ -1122,11 +1122,16 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     # Create topic store from path if provided else use default topic cache
     topic_store = _create_base_topic_store(settings)
 
-    # Create DataCommonsClient
-    dc = DataCommonsClient(
-        api_key=settings.api_key,
-        surface_header_value=SURFACE_HEADER_VALUE,
-    )
+    # Create DataCommonsClient, conditionally adding api_root
+    dc_client_args = {
+        "api_key": settings.api_key,
+        "surface_header_value": SURFACE_HEADER_VALUE,
+    }
+    if settings.api_root:
+        logger.info("Using API root for base DC: %s", settings.api_root)
+        logger.info("Using search root for base DC: %s", settings.search_root)
+        dc_client_args["url"] = settings.api_root
+    dc = DataCommonsClient(**dc_client_args)
 
     # Create DCClient
     return DCClient(
@@ -1134,7 +1139,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         search_scope=SearchScope.BASE_ONLY,
         base_index=settings.base_index,
         custom_index=None,
-        sv_search_base_url=settings.sv_search_base_url,
+        sv_search_base_url=settings.search_root,
         use_search_indicators_endpoint=settings.use_search_indicators_endpoint,
         topic_store=topic_store,
     )

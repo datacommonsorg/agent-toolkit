@@ -7,6 +7,10 @@ on:
   pull_request_target:
     branches:
       - main
+    paths:
+      # Run evals if code in the datacommons-mcp package or evals directory changed
+      - 'packages/datacommons-mcp/datacommons_mcp/**'
+      - 'packages/datacommons-mcp/evals/**'
 
   # Allows maintainers to manually re-run evals on a specific PR number.
   workflow_dispatch:
@@ -14,6 +18,14 @@ on:
       pr:
         description: "PR number to run tests for"
         required: true
+
+concurrency:
+  # When a new run starts (e.g., from a new push), automatically
+  # cancel any runs that are already in-progress or queued for the current PR.
+  cancel-in-progress: true
+
+  # The group key is unique per PR, handling both 'pull_request_target' and 'workflow_dispatch' triggers.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.inputs.pr }}
 
 jobs:
   agent-evals:
@@ -33,15 +45,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check for changed test paths
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            run_evals:
-              - 'packages/datacommons-mcp/datacommons_mcp/**'
-              - 'packages/datacommons-mcp/evals/**'
-
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
@@ -57,8 +60,6 @@ jobs:
         run: pip install uv
 
       - name: Run agent evals with pytest
-        # Run evals if code in the datacommons-mcp package or evals directory changed
-        if: steps.filter.outputs.run_evals == 'true'
         run: uv run --extra test pytest -k "eval"
         env:
           DC_API_KEY: ${{ secrets.DC_API_KEY }}

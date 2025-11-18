@@ -47,7 +47,7 @@ class TestBaseSettings:
 
             assert isinstance(settings, BaseDCSettings)
             assert settings.api_key == "test_key"
-            assert settings.sv_search_base_url == "https://datacommons.org"
+            assert settings.search_root == "https://datacommons.org"
             assert settings.base_index == "base_uae_mem"
             assert settings.topic_cache_paths is None
 
@@ -56,7 +56,7 @@ class TestBaseSettings:
         env_vars = {
             "DC_API_KEY": "test_key",
             "DC_TYPE": "base",
-            "DC_SV_SEARCH_BASE_URL": "https://custom.com",
+            "DC_SEARCH_ROOT": "https://custom.com",
             "DC_BASE_INDEX": "custom_index",
             "DC_TOPIC_CACHE_PATHS": "/path/to/cache1.json, /path/to/cache2.json",
         }
@@ -64,7 +64,7 @@ class TestBaseSettings:
             settings = get_dc_settings()
 
             assert isinstance(settings, BaseDCSettings)
-            assert settings.sv_search_base_url == "https://custom.com"
+            assert settings.search_root == "https://custom.com"
             assert settings.base_index == "custom_index"
             assert settings.topic_cache_paths == [
                 "/path/to/cache1.json",
@@ -151,11 +151,6 @@ class TestCustomSettings:
 
 class TestSettingsValidation:
     """Test suite for generic settings validation."""
-
-    def test_missing_api_key_raises_error(self, isolated_env):
-        """Tests that a ValueError is raised if DC_API_KEY is missing."""
-        with isolated_env({}), pytest.raises(ValueError, match="DC_API_KEY"):
-            get_dc_settings()
 
     def test_invalid_dc_type_raises_error(self, isolated_env):
         """Tests that a ValueError is raised for an invalid DC_TYPE."""

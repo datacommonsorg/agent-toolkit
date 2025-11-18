@@ -21,7 +21,7 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import NodeInfo
+from datacommons_mcp.data_models.search import NodeInfo, ResolvedPlace
 from datacommons_mcp.exceptions import (
     DataLookupError,
     InvalidDateFormatError,
@@ -1334,3 +1334,66 @@ class TestSearchIndicators:
         )
         assert result.status == "SUCCESS"
         assert mock_client.fetch_indicators.call_count == 1  # single search
+
+    @pytest.mark.asyncio
+    async def test_search_indicators_with_parent_place(self):
+        """Test search with parent_place resolves parent and filters by children."""
+        mock_client = Mock()
+        mock_client.search_places = AsyncMock(
+            return_value={
+                "USA": "country/USA",
+                "California": "geoId/06",
+                "Texas": "geoId/48",
+            }
+        )
+        mock_client.fetch_indicators = AsyncMock(
+            return_value={
+                "variables": [
+                    {
+                        "dcid": "Count_Person",
+                        "places_with_data": ["geoId/06", "geoId/48"],
+                    }
+                ]
+            }
+        )
+        mock_client.fetch_entity_infos = AsyncMock(
+            return_value={
+                "country/USA": NodeInfo(name="United States", typeOf=["Country"]),
+                "geoId/06": NodeInfo(name="California", typeOf=["State"]),
+                "geoId/48": NodeInfo(name="Texas", typeOf=["State"]),
+                "Count_Person": NodeInfo(
+                    name="Population", typeOf=["StatisticalVariable"]
+                ),
+            }
+        )
+
+        result = await search_indicators(
+            client=mock_client,
+            query="population",
+            places=["California", "Texas"],
+            parent_place="USA",
+        )
+
+        assert result.resolved_parent_place == ResolvedPlace(
+            dcid="country/USA", name="United States", type_of=["Country"]
+        )
+
+        # Verify that existence check was done on children only
+        mock_client.fetch_indicators.assert_called_once_with(
+            query="population",
+            place_dcids=["geoId/06", "geoId/48"],
+            include_topics=True,
+            max_results=10,
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_indicators_parent_place_no_places(self):
+        """Test that a ValueError is raised if parent_place is provided without places."""
+        mock_client = Mock()
+        with pytest.raises(
+            ValueError,
+            match="`places` must be specified when `parent_place` is provided.",
+        ):
+            await search_indicators(
+                client=mock_client, query="population", parent_place="USA"
+            )

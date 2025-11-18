@@ -40,7 +40,12 @@ class DCSettings(BaseSettings):
 
     model_config = _MODEL_CONFIG
 
-    api_key: str = Field(alias="DC_API_KEY", description="API key for Data Commons")
+    # Default the API key to an empty string to defer validation.
+    # When `--skip-api-key-validation` is used, key issues are handled
+    # at tool-call time instead of at server startup.
+    api_key: str = Field(
+        default="", alias="DC_API_KEY", description="API key for Data Commons"
+    )
 
     use_search_indicators_endpoint: bool = Field(
         default=True,
@@ -60,9 +65,9 @@ class BaseDCSettings(DCSettings):
         alias="DC_TYPE",
         description="Type of Data Commons (must be 'base')",
     )
-    sv_search_base_url: str = Field(
+    search_root: str = Field(
         default="https://datacommons.org",
-        alias="DC_SV_SEARCH_BASE_URL",
+        alias="DC_SEARCH_ROOT",
         description="Search base URL for base DC",
     )
     base_index: str = Field(
@@ -80,6 +85,11 @@ class BaseDCSettings(DCSettings):
         default=["dc/topic/Root", "dc/topic/sdg"],
         alias="DC_BASE_ROOT_TOPIC_DCIDS",
         description="List of root topic DCIDs for base DC",
+    )
+    api_root: str | None = Field(
+        default=None,
+        alias="DC_API_ROOT",
+        description="API root for local api instance",
     )
 
     @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
