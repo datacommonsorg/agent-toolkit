@@ -215,6 +215,8 @@ class AgentEvaluator:
         agent_module: str,
         eval_dataset_path: str,
         num_runs: int = NUM_RUNS,
+        tool_score_threshold: float = 1.0,
+        response_score_threshold: float = 0.8,
     ) -> pd.DataFrame:
         """Evaluates an Agent and returns a DataFrame of results.
 
@@ -235,6 +237,8 @@ class AgentEvaluator:
             agent_module=agent_module,
             evaluation_steps=evaluation_steps,
             num_runs=num_runs,
+            tool_score_threshold=tool_score_threshold,
+            response_score_threshold=response_score_threshold,
         )
 
     @staticmethod
