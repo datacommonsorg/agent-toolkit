@@ -9,8 +9,8 @@ on:
       - main
     paths:
       # Run evals if code in the datacommons-mcp package or evals directory changed
-      - 'packages/datacommons-mcp/datacommons_mcp/**'
-      - 'packages/datacommons-mcp/evals/**'
+      - "packages/datacommons-mcp/datacommons_mcp/**"
+      - "packages/datacommons-mcp/evals/**"
 
   # Allows maintainers to manually re-run evals on a specific PR number.
   workflow_dispatch:
@@ -68,7 +68,7 @@ jobs:
       - name: Upload evaluation reports
         # This condition ensures the step runs even if the pytest step failed,
         # but only if the tests were meant to run in the first place.
-        if: always() && steps.filter.outputs.run_evals == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           # A more general name for the artifact
