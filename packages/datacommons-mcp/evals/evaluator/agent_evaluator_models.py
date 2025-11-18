@@ -22,6 +22,7 @@ import json
 import logging
 from typing import Any
 
+from google.genai import types as genai_types
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 logger = logging.getLogger("evals.evaluator." + __name__)
@@ -43,6 +44,21 @@ class ToolCall(BaseModel):
     tool_input: dict[str, Any]
 
 
+class ExpectedEvaluationStep(BaseModel):
+    """
+    Describes the expected behavior of the agent for a single query.
+
+    Attributes:
+        expected_tool_use: A list of `ToolCall` models representing
+                           the sequence of tools the agent is expected to use.
+        expected_final_answer: A ground-truth reference string for the final answer.
+    """
+
+    query: str
+    expected_tool_use: list[ToolCall]
+    reference: str
+
+
 class EvaluationStep(BaseModel):
     """
     Describes a single query-response evaluation example.
@@ -59,16 +75,48 @@ class EvaluationStep(BaseModel):
     reference: str
 
 
+class EvaluationScore(BaseModel):
+    """Holds evaluation scores for different aspects of the agent's performance."""
+
+    tool_call_score: float | None
+    response_evaluation_score: float | None
+
+
+class EvaluationResultRow(BaseModel):
+    """Represents a single row in the evaluation results DataFrame."""
+
+    took: float  # Time taken in seconds
+    expected_evaluation_step: EvaluationStep
+    actual_evaluation_step: EvaluationStep
+    evaluation_score: EvaluationScore
+
+
+class AgentTurn(BaseModel):
+    """Represents a single turn in an agent conversation."""
+
+    user_input: str
+    agent_response: str
+    tool_calls: list[genai_types.FunctionCall]
+
+
 def load_evaluation_set(file_path: str) -> list[EvaluationStep]:
     """
     Loads and validates an evaluation set from a JSON file.
     """
-    adapter = TypeAdapter(list[EvaluationStep])
+    adapter = TypeAdapter(list[ExpectedEvaluationStep])
     logger.info("Loading evaluation set from: %s", file_path)
     with open(file_path) as f:
         try:
             data = json.load(f)
-            return adapter.validate_python(data)
+            expected_evaluation_steps = adapter.validate_python(data)
+            return [
+                EvaluationStep(
+                    query=step.query,
+                    tool_calls=step.expected_tool_use,
+                    reference=step.reference,
+                )
+                for step in expected_evaluation_steps
+            ]
         except FileNotFoundError:
             logger.error("Error: File not found at %s", file_path)
             return []

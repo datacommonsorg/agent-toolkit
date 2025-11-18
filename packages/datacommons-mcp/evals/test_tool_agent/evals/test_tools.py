@@ -4,11 +4,11 @@ import pandas as pd
 import pytest
 
 # Assuming this is the correct import path for your evaluator
-from evals.evaluator.new_agent_evaluator import AgentEvaluator
+from evals.evaluator.agent_evaluator import AgentEvaluator
 
 # --- Configuration ---
 GET_OBSERVATIONS_DATA_DIR = pathlib.Path(__file__).parent / "data/get_observations"
-TEST_FILES = sorted(GET_OBSERVATIONS_DATA_DIR.glob("*date_params.test.json"))
+TEST_FILES = sorted(GET_OBSERVATIONS_DATA_DIR.glob("*.test.json"))
 REPORT_OUTPUT_DIR = "reports/"
 REPORT_OUTPUT_BASE_FILENAME = "evaluation-report"
 
@@ -163,8 +163,13 @@ def create_styled_html_report(
     try:
         # Create format dictionary with numeric formatting and pre-wrap columns
         format_dict = {
+            "average_tool_call_score": "{:.3f}",
+            "average_response_evaluation_score": "{:.3f}",
             "tool_call_score": "{:.3f}",
             "response_evaluation_score": "{:.3f}",
+            "tool_call_score_threshold": "{:.3f}",
+            "response_evaluation_score_threshold": "{:.3f}",
+            "time_taken_seconds": "{:.3f}",
         }
 
         # Add pre-wrap formatting for specified columns
@@ -178,13 +183,20 @@ def create_styled_html_report(
                 style_status,
                 subset=[
                     "overall_eval_status",
+                    "overall_tool_eval_status",
+                    "overall_response_eval_status",
                     "tool_eval_status",
                     "response_eval_status",
                 ],
             )
             .format(format_dict)
             .bar(
-                subset=["tool_call_score"],
+                subset=[
+                    "average_tool_call_score",
+                    "average_response_evaluation_score",
+                    "tool_call_score",
+                    "response_evaluation_score",
+                ],
                 vmin=0,
                 vmax=1.0,
                 align="zero",
