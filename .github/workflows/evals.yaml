@@ -4,14 +4,14 @@ name: Run Agent Evals
 on:
   # This workflow ONLY runs on pull_request_target for security.
   # It runs the workflow defined in the 'main' branch, not the one from the PR.
-  pull_request_target:
+  pull_request:
     branches:
       - main
       - eval-reports
-    paths:
-      # Run evals if code in the datacommons-mcp package or evals directory changed
-      - "packages/datacommons-mcp/datacommons_mcp/**"
-      - "packages/datacommons-mcp/evals/**"
+    #paths:
+    #  # Run evals if code in the datacommons-mcp package or evals directory changed
+    #  - "packages/datacommons-mcp/datacommons_mcp/**"
+    #  - "packages/datacommons-mcp/evals/**"
 
   # Allows maintainers to manually re-run evals on a specific PR number.
   workflow_dispatch:
