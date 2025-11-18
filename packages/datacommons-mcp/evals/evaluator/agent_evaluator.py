@@ -154,6 +154,8 @@ class AgentEvaluator:
         agent_module: str,
         evaluation_steps: list[EvaluationStep],
         num_runs: int = NUM_RUNS,
+        tool_score_threshold: float = 1.0,
+        response_score_threshold: float = 0.8,
     ) -> pd.DataFrame:
         """Evaluates an agent using the given EvalSet.
 
@@ -168,6 +170,10 @@ class AgentEvaluator:
             respective thresholds.
           num_runs: Number of times all entries in the eval dataset should be
             assessed.
+          tool_score_threshold: Threshold for tool call evaluation.
+          response_score_threshold: Threshold for response evaluation.
+        Returns:
+            A pandas DataFrame with evaluation results
         """
         # 1. Load the agent
         agent_for_eval = AgentEvaluator._get_agent_for_eval(module_name=agent_module)
@@ -198,7 +204,11 @@ class AgentEvaluator:
                 evaluation_result_rows.append(evalution_result_row)
             agent_runner.runner.close()
 
-        return AgentEvaluator._create_results_dataframe(evaluation_result_rows)
+        return AgentEvaluator._create_results_dataframe(
+            evaluation_result_rows,
+            tool_score_threshold=tool_score_threshold,
+            response_score_threshold=response_score_threshold,
+        )
 
     @staticmethod
     async def evaluate(
@@ -259,7 +269,7 @@ class AgentEvaluator:
     def _create_results_dataframe(
         evaluation_result_rows: list[EvaluationResultRow],
         tool_score_threshold: float = 1.0,
-        response_score_threshold: float = 0.01,
+        response_score_threshold: float = 0.8,
     ) -> pd.DataFrame:
         """
         Processes evaluation results into a pandas DataFrame.

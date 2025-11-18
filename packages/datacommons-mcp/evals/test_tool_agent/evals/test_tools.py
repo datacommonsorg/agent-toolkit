@@ -38,6 +38,8 @@ class TestAgentEvaluation:
             agent_module="evals.test_tool_agent.bootstrap",
             eval_dataset_path=str(path),
             num_runs=2,
+            tool_score_threshold=1,  # Requires an exact match of tool calls
+            response_score_threshold=0.01,  # Low threshold for response evaluation
         )
 
         # Add the test file name as a column for context in the final report
