@@ -17,7 +17,7 @@ Server module for the DC MCP server.
 
 import logging
 import types
-from typing import Union, get_args, get_origin
+from typing import TYPE_CHECKING, Union, get_args, get_origin
 
 from fastmcp import FastMCP
 from pydantic import ValidationError
@@ -38,15 +38,17 @@ from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
 )
-from datacommons_mcp.data_models.search import (
-    SearchResponse,
-)
 from datacommons_mcp.services import (
     get_observations as get_observations_service,
 )
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
+
+if TYPE_CHECKING:
+    from datacommons_mcp.data_models.search import (
+        SearchResponse,
+    )
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -80,7 +82,7 @@ async def get_observations(
     date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
-) -> ObservationToolResponse:
+) -> str:
     """Fetches observations for a statistical variable from Data Commons.
 
     **CRITICAL: Always validate variable-place combinations first**
@@ -150,7 +152,7 @@ async def get_observations(
 
     """
     # TODO(keyurs): Remove place_name parameter from the service call.
-    return await get_observations_service(
+    response: ObservationToolResponse = await get_observations_service(
         client=dc_client,
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
@@ -161,6 +163,8 @@ async def get_observations(
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
+    # Serialize the Pydantic model to a JSON string
+    return response.model_dump_json(indent=2, exclude_none=True)
 
 
 # TODO(clincoln8): Add to optional visualization toolset
@@ -325,7 +329,7 @@ async def search_indicators(
     *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-) -> SearchResponse:
+) -> str:
     """
     **Purpose:**
     Search for topics and variables (collectively called "indicators") available in the Data Commons Knowledge Graph.
@@ -578,7 +582,7 @@ async def search_indicators(
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
     # Call the real search_indicators service
-    return await search_indicators_service(
+    response: SearchResponse = await search_indicators_service(
         client=dc_client,
         query=query,
         places=places,
@@ -587,3 +591,5 @@ async def search_indicators(
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
     )
+    # Serialize the Pydantic model to a JSON string
+    return response.model_dump_json(indent=2)
