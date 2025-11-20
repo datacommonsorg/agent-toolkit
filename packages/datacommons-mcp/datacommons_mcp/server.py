@@ -596,4 +596,4 @@ async def search_indicators(
         maybe_bilateral=maybe_bilateral,
     )
     # Dump the Pydantic model to a dictionary
-    return response.model_dump()
+    return response.model_dump(exclude_none=True)
