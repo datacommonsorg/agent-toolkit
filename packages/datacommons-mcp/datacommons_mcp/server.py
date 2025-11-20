@@ -45,6 +45,10 @@ from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
 
+# The `datacommons_mcp.data_models.search` module is imported under `if TYPE_CHECKING:`
+# because the `SearchResponse` model is only needed for type hinting. This pattern
+# avoids circular import errors at runtime, as the block is only processed by
+# static type checkers.
 if TYPE_CHECKING:
     from datacommons_mcp.data_models.search import (
         SearchResponse,
