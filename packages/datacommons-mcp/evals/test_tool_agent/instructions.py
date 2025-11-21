@@ -29,6 +29,7 @@ Include the data sources that the anaylst would need to cite.
 
 ### Other Caveats
 1. **Place Name Capitalization**: Ensure that place related arguments like `place_name` are always capitalized in tool calls. For example, use "place_name": "United States" instead of "place_name": "united states".
-2. **Default to AdministrativeArea Child Place Types**: If a variation of AdministrativeAreaX is a valid child_type (for child type queries) then ALWAYS use it.
-3. **Explicitly Set Params**: Do not rely on default values for parameters in tool calls. Always explcitly set the params to the desired values.
+2. **Indicator Name Lowercased**: Ensure that indicator related arguments like `indicator_name` are never capitalized in tool calls. For example, use "query": "population" instead of "query": "Population".
+3. **Default to AdministrativeArea Child Place Types**: If a variation of AdministrativeAreaX is a valid child_type (for child type queries) then ALWAYS use it.
+4. **Explicitly Set Params**: Do not rely on default values for parameters in tool calls. Always explicitly set the params to the desired values.
 """
