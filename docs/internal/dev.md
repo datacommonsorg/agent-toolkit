@@ -170,7 +170,7 @@ The `datacommons` Gemini CLI extension locks to a specific `datacommons-mcp` ver
 
 Therefore, when releasing a new stable version of the MCP server, you will likely need to release a new version of the extension as well.
 
-This involves updating the locked version in the extension's configuration and publishing a new extension release. If the MCP release includes major changes, you will also need to update the extension's context file (`DATACOMMONS.md`) with new tool orchestration instructions. More details on releasing the extension are in the internal Data Commons team docs.
+This involves updating the locked `datacommons-mcp` version and the extension's version in its configuration, and then publishing a new extension release. If the MCP release includes major changes, you will also need to update the extension's context file ([`DATACOMMONS.md`](https://github.com/gemini-cli-extensions/datacommons/blob/main/DATACOMMONS.md)) with new tool orchestration instructions. More details on releasing the extension are in the internal Data Commons team docs.  
 
 ### Steps to publish a new version
 
@@ -191,4 +191,4 @@ To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project
 
 The package will be automatically available on PyPI after the workflow completes successfully. You can monitor the workflow progress at [https://github.com/datacommonsorg/agent-toolkit/actions](https://github.com/datacommonsorg/agent-toolkit/actions).
 
-3. **Release the Gemini Extension**: After a new, stable `datacommons-mcp` version is published, release a new version of the `datacommons` Gemini CLI extension. Follow the instructions in the internal team docs to update the locked `datacommons-mcp` version, the extension's version and publish the extension.
+3. **Release the Gemini Extension**: After a new, stable `datacommons-mcp` version is published, release a new version of the `datacommons` Gemini CLI extension. Follow the instructions in the internal team docs to update the locked `datacommons-mcp` version and the extension's version, and then publish the extension.  
