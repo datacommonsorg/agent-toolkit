@@ -23,7 +23,6 @@ import json
 import logging
 from typing import Any
 
-from google.genai import types as genai_types
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 logger = logging.getLogger("evals.evaluator." + __name__)
@@ -47,12 +46,15 @@ class ToolCall(BaseModel):
 
 class ExpectedEvaluationStep(BaseModel):
     """
+    Input format used for loading evaluation sets.
+
     Describes the expected behavior of the agent for a single query.
 
     Attributes:
+        query: The user's input query string.
         expected_tool_use: A list of `ToolCall` models representing
                            the sequence of tools the agent is expected to use.
-        expected_final_answer: A ground-truth reference string for the final answer.
+        reference: A ground-truth reference string for the final answer.
     """
 
     query: str
@@ -60,7 +62,7 @@ class ExpectedEvaluationStep(BaseModel):
     reference: str
 
 
-class EvaluationStep(BaseModel):
+class AgentTurn(BaseModel):
     """
     Describes a single query-response evaluation example.
 
@@ -87,20 +89,12 @@ class EvaluationResultRow(BaseModel):
     """Represents a single row in the evaluation results DataFrame."""
 
     took: float  # Time taken in seconds
-    expected_evaluation_step: EvaluationStep
-    actual_evaluation_step: EvaluationStep
+    expected_agent_turn: AgentTurn
+    actual_agent_turn: AgentTurn
     evaluation_score: EvaluationScore
 
 
-class AgentTurn(BaseModel):
-    """Represents a single turn in an agent conversation."""
-
-    user_input: str
-    agent_response: str
-    tool_calls: list[genai_types.FunctionCall]
-
-
-def load_evaluation_set(file_path: str) -> list[EvaluationStep]:
+def load_expected_agent_turns(file_path: str) -> list[AgentTurn]:
     """
     Loads and validates an evaluation set from a JSON file.
     """
@@ -111,7 +105,7 @@ def load_evaluation_set(file_path: str) -> list[EvaluationStep]:
             data = json.load(f)
             expected_evaluation_steps = adapter.validate_python(data)
             return [
-                EvaluationStep(
+                AgentTurn(
                     query=step.query,
                     tool_calls=step.expected_tool_use,
                     reference=step.reference,

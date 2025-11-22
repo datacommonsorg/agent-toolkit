@@ -59,9 +59,8 @@ from evals.evaluator.agent_evaluator_models import (
     AgentTurn,
     EvaluationResultRow,
     EvaluationScore,
-    EvaluationStep,
     ToolCall,
-    load_evaluation_set,
+    load_expected_agent_turns,
 )
 
 logger = logging.getLogger("evals.evaluator." + __name__)
@@ -137,13 +136,19 @@ class AgentRunner:
                     final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
                 # Add more checks here if needed (e.g., specific error codes)
                 break  # Stop processing events once the final response is found
-        agent_turn = AgentTurn(
-            user_input=query,
-            agent_response=final_response_text,
-            tool_calls=tool_calls,
+
+        actual_agent_turn = AgentTurn(
+            query=query,
+            tool_calls=[
+                ToolCall(tool_name=func.name, tool_input=func.args)
+                for func in tool_calls
+            ],
+            reference=final_response_text,
         )
-        logger.info("Agent Turn Completed: %s", agent_turn.model_dump_json(indent=4))
-        return agent_turn
+        logger.info(
+            "Agent Turn Completed: %s", actual_agent_turn.model_dump_json(indent=4)
+        )
+        return actual_agent_turn
 
 
 class AgentEvaluator:
@@ -152,7 +157,7 @@ class AgentEvaluator:
     @staticmethod
     async def evaluate_eval_set(
         agent_module: str,
-        evaluation_steps: list[EvaluationStep],
+        expected_agent_turns: list[AgentTurn],
         num_runs: int = NUM_RUNS,
         tool_score_threshold: float = 1.0,
         response_score_threshold: float = 0.8,
@@ -184,21 +189,18 @@ class AgentEvaluator:
         evaluation_result_rows: list[EvaluationResultRow] = []
         for run_index in range(num_runs):
             logger.info("Starting evaluation run %d/%d", run_index + 1, num_runs)
-            for step in evaluation_steps:
+            for expected_agent_turn in expected_agent_turns:
                 start_time = time.perf_counter()
-                agent_turn = await agent_runner.run(step.query)
-                actual_evaluation_step = AgentEvaluator._agent_turn_to_evaluation_step(
-                    agent_turn
-                )
+                actual_agent_turn = await agent_runner.run(expected_agent_turn.query)
                 evaluation_score = AgentEvaluator._calculate_evaluation_score(
-                    expected_evaluation_step=step,
-                    actual_evaluation_step=actual_evaluation_step,
+                    expected_agent_turn=expected_agent_turn,
+                    actual_agent_turn=actual_agent_turn,
                 )
                 took = time.perf_counter() - start_time
                 evalution_result_row = EvaluationResultRow(
                     took=took,
-                    expected_evaluation_step=step,
-                    actual_evaluation_step=actual_evaluation_step,
+                    expected_agent_turn=expected_agent_turn,
+                    actual_agent_turn=actual_agent_turn,
                     evaluation_score=evaluation_score,
                 )
                 evaluation_result_rows.append(evalution_result_row)
@@ -229,13 +231,13 @@ class AgentEvaluator:
             A pandas DataFrame with evaluation results
         """
 
-        # 1. Load the evaluation steps
-        evaluation_steps = load_evaluation_set(eval_dataset_path)
+        # 1. Load the expected evaluation steps
+        expected_agent_turns = load_expected_agent_turns(eval_dataset_path)
 
         # 2. Run the evaluation & return the results DataFrame
         return await AgentEvaluator.evaluate_eval_set(
             agent_module=agent_module,
-            evaluation_steps=evaluation_steps,
+            expected_agent_turns=expected_agent_turns,
             num_runs=num_runs,
             tool_score_threshold=tool_score_threshold,
             response_score_threshold=response_score_threshold,
@@ -243,19 +245,19 @@ class AgentEvaluator:
 
     @staticmethod
     def _calculate_evaluation_score(
-        expected_evaluation_step: EvaluationStep,
-        actual_evaluation_step: EvaluationStep,
+        expected_agent_turn: AgentTurn,
+        actual_agent_turn: AgentTurn,
     ) -> EvaluationScore:
         """Calculates the evaluation result based on expected and actual turns."""
         # Placeholder logic for calculating scores
         tool_call_score = AgentEvaluator.calculate_jaccard_similarity(
-            expected=expected_evaluation_step.tool_calls,
-            actual=actual_evaluation_step.tool_calls,
+            expected=expected_agent_turn.tool_calls,
+            actual=actual_agent_turn.tool_calls,
         )
 
         response_evaluation_score = AgentEvaluator._calculate_rouge_1_fmeasure_score(
-            expected=expected_evaluation_step.reference,
-            actual=actual_evaluation_step.reference,
+            expected=expected_agent_turn.reference,
+            actual=actual_agent_turn.reference,
         )
 
         return EvaluationScore(
@@ -300,20 +302,20 @@ class AgentEvaluator:
                 "tool_call_score": evaluation_result_row.evaluation_score.tool_call_score,
                 "response_evaluation_score": evaluation_result_row.evaluation_score.response_evaluation_score,
                 "time_taken_seconds": evaluation_result_row.took,
-                "prompt": evaluation_result_row.expected_evaluation_step.query,
-                "expected_response": evaluation_result_row.expected_evaluation_step.reference,
-                "actual_response": evaluation_result_row.actual_evaluation_step.reference,
+                "prompt": evaluation_result_row.expected_agent_turn.query,
+                "expected_response": evaluation_result_row.expected_agent_turn.reference,
+                "actual_response": evaluation_result_row.actual_agent_turn.reference,
                 "expected_tool_calls": json.dumps(
                     [
                         o.model_dump()
-                        for o in evaluation_result_row.expected_evaluation_step.tool_calls
+                        for o in evaluation_result_row.expected_agent_turn.tool_calls
                     ],
                     indent=2,
                 ),
                 "actual_tool_calls": json.dumps(
                     [
                         o.model_dump()
-                        for o in evaluation_result_row.actual_evaluation_step.tool_calls
+                        for o in evaluation_result_row.actual_agent_turn.tool_calls
                     ],
                     indent=2,
                 ),
@@ -461,15 +463,3 @@ class AgentEvaluator:
         scores = scorer.score(expected, actual)
 
         return scores["rouge1"].fmeasure
-
-    @staticmethod
-    def _agent_turn_to_evaluation_step(agent_turn: AgentTurn) -> EvaluationStep:
-        """Converts an AgentTurn to an EvaluationStep."""
-        return EvaluationStep(
-            query=agent_turn.user_input,
-            tool_calls=[
-                ToolCall(tool_name=func.name, tool_input=func.args)
-                for func in agent_turn.tool_calls
-            ],
-            reference=agent_turn.agent_response,
-        )
