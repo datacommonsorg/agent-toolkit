@@ -168,9 +168,7 @@ class AgentEvaluator:
 
         Args:
           agent_module: Path to the Python module from which the agent will be dynamically loaded. The system looks for and instantiates the object named `root_agent` inside this module.
-          eval_set: The eval set.
-          criteria: Evauation criterias, a dictionary of metric names to their
-            respective thresholds.
+          expected_agent_turns: List of AgentTurns containing the queries to execute within the session and their expected tool calls.
           num_runs: Number of times all entries in the eval dataset should be
             assessed.
           tool_score_threshold: Threshold for tool call evaluation.
