@@ -167,9 +167,7 @@ class AgentEvaluator:
         Returns a pandas DataFrame with the evaluation results.
 
         Args:
-          agent_module: The path to python module that contains the definition of
-            the agent. There is convention in place here, where the code is going to
-            look for 'root_agent' in the loaded module.
+          agent_module: Path to the Python module from which the agent will be dynamically loaded. The system looks for and instantiates the object named `root_agent` inside this module.
           eval_set: The eval set.
           criteria: Evauation criterias, a dictionary of metric names to their
             respective thresholds.
