@@ -9,8 +9,8 @@ on:
       - main
     paths:
       # Run evals if code in the datacommons-mcp package or evals directory changed
-      - 'packages/datacommons-mcp/datacommons_mcp/**'
-      - 'packages/datacommons-mcp/evals/**'
+      - "packages/datacommons-mcp/datacommons_mcp/**"
+      - "packages/datacommons-mcp/evals/**"
 
   # Allows maintainers to manually re-run evals on a specific PR number.
   workflow_dispatch:
@@ -64,3 +64,18 @@ jobs:
         env:
           DC_API_KEY: ${{ secrets.DC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+      - name: Upload evaluation reports
+        # This condition ensures the step runs even if the pytest step failed,
+        # but only if the tests were meant to run in the first place.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # A more general name for the artifact
+          name: agent-eval-reports
+
+          # Add the CSV pattern on a new line
+          path: |
+            reports/evaluation-report-*.html
+            reports/evaluation-report-*.csv
+          if-no-files-found: error
