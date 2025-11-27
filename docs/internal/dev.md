@@ -166,9 +166,11 @@ Use the following guidance for selecting the new version number (MAJOR.MINOR.PAT
 
 #### How version affects the Gemini CLI extension <a name="gcli-extension"></a>
 
-When a **major** version is released, it signifies changes to the toolset that require a corresponding update to the context file in the `datacommons` Gemini CLI extension ([DATACOMMONS.md](https://github.com/gemini-cli-extensions/datacommons/blob/main/DATACOMMONS.md)).
+The `datacommons` Gemini CLI extension locks to a specific `datacommons-mcp` version. This strategy avoids `uv` caching issues and makes it clear which MCP version is running for a given extension version, simplifying debugging and maintenance.
 
-This involves updating the extension's context file with instructions of how to orchestrate the tools, update the allowlisted versions of the DC MCP server in the extension config, and publishing a new release of the extension. More details on the extension and releasing it are in the internal Data Commons team docs.
+Therefore, when releasing a new stable version of the MCP server, you will likely need to release a new version of the extension as well.
+
+This involves updating the locked `datacommons-mcp` version and the extension's version in its configuration, and then publishing a new extension release. If the MCP release includes major changes, you will also need to update the extension's context file ([`DATACOMMONS.md`](https://github.com/gemini-cli-extensions/datacommons/blob/main/DATACOMMONS.md)) with new tool orchestration instructions. More details on releasing the extension are in the internal Data Commons team docs.  
 
 ### Steps to publish a new version
 
@@ -188,3 +190,5 @@ To publish a new version of `datacommons-mcp` to [PyPI](https://pypi.org/project
    - Create a git tag for the release
 
 The package will be automatically available on PyPI after the workflow completes successfully. You can monitor the workflow progress at [https://github.com/datacommonsorg/agent-toolkit/actions](https://github.com/datacommonsorg/agent-toolkit/actions).
+
+3. **Release the Gemini Extension**: After a new, stable `datacommons-mcp` version is published, release a new version of the `datacommons` Gemini CLI extension. Follow the instructions in the internal team docs to update the locked `datacommons-mcp` version and the extension's version, and then publish the extension.  
