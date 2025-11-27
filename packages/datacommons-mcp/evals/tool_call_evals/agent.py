@@ -23,9 +23,9 @@ def create_agent(instruction: str, name="tool_usage_agent") -> LlmAgent:
     Create an LLM agent that uses MCP tools to interact with Data Commons.
     """
     # Environment variables for agent configuration
-    DC_API_KEY = os.environ.get("DC_API_KEY")
+    dc_api_key = os.environ.get("DC_API_KEY")
 
-    if not DC_API_KEY:
+    if not dc_api_key:
         raise ValueError("Required environment variable DC_API_KEY is not set")
 
     return LlmAgent(
@@ -39,7 +39,7 @@ def create_agent(instruction: str, name="tool_usage_agent") -> LlmAgent:
                     server_params=StdioServerParameters(
                         command="uv",
                         args=["run", "datacommons-mcp", "serve", "stdio"],
-                        env={"DC_API_KEY": DC_API_KEY},
+                        env={"DC_API_KEY": dc_api_key},
                     ),
                 )
             )

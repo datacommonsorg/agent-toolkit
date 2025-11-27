@@ -47,6 +47,7 @@ import time
 from collections import Counter
 from typing import Any
 
+import pathlib
 import pandas as pd
 from google.adk.agents.base_agent import BaseAgent
 from pydantic import BaseModel
@@ -94,16 +95,15 @@ class AgentEvaluator:
         expected_agent_turns = load_expected_agent_turns(eval_dataset_path)
 
         # 2. Prepare evaluation tasks
-        tasks = []
-        for run_index in range(num_runs):
-            tasks.append(
-                AgentEvaluator._evaluate_run(
-                    agent=agent,
-                    expected_agent_turns=expected_agent_turns,
-                    run_index=run_index,
-                    num_runs=num_runs,
-                )
+        tasks = [
+            AgentEvaluator._evaluate_run(
+                agent=agent,
+                expected_agent_turns=expected_agent_turns,
+                run_index=run_index,
+                num_runs=num_runs,
             )
+            for run_index in range(num_runs)
+        ]
 
         # 3. Run all evaluation runs in parallel
         logger.info(
@@ -171,7 +171,7 @@ class AgentEvaluator:
     @staticmethod
     def create_styled_html_report(
         df: pd.DataFrame, output_path: pathlib.Path, pre_wrap_columns: list[str] = None
-    ):
+    ) -> None:
         """
         Applies CSS styling to the results DataFrame and saves it as an HTML file.
 
