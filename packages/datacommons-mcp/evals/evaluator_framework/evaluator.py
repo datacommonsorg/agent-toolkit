@@ -26,7 +26,7 @@ Usage:
 ```python
 import asyncio
 import pandas as pd
-from evals.evaluator.agent_evaluator import AgentEvaluator
+from evals.evaluator_framework.evaluator import AgentEvaluator
 
 async def run_evaluation() -> pd.DataFrame:
     results_df = await AgentEvaluator.evaluate(
@@ -40,6 +40,7 @@ async def run_evaluation() -> pd.DataFrame:
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import json
 import logging
@@ -49,172 +50,32 @@ from typing import Any
 
 import pandas as pd
 from google.adk.agents.base_agent import BaseAgent
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService, Session
-from google.genai import types as genai_types
 from pydantic import BaseModel
 from rouge_score import rouge_scorer
+from evals.evaluator_framework.runner import AgentRunner
 
-from evals.evaluator.agent_evaluator_models import (
+from evals.evaluator_framework.types import (
     AgentTurn,
+    EvaluationDataFrameRow,
     EvaluationResultRow,
     EvaluationScore,
     ToolCall,
     load_expected_agent_turns,
 )
 
-logger = logging.getLogger("evals.evaluator." + __name__)
+logger = logging.getLogger("evals.evaluator_framework." + __name__)
 
 
 # Constants for default runs and evaluation criteria
 NUM_RUNS = 2
 
 
-def load_json(file_path: str) -> dict | list:
-    """Loads a JSON file and returns its content."""
-    with open(file_path) as f:
-        return json.load(f)
-
-
-class AgentRunner:
-    """A placeholder class for running an agent."""
-
-    def __init__(self, agent: BaseAgent) -> None:
-        self.app_name = "datacommons_app"
-        self.user_id = "user_1"
-        self.session_id = "session_001"
-        self.session_service = InMemorySessionService()
-        self.session: Session | None = None
-        self.runner: Runner | None = None
-        self.agent = agent
-
-    async def initialize(self) -> None:
-        """Initializes the agent runner by creating a session."""
-        self.session = await self.session_service.create_session(
-            app_name=self.app_name,
-            user_id=self.user_id,
-            session_id=self.session_id,
-        )
-
-        self.runner = Runner(
-            agent=self.agent,
-            app_name=self.app_name,
-            session_service=self.session_service,
-        )
-
-    async def run(self, query: str) -> genai_types.Content:
-        """Runs the agent with the given query and returns the response content."""
-        # Ensure session & runner exist
-        if not self.session or not self.runner:
-            raise ValueError(
-                "Session and/or runner not initialized. Call initialize() first."
-            )
-
-        # Prepare the user's message in ADK format
-        content = genai_types.Content(role="user", parts=[genai_types.Part(text=query)])
-
-        final_response_text = "Agent did not produce a final response."  # Default
-
-        # Iterate through events to capture tool calls and final response
-        tool_calls: list[genai_types.FunctionCall] = []
-        async for event in self.runner.run_async(
-            user_id=self.user_id, session_id=self.session_id, new_message=content
-        ):
-            # Filter events to only those authored by the agent
-            if event.author != self.agent.name:
-                continue
-            tool_calls.extend(event.get_function_calls())
-
-            # Key Concept: is_final_response() marks the concluding message for the turn.
-            if event.is_final_response():
-                if event.content and event.content.parts:
-                    # Assuming text response in the first part
-                    final_response_text = event.content.parts[0].text
-                elif (
-                    event.actions and event.actions.escalate
-                ):  # Handle potential errors/escalations
-                    final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
-                # Add more checks here if needed (e.g., specific error codes)
-                break  # Stop processing events once the final response is found
-
-        actual_agent_turn = AgentTurn(
-            query=query,
-            tool_calls=[
-                ToolCall(tool_name=func.name, tool_input=func.args)
-                for func in tool_calls
-            ],
-            reference=final_response_text,
-        )
-        logger.info(
-            "Agent Turn Completed: %s", actual_agent_turn.model_dump_json(indent=4)
-        )
-        return actual_agent_turn
-
-
 class AgentEvaluator:
-    """An evaluator for Agents, mainly intended for helping with test cases."""
-
-    @staticmethod
-    async def evaluate_eval_set(
-        agent_module: str,
-        expected_agent_turns: list[AgentTurn],
-        num_runs: int = NUM_RUNS,
-        tool_score_threshold: float = 1.0,
-        response_score_threshold: float = 0.8,
-    ) -> pd.DataFrame:
-        """Evaluates an agent using the given EvalSet.
-
-        Returns a pandas DataFrame with the evaluation results.
-
-        Args:
-          agent_module: The path to python module that contains the definition of
-            the agent. There is convention in place here, where the code is going to
-            look for 'root_agent' in the loaded module.
-          eval_set: The eval set.
-          criteria: Evauation criterias, a dictionary of metric names to their
-            respective thresholds.
-          num_runs: Number of times all entries in the eval dataset should be
-            assessed.
-          tool_score_threshold: Threshold for tool call evaluation.
-          response_score_threshold: Threshold for response evaluation.
-        Returns:
-            A pandas DataFrame with evaluation results
-        """
-        # 1. Load the agent
-        agent_for_eval = AgentEvaluator._get_agent_for_eval(module_name=agent_module)
-        agent_runner = AgentRunner(agent=agent_for_eval)
-        await agent_runner.initialize()
-
-        # 2. Run the evaluation steps
-        evaluation_result_rows: list[EvaluationResultRow] = []
-        for run_index in range(num_runs):
-            logger.info("Starting evaluation run %d/%d", run_index + 1, num_runs)
-            for expected_agent_turn in expected_agent_turns:
-                start_time = time.perf_counter()
-                actual_agent_turn = await agent_runner.run(expected_agent_turn.query)
-                evaluation_score = AgentEvaluator._calculate_evaluation_score(
-                    expected_agent_turn=expected_agent_turn,
-                    actual_agent_turn=actual_agent_turn,
-                )
-                took = time.perf_counter() - start_time
-                evalution_result_row = EvaluationResultRow(
-                    took=took,
-                    expected_agent_turn=expected_agent_turn,
-                    actual_agent_turn=actual_agent_turn,
-                    evaluation_score=evaluation_score,
-                )
-                evaluation_result_rows.append(evalution_result_row)
-            agent_runner.runner.close()
-
-        return AgentEvaluator._create_results_dataframe(
-            evaluation_result_rows,
-            tool_score_threshold=tool_score_threshold,
-            response_score_threshold=response_score_threshold,
-        )
+    """An evaluator for Agents intended for helping with test cases."""
 
     @staticmethod
     async def evaluate(
-        agent_module: str,
+        agent: BaseAgent,
         eval_dataset_path: str,
         num_runs: int = NUM_RUNS,
         tool_score_threshold: float = 1.0,
@@ -223,7 +84,7 @@ class AgentEvaluator:
         """Evaluates an Agent and returns a DataFrame of results.
 
         Args:
-          agent_module: The path to python module that contains the agent's definition.
+          agent: The agent to evaluate.
           eval_dataset_path: Path to a single .test.json file containing the eval dataset.
           num_runs: Number of times to assess each entry in the eval dataset.
 
@@ -234,14 +95,198 @@ class AgentEvaluator:
         # 1. Load the expected evaluation steps
         expected_agent_turns = load_expected_agent_turns(eval_dataset_path)
 
-        # 2. Run the evaluation & return the results DataFrame
-        return await AgentEvaluator.evaluate_eval_set(
-            agent_module=agent_module,
-            expected_agent_turns=expected_agent_turns,
-            num_runs=num_runs,
+        # 2. Prepare evaluation tasks
+        tasks = []
+        for run_index in range(num_runs):
+            tasks.append(
+                AgentEvaluator._evaluate_run(
+                    agent=agent,
+                    expected_agent_turns=expected_agent_turns,
+                    run_index=run_index,
+                    num_runs=num_runs,
+                )
+            )
+
+        # 3. Run all evaluation runs in parallel
+        logger.info(
+            "Starting %d evaluation runs in parallel",
+            len(tasks),
+        )
+        results_nested = await asyncio.gather(*tasks)
+        # Flatten the list of lists
+        evaluation_result_rows = [
+            item for sublist in results_nested for item in sublist
+        ]
+
+        # 4. Return the evaluation results
+        return AgentEvaluator._create_results_dataframe(
+            evaluation_result_rows,
             tool_score_threshold=tool_score_threshold,
             response_score_threshold=response_score_threshold,
         )
+
+    @staticmethod
+    async def _evaluate_run(
+        agent: BaseAgent,
+        expected_agent_turns: list[AgentTurn],
+        run_index: int,
+        num_runs: int,
+    ) -> list[EvaluationResultRow]:
+        """Evaluates a single run (sequence of turns) for an agent."""
+        # Initialize a new agent runner for this run to ensure isolation from other runs
+        # but continuity within this run.
+        agent_runner = AgentRunner(agent=agent)
+        await agent_runner.initialize()
+
+        results = []
+        for turn_index, expected_agent_turn in enumerate(expected_agent_turns):
+            logger.info(
+                "Starting evaluation turn %d/%d (Run %d/%d) for query: %s",
+                turn_index + 1,
+                len(expected_agent_turns),
+                run_index + 1,
+                num_runs,
+                expected_agent_turn.query[:50] + "..."
+                if len(expected_agent_turn.query) > 50
+                else expected_agent_turn.query,
+            )
+
+            start_time = time.perf_counter()
+            actual_agent_turn = await agent_runner.run(expected_agent_turn.query)
+            took = time.perf_counter() - start_time
+
+            evaluation_score = AgentEvaluator._calculate_evaluation_score(
+                expected_agent_turn=expected_agent_turn,
+                actual_agent_turn=actual_agent_turn,
+            )
+
+            results.append(
+                EvaluationResultRow(
+                    took=took,
+                    expected_agent_turn=expected_agent_turn,
+                    actual_agent_turn=actual_agent_turn,
+                    evaluation_score=evaluation_score,
+                )
+            )
+        return results
+
+    @staticmethod
+    def create_styled_html_report(
+        df: pd.DataFrame, output_path: pathlib.Path, pre_wrap_columns: list[str] = None
+    ):
+        """
+        Applies CSS styling to the results DataFrame and saves it as an HTML file.
+
+        Args:
+            df: The DataFrame to style and save
+            output_path: Path where the HTML file should be saved
+            pre_wrap_columns: List of column names to wrap in <pre> tags.
+                            Defaults to ['expected_tool_calls', 'actual_tool_calls']
+        """
+        if pre_wrap_columns is None:
+            pre_wrap_columns = ["expected_tool_calls", "actual_tool_calls"]
+
+        print("🎨 Applying styles to the report...")
+
+        # Define a function to color the 'overall_eval_status' column
+        def style_status(series: pd.Series) -> list[str]:
+            styles = []
+            for value in series:
+                if value == "PASSED":
+                    styles.append("background-color: #d4edda; color: #155724;")  # Green
+                elif value == "FAILED":
+                    styles.append("background-color: #f8d7da; color: #721c24;")  # Red
+                else:
+                    styles.append("")  # Default
+            return styles
+
+        # Define a function to wrap tool call columns in <pre> tags
+        def wrap_in_pre(val):
+            if pd.isna(val) or val == "":
+                return val
+            return f'<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; margin: 0; padding: 4px; background-color: #f8f9fa; border-radius: 3px;">{val}</pre>'
+
+        try:
+            # Create format dictionary with numeric formatting and pre-wrap columns
+            format_dict = {
+                "average_tool_call_score": "{:.3f}",
+                "average_response_evaluation_score": "{:.3f}",
+                "tool_call_score": "{:.3f}",
+                "response_evaluation_score": "{:.3f}",
+                "tool_call_score_threshold": "{:.3f}",
+                "response_evaluation_score_threshold": "{:.3f}",
+                "time_taken_seconds": "{:.3f}",
+            }
+
+            # Add pre-wrap formatting for specified columns
+            for col in pre_wrap_columns:
+                if col in df.columns:
+                    format_dict[col] = wrap_in_pre
+
+            # Apply styles using the .style accessor
+            styled_df = (
+                df.style.apply(
+                    style_status,
+                    subset=[
+                        "overall_eval_status",
+                        "overall_tool_eval_status",
+                        "overall_response_eval_status",
+                        "tool_eval_status",
+                        "response_eval_status",
+                    ],
+                )
+                .format(format_dict)
+                .bar(
+                    subset=[
+                        "average_tool_call_score",
+                        "average_response_evaluation_score",
+                        "tool_call_score",
+                        "response_evaluation_score",
+                    ],
+                    vmin=0,
+                    vmax=1.0,
+                    align="zero",
+                    color="#5bc0de",
+                )
+                .set_properties(
+                    **{
+                        "font-family": "Helvetica, Arial, sans-serif",
+                        "border": "1px solid #ddd",
+                        "padding": "8px",
+                    }
+                )
+                .set_table_styles(
+                    [
+                        {
+                            "selector": "th",
+                            "props": [
+                                ("background-color", "#f2f2f2"),
+                                ("font-weight", "bold"),
+                                ("text-align", "left"),
+                            ],
+                        },
+                        {
+                            "selector": "tr:nth-child(even)",
+                            "props": [("background-color", "#f9f9f9")],
+                        },
+                        {
+                            "selector": "tr:hover",
+                            "props": [("background-color", "#eef5ff")],
+                        },
+                    ]
+                )
+            )
+
+            # Write the styled DataFrame to an HTML file
+            styled_df.to_html(output_path, index=False, escape=False)
+            print(f"✅ Styled report successfully generated at: {output_path}")
+
+        except Exception as e:
+            print(f"🔥 Failed to write styled HTML report: {e}")
+            # Fallback to the unstyled version
+            df.to_html(output_path, index=False, border=1)
+            print(f"✅ Unstyled fallback report generated at: {output_path}")
+
 
     @staticmethod
     def _calculate_evaluation_score(
@@ -264,12 +309,6 @@ class AgentEvaluator:
             tool_call_score=tool_call_score,
             response_evaluation_score=response_evaluation_score,
         )
-
-    @staticmethod
-    def _get_agent_for_eval(module_name: str) -> BaseAgent:
-        module_path = f"{module_name}"
-        agent_module = importlib.import_module(module_path)
-        return agent_module.agent.root_agent
 
     @staticmethod
     def _create_results_dataframe(
@@ -295,10 +334,10 @@ class AgentEvaluator:
                 # Initialize scores & run_number as None, we will calculate them after grouping
                 "average_tool_call_score": None,
                 "average_response_evaluation_score": None,
-                "tool_call_score_threshold": tool_score_threshold,
-                "response_evaluation_score_threshold": response_score_threshold,
                 "run_number": None,
                 # Direct data from evaluation
+                "tool_call_score_threshold": tool_score_threshold,
+                "response_evaluation_score_threshold": response_score_threshold,
                 "tool_call_score": evaluation_result_row.evaluation_score.tool_call_score,
                 "response_evaluation_score": evaluation_result_row.evaluation_score.response_evaluation_score,
                 "time_taken_seconds": evaluation_result_row.took,
@@ -381,6 +420,12 @@ class AgentEvaluator:
         # Calculate Run Number
         # cumcount() numbers the items in each group starting from 0 based on their original order
         df["run_number"] = df.groupby("prompt").cumcount()
+
+        # Validate the final DataFrame against the Pydantic model
+        # This ensures that all expected columns are present and have correct types
+        # We convert to dict and replace NaN with None for Pydantic compatibility
+        for row in df.where(pd.notnull(df), None).to_dict(orient="records"):
+            EvaluationDataFrameRow.model_validate(row)
 
         return df
 

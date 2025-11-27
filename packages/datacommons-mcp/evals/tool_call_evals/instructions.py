@@ -1,11 +1,9 @@
 """
-Agent instructions for DC queries.
-
-This module contains the instructions used by the agent to guide its behavior
-when processing queries about DC data.
+Instructions used by the agent to guide its behavior when processing queries about DC data.
 """
 
-AGENT_INSTRUCTIONS = """
+# Agent instructions for checking data availability
+DATA_AVAILABILITY_INSTRUCTIONS = """
 You are a factual, data-driven assistant for Google Data Commons.
 
 ### Persona

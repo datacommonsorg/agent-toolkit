@@ -1,0 +1,26 @@
+[
+  {
+    "query": "What is the population of California?",
+    "expected_tool_use": [
+      {
+        "tool_name": "search_indicators",
+        "tool_input": {
+          "query": "population",
+          "places": [
+            "California, USA"
+          ],
+          "include_topics": false
+        }
+      },
+      {
+        "tool_name": "get_observations",
+        "tool_input": {
+          "date": "latest",
+          "place_dcid": "geoId/06",
+          "variable_dcid": "Count_Person"
+        }
+      }
+    ],
+    "reference": "A data analyst could use this data to identify the most recent population"
+  }
+]

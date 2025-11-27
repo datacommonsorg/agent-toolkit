@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-agent_evaluator_models.py
+types.py
 
 Defines Pydantic models for structuring and validating
 agent evaluation examples, including expected tool use.
@@ -25,7 +25,7 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-logger = logging.getLogger("evals.evaluator." + __name__)
+logger = logging.getLogger("evals.evaluator_framework." + __name__)
 
 # --- Model Definitions ---
 
@@ -92,6 +92,41 @@ class EvaluationResultRow(BaseModel):
     expected_agent_turn: AgentTurn
     actual_agent_turn: AgentTurn
     evaluation_score: EvaluationScore
+
+
+class EvaluationDataFrameRow(BaseModel):
+    """
+    Represents a single row in the evaluation results DataFrame.
+
+    This model is used to structure the data before it is converted to a pandas DataFrame.
+    Fields with default values are calculated after the initial creation of the DataFrame.
+    """
+
+    # Status fields
+    overall_eval_status: str | None = None
+    overall_tool_eval_status: str | None = None
+    tool_eval_status: str | None = None
+    overall_response_eval_status: str | None = None
+    response_eval_status: str | None = None
+
+    # Score fields
+    average_tool_call_score: float | None = None
+    average_response_evaluation_score: float | None = None
+    run_number: int | None = None
+
+    # Threshold fields
+    tool_call_score_threshold: float
+    response_evaluation_score_threshold: float
+
+    # Direct data from evaluation
+    tool_call_score: float | None
+    response_evaluation_score: float | None
+    time_taken_seconds: float
+    prompt: str
+    expected_response: str
+    actual_response: str
+    expected_tool_calls: str  # JSON string
+    actual_tool_calls: str  # JSON string
 
 
 def load_expected_agent_turns(file_path: str) -> list[AgentTurn]:

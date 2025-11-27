@@ -3,12 +3,13 @@ import pathlib
 import pandas as pd
 import pytest
 
-# Assuming this is the correct import path for your evaluator
-from evals.evaluator.agent_evaluator import AgentEvaluator
+from evals.evaluator_framework.evaluator import AgentEvaluator
+from evals.tool_call_evals.agent import create_agent
+from evals.tool_call_evals.instructions import DATA_AVAILABILITY_INSTRUCTIONS
 
 # --- Configuration ---
-GET_OBSERVATIONS_DATA_DIR = pathlib.Path(__file__).parent / "data/get_observations"
-TEST_FILES = sorted(GET_OBSERVATIONS_DATA_DIR.glob("*.test.json"))
+EVALS_DATA_DIR = pathlib.Path(__file__).parent / "data"
+TEST_FILES = sorted(EVALS_DATA_DIR.glob("**/*.test.json"))
 REPORT_OUTPUT_DIR = "reports/"
 REPORT_OUTPUT_BASE_FILENAME = "evaluation-report"
 
@@ -32,10 +33,11 @@ class TestAgentEvaluation:
         resulting dataframe, and then perform assertions.
         """
 
+        agent = create_agent(DATA_AVAILABILITY_INSTRUCTIONS)
+
         # 1. Run the evaluation and get the dataframe
-        # This assumes your `evaluate` function now returns a pandas DataFrame.
         result_df = await AgentEvaluator.evaluate(
-            agent_module="evals.test_tool_agent.bootstrap",
+            agent=agent,
             eval_dataset_path=str(path),
             num_runs=2,
             tool_score_threshold=1,  # Requires an exact match of tool calls
@@ -117,7 +119,7 @@ class TestAgentEvaluation:
                 pathlib.Path(REPORT_OUTPUT_DIR)
                 / f"{REPORT_OUTPUT_BASE_FILENAME}-{pd.Timestamp.now().strftime('%Y%m%d-%H%M%S')}.html"
             )
-            create_styled_html_report(final_report_df, report_output_path)
+            AgentEvaluator.create_styled_html_report(final_report_df, report_output_path)
             print(f"✅ Report successfully generated at: {report_output_path}")
             # Write to CSV as well for easier data manipulation
             csv_path = report_output_path.with_suffix(".csv")
@@ -126,119 +128,3 @@ class TestAgentEvaluation:
         except Exception as e:
             print(f"🔥 Failed to write HTML report: {e}")
 
-
-def create_styled_html_report(
-    df: pd.DataFrame, output_path: pathlib.Path, pre_wrap_columns: list[str] = None
-):
-    """
-    Applies CSS styling to the results DataFrame and saves it as an HTML file.
-
-    Args:
-        df: The DataFrame to style and save
-        output_path: Path where the HTML file should be saved
-        pre_wrap_columns: List of column names to wrap in <pre> tags.
-                         Defaults to ['expected_tool_calls', 'actual_tool_calls']
-    """
-    if pre_wrap_columns is None:
-        pre_wrap_columns = ["expected_tool_calls", "actual_tool_calls"]
-
-    print("🎨 Applying styles to the report...")
-
-    # Define a function to color the 'overall_eval_status' column
-    def style_status(series: pd.Series) -> list[str]:
-        styles = []
-        for value in series:
-            if value == "PASSED":
-                styles.append("background-color: #d4edda; color: #155724;")  # Green
-            elif value == "FAILED":
-                styles.append("background-color: #f8d7da; color: #721c24;")  # Red
-            else:
-                styles.append("")  # Default
-        return styles
-
-    # Define a function to wrap tool call columns in <pre> tags
-    def wrap_in_pre(val):
-        if pd.isna(val) or val == "":
-            return val
-        return f'<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; margin: 0; padding: 4px; background-color: #f8f9fa; border-radius: 3px;">{val}</pre>'
-
-    try:
-        # Create format dictionary with numeric formatting and pre-wrap columns
-        format_dict = {
-            "average_tool_call_score": "{:.3f}",
-            "average_response_evaluation_score": "{:.3f}",
-            "tool_call_score": "{:.3f}",
-            "response_evaluation_score": "{:.3f}",
-            "tool_call_score_threshold": "{:.3f}",
-            "response_evaluation_score_threshold": "{:.3f}",
-            "time_taken_seconds": "{:.3f}",
-        }
-
-        # Add pre-wrap formatting for specified columns
-        for col in pre_wrap_columns:
-            if col in df.columns:
-                format_dict[col] = wrap_in_pre
-
-        # Apply styles using the .style accessor
-        styled_df = (
-            df.style.apply(
-                style_status,
-                subset=[
-                    "overall_eval_status",
-                    "overall_tool_eval_status",
-                    "overall_response_eval_status",
-                    "tool_eval_status",
-                    "response_eval_status",
-                ],
-            )
-            .format(format_dict)
-            .bar(
-                subset=[
-                    "average_tool_call_score",
-                    "average_response_evaluation_score",
-                    "tool_call_score",
-                    "response_evaluation_score",
-                ],
-                vmin=0,
-                vmax=1.0,
-                align="zero",
-                color="#5bc0de",
-            )
-            .set_properties(
-                **{
-                    "font-family": "Helvetica, Arial, sans-serif",
-                    "border": "1px solid #ddd",
-                    "padding": "8px",
-                }
-            )
-            .set_table_styles(
-                [
-                    {
-                        "selector": "th",
-                        "props": [
-                            ("background-color", "#f2f2f2"),
-                            ("font-weight", "bold"),
-                            ("text-align", "left"),
-                        ],
-                    },
-                    {
-                        "selector": "tr:nth-child(even)",
-                        "props": [("background-color", "#f9f9f9")],
-                    },
-                    {
-                        "selector": "tr:hover",
-                        "props": [("background-color", "#eef5ff")],
-                    },
-                ]
-            )
-        )
-
-        # Write the styled DataFrame to an HTML file
-        styled_df.to_html(output_path, index=False, escape=False)
-        print(f"✅ Styled report successfully generated at: {output_path}")
-
-    except Exception as e:
-        print(f"🔥 Failed to write styled HTML report: {e}")
-        # Fallback to the unstyled version
-        df.to_html(output_path, index=False, border=1)
-        print(f"✅ Unstyled fallback report generated at: {output_path}")

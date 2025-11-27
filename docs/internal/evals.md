@@ -10,7 +10,7 @@ The goal of these tests is to make sure the agent works correctly. We compare wh
 
 *   **Intent Resolution:** Check if the agent understands what the user is asking and picks the right tool.
 *   **Parameter Extraction:** Check if the agent pulls out the correct details (like dates, place IDs, and variable IDs) from the user's question.
-*   **Regression Testing:** Make sure that new changes to the code don't break things that were already working.
+*   **Regression Testing:** Ensure that changes to tool descriptions do not negatively impact the LLM's ability to correctly understand and use the tools.
 
 ## Scoring
 
@@ -26,7 +26,7 @@ We rate the agent's performance using two main scores:
 
 ## Test Data Structure
 
-The tests are defined in JSON files in `packages/datacommons-mcp/evals/test_tool_agent/evals/data/`.
+The tests are defined in JSON files in `packages/datacommons-mcp/evals/tool_call_evals/data/`.
 
 ### Schema
 
@@ -79,10 +79,11 @@ We run these tests automatically on GitHub Actions (in `.github/workflows/secure
 
 To add new tests:
 
-1.  Go to `packages/datacommons-mcp/evals/test_tool_agent/evals/data/get_observations/`.
-2.  Create a new `.test.json` file or add to an existing one.
-3.  Add your test cases using the JSON format above.
-4.  The test runner (`test_tools.py`) will automatically find and run your new tests.
+1.  Go to `packages/datacommons-mcp/evals/tool_call_evals/data/`.
+2.  Choose an appropriate directory for your test, or create a new one.
+3.  Create a new `.test.json` file in that directory, or add to an existing one.
+4.  Add your test cases using the JSON format above.
+5.  The test runner (`test_tools.py`) will automatically find and run your new tests.
 
 ## Reporting
 
