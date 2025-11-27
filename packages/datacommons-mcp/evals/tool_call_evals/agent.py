@@ -14,9 +14,9 @@ from google.adk.tools.mcp_tool.mcp_toolset import (
     StdioServerParameters,
 )
 
-
 # Model for the agent
 AGENT_MODEL = "gemini-2.5-flash"
+
 
 def create_agent(instruction: str, name="tool_usage_agent") -> LlmAgent:
     """

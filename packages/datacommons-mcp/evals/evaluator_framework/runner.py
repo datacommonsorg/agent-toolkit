@@ -24,14 +24,16 @@ print(response)
 """
 
 import logging
+
+import google.genai.types as genai_types
 from google.adk.agents.base_agent import BaseAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService, Session
-import google.genai.types as genai_types
 
 from evals.evaluator_framework.types import AgentTurn, ToolCall
 
 logger = logging.getLogger("evals.evaluator_framework." + __name__)
+
 
 class AgentRunner:
     """Runs an ADK agent in a session."""
@@ -106,4 +108,3 @@ class AgentRunner:
             "Agent Turn Completed: %s", actual_agent_turn.model_dump_json(indent=4)
         )
         return actual_agent_turn
-

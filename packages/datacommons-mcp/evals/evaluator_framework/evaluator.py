@@ -41,7 +41,6 @@ async def run_evaluation() -> pd.DataFrame:
 from __future__ import annotations
 
 import asyncio
-import importlib
 import json
 import logging
 import time
@@ -52,14 +51,13 @@ import pandas as pd
 from google.adk.agents.base_agent import BaseAgent
 from pydantic import BaseModel
 from rouge_score import rouge_scorer
-from evals.evaluator_framework.runner import AgentRunner
 
+from evals.evaluator_framework.runner import AgentRunner
 from evals.evaluator_framework.types import (
     AgentTurn,
     EvaluationDataFrameRow,
     EvaluationResultRow,
     EvaluationScore,
-    ToolCall,
     load_expected_agent_turns,
 )
 
@@ -286,7 +284,6 @@ class AgentEvaluator:
             # Fallback to the unstyled version
             df.to_html(output_path, index=False, border=1)
             print(f"✅ Unstyled fallback report generated at: {output_path}")
-
 
     @staticmethod
     def _calculate_evaluation_score(

@@ -119,7 +119,9 @@ class TestAgentEvaluation:
                 pathlib.Path(REPORT_OUTPUT_DIR)
                 / f"{REPORT_OUTPUT_BASE_FILENAME}-{pd.Timestamp.now().strftime('%Y%m%d-%H%M%S')}.html"
             )
-            AgentEvaluator.create_styled_html_report(final_report_df, report_output_path)
+            AgentEvaluator.create_styled_html_report(
+                final_report_df, report_output_path
+            )
             print(f"✅ Report successfully generated at: {report_output_path}")
             # Write to CSV as well for easier data manipulation
             csv_path = report_output_path.with_suffix(".csv")
@@ -127,4 +129,3 @@ class TestAgentEvaluation:
             print(f"✅ CSV report generated at: {csv_path}")
         except Exception as e:
             print(f"🔥 Failed to write HTML report: {e}")
-
