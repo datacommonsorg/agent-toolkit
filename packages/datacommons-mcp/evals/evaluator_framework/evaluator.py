@@ -45,9 +45,11 @@ import json
 import logging
 import time
 from collections import Counter
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-import pathlib
+if TYPE_CHECKING:
+    import pathlib
+
 import pandas as pd
 from google.adk.agents.base_agent import BaseAgent
 from pydantic import BaseModel
