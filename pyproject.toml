@@ -94,13 +94,11 @@ extend-ignore = [
     "S101",   # Allow using `assert` in pytests
     "ANN001", # Ignore missing type annotations in test files
     "ANN201", # Ignore missing return types in public test functions
-    "ANN202", # Ignore missing return types in private test functions
-    "TC002", # Ignore unused "if TYPE_CHECKING" imports in test files
+    "ANN202", # Ignore missing return types in private teest functions
 ]
 "packages/*/evals/**/test_*.py" = [
     "S101",   # Allow using `assert` in pytests
     "ANN001", # Ignore missing type annotations in test files
     "ANN201", # Ignore missing return types in public test functions
     "ANN202", # Ignore missing return types in private test functions,
-    "TC002", # Ignore unused "if TYPE_CHECKING" imports in test files
 ]
