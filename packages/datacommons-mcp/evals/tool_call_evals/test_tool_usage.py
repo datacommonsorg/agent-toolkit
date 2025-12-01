@@ -97,7 +97,7 @@ class TestAgentEvaluation:
     def teardown_class(cls) -> None:
         """
         Pytest hook that runs once after all test methods in the class are done.
-        This is the perfect place to generate the final report.
+        Combines the output from all tests into the final report.
         """
         if not cls.all_results_dfs:
             print("\nNo DataFrames were collected to generate a report.")
