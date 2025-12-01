@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.11.7",
     "pydantic-settings",
     "python-dateutil>=2.9.0.post0",
+    "python-dotenv",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 
