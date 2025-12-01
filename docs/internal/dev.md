@@ -21,6 +21,32 @@ cd packages/datacommons-mcp # navigate to package dir
 uv run fastmcp run datacommons_mcp/server.py:mcp -t (http|stdio)
 ```
 
+### Debug with VS Code
+
+Prerequisites:
+- [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+- [Python Debugger extension](https://marketplace.visualstudio.com/items?itemName=ms-python.debugpy)
+
+To start the server with the debugger:
+1. Open the "Run and Debug" view in VS Code (Cmd+Shift+D).
+2. Select **"Data Commons MCP: Serve HTTP"** from the dropdown.
+3. **Add breakpoints** by clicking in the gutter (to the left of line numbers) in the files you want to debug.
+4. Press F5 or click the green play button.
+
+This will start the server in HTTP mode with API key validation skipped (as configured in `.vscode/launch.json`).
+
+#### How it works
+
+The debug configuration is defined in `.vscode/launch.json`. It tells VS Code to run the `datacommons_mcp.cli` module with specific arguments (e.g., `serve http --skip-api-key-validation`).
+
+You can add more configurations to `launch.json` to support different scenarios, such as:
+- Passing different environment variables.
+- Using different command-line arguments.
+
+To add a new configuration, open `.vscode/launch.json` and add a new entry to the `configurations` list.
+
+See https://code.visualstudio.com/docs/debugtest/debugging-configuration for more details.
+
 ### Run Unit Tests
 
 Run unit tests and evals using pyest:
