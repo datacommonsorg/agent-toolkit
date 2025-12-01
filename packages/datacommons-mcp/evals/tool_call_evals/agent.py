@@ -18,7 +18,7 @@ from google.adk.tools.mcp_tool.mcp_toolset import (
 AGENT_MODEL = "gemini-2.5-flash"
 
 
-def create_agent(instruction: str, name="tool_usage_agent") -> LlmAgent:
+def create_agent(instruction: str, name: str = "tool_usage_agent") -> LlmAgent:
     """
     Create an LLM agent that uses MCP tools to interact with Data Commons.
     """

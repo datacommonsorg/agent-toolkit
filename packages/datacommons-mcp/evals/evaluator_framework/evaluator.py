@@ -50,8 +50,9 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import pathlib
 
+    from google.adk.agents.base_agent import BaseAgent
+
 import pandas as pd
-from google.adk.agents.base_agent import BaseAgent
 from pydantic import BaseModel
 from rouge_score import rouge_scorer
 
@@ -201,7 +202,7 @@ class AgentEvaluator:
             return styles
 
         # Define a function to wrap tool call columns in <pre> tags
-        def wrap_in_pre(val):
+        def wrap_in_pre(val: str) -> str:
             if pd.isna(val) or val == "":
                 return val
             return f'<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; margin: 0; padding: 4px; background-color: #f8f9fa; border-radius: 3px;">{val}</pre>'
