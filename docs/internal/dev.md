@@ -39,7 +39,7 @@ This will start the server in HTTP mode with API key validation skipped (as conf
 
 The debug configuration is defined in `.vscode/launch.json`. It tells VS Code to run the `datacommons_mcp.cli` module with specific arguments (e.g., `serve http --skip-api-key-validation`).
 
-You can add more configurations to `launch.json` to support different scenarios, such as:
+You can add more configurations to `.vscode/launch.json` to support different scenarios, such as:
 - Passing different environment variables.
 - Using different command-line arguments.
 
