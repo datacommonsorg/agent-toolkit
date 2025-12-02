@@ -15,7 +15,7 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
-license = {text = "Apache-2.0"}
+license = {file = "LICENSE"}
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
