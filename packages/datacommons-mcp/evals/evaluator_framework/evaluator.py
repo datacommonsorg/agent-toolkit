@@ -173,106 +173,123 @@ class AgentEvaluator:
 
     @staticmethod
     def create_styled_html_report(
-        df: pd.DataFrame, output_path: pathlib.Path, pre_wrap_columns: list[str] = None
+        df: pd.DataFrame, output_path: pathlib.Path
     ) -> None:
         """
-        Applies CSS styling to the results DataFrame and saves it as an HTML file.
+        Applies styling to the results DataFrame and saves it as an HTML file.
+
+        Uses the EvaluationDataFrameRow schema to determine which columns are scores,
+        statuses, or preformatted text.
 
         Args:
-            df: The DataFrame to style and save
-            output_path: Path where the HTML file should be saved
-            pre_wrap_columns: List of column names to wrap in <pre> tags.
-                            Defaults to ['expected_tool_calls', 'actual_tool_calls']
+            df: The DataFrame to style using the EvaluationDataFrameRow schema.
+            output_path: The path to save the styled HTML file.
         """
-        if pre_wrap_columns is None:
-            pre_wrap_columns = ["expected_tool_calls", "actual_tool_calls"]
+        # Lazy import to avoid circular dependencies if types.py imports this file
+        from evals.evaluator_framework.types import (
+            EvaluationDataFrameRow,
+            ReportStyleType,
+        )
 
         print("🎨 Applying styles to the report...")
 
-        # Define a function to color the 'overall_eval_status' column
-        def style_status(series: pd.Series) -> list[str]:
-            styles = []
-            for value in series:
-                if value == "PASSED":
-                    styles.append("background-color: #d4edda; color: #155724;")  # Green
-                elif value == "FAILED":
-                    styles.append("background-color: #f8d7da; color: #721c24;")  # Red
-                else:
-                    styles.append("")  # Default
-            return styles
+        # --- 1. Introspect Schema for Styling Rules ---
 
-        # Define a function to wrap tool call columns in <pre> tags
-        def wrap_in_pre(val: str) -> str:
+        # Get base string formatters (e.g. "{:.3f}") from the mixin
+        format_dict = EvaluationDataFrameRow.get_format_map()
+
+        # Get column groups based on their semantic style tag
+        status_cols = EvaluationDataFrameRow.get_columns_by_style(ReportStyleType.STATUS)
+        score_cols = EvaluationDataFrameRow.get_columns_by_style(ReportStyleType.SCORE)
+        pre_cols = EvaluationDataFrameRow.get_columns_by_style(ReportStyleType.PREFORMATTED)
+
+        # --- 2. Define Visual Renderers ---
+
+        def render_status_css(series: pd.Series) -> list[str]:
+            """CSS generator for Pass/Fail columns."""
+            return [
+                "background-color: #d4edda; color: #155724; font-weight: bold;" if v == "PASSED" else
+                "background-color: #f8d7da; color: #721c24; font-weight: bold;" if v == "FAILED" else ""
+                for v in series
+            ]
+
+        def render_preformatted_html(val: str) -> str:
+            """HTML generator for large text/JSON blobs."""
             if pd.isna(val) or val == "":
                 return val
-            return f'<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; margin: 0; padding: 4px; background-color: #f8f9fa; border-radius: 3px;">{val}</pre>'
+            # Scrollable container prevents massive JSONs from breaking the table layout
+            return (
+                f'<div style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa; '
+                f'border: 1px solid #eee; border-radius: 4px; padding: 4px;">'
+                f'<pre style="margin: 0; white-space: pre-wrap; font-family: monospace; font-size: 11px;">'
+                f'{val}'
+                f'</pre></div>'
+            )
 
+        # Update format dictionary with the HTML renderers for preformatted columns
+        # Defensive check: only add if the column actually exists in the current DataFrame
+        for col in pre_cols:
+            if col in df.columns:
+                format_dict[col] = render_preformatted_html
+
+        # --- 3. Apply Styles & Render ---
         try:
-            # Create format dictionary with numeric formatting and pre-wrap columns
-            format_dict = {
-                "average_tool_call_score": "{:.3f}",
-                "average_response_evaluation_score": "{:.3f}",
-                "tool_call_score": "{:.3f}",
-                "response_evaluation_score": "{:.3f}",
-                "tool_call_score_threshold": "{:.3f}",
-                "response_evaluation_score_threshold": "{:.3f}",
-                "time_taken_seconds": "{:.3f}",
-            }
-
-            # Add pre-wrap formatting for specified columns
-            for col in pre_wrap_columns:
-                if col in df.columns:
-                    format_dict[col] = wrap_in_pre
-
-            # Apply styles using the .style accessor
             styled_df = (
-                df.style.apply(
-                    style_status,
-                    subset=[
-                        "overall_eval_status",
-                        "overall_tool_eval_status",
-                        "overall_response_eval_status",
-                        "tool_eval_status",
-                        "response_eval_status",
-                    ],
+                df.style
+                # 3a. Apply Colors to Verdicts (StatusLabel)
+                .apply(
+                    render_status_css,
+                    subset=[c for c in status_cols if c in df.columns]
                 )
+
+                # 3b. Apply String Formats & HTML wrappers (FormattedFloat, PreformattedText)
                 .format(format_dict)
+
+                # 3c. Apply Data Bars to Scores (MetricScore)
                 .bar(
-                    subset=[
-                        "average_tool_call_score",
-                        "average_response_evaluation_score",
-                        "tool_call_score",
-                        "response_evaluation_score",
-                    ],
+                    subset=[c for c in score_cols if c in df.columns],
                     vmin=0,
                     vmax=1.0,
                     align="zero",
-                    color="#5bc0de",
+                    color="#5bc0de" # Bootstrap Info Blue
                 )
+
+                # 3d. Global Layout & Typography
                 .set_properties(
                     **{
-                        "font-family": "Helvetica, Arial, sans-serif",
-                        "border": "1px solid #ddd",
+                        "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+                        "border": "1px solid #dee2e6",
                         "padding": "8px",
+                        "vertical-align": "top",
+                        "font-size": "14px",
                     }
                 )
                 .set_table_styles(
                     [
+                        # Sticky Header configuration
                         {
                             "selector": "th",
                             "props": [
-                                ("background-color", "#f2f2f2"),
-                                ("font-weight", "bold"),
+                                ("background-color", "#e9ecef"),
+                                ("color", "#495057"),
+                                ("font-weight", "600"),
                                 ("text-align", "left"),
+                                ("padding", "12px 8px"),
+                                ("position", "sticky"),
+                                ("top", "0"),
+                                ("z-index", "1"),
+                                ("border-bottom", "2px solid #ced4da"),
                             ],
                         },
+                        # Striped Rows
                         {
                             "selector": "tr:nth-child(even)",
-                            "props": [("background-color", "#f9f9f9")],
+                            "props": [("background-color", "#f8f9fa")],
                         },
+                        # Hover Effect
                         {
                             "selector": "tr:hover",
-                            "props": [("background-color", "#eef5ff")],
+                            "props": [("background-color", "#e2e6ea")],
                         },
                     ]
                 )
@@ -284,7 +301,7 @@ class AgentEvaluator:
 
         except Exception as e:
             print(f"🔥 Failed to write styled HTML report: {e}")
-            # Fallback to the unstyled version
+            # Fallback to the unstyled version just in case
             df.to_html(output_path, index=False, border=1)
             print(f"✅ Unstyled fallback report generated at: {output_path}")
 

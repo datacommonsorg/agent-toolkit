@@ -21,9 +21,10 @@ agent evaluation examples, including expected tool use.
 
 import json
 import logging
-from typing import Any
+from enum import Enum
+from typing import Annotated, Any
 
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 logger = logging.getLogger("evals.evaluator_framework." + __name__)
 
@@ -94,7 +95,74 @@ class EvaluationResultRow(BaseModel):
     evaluation_score: EvaluationScore
 
 
-class EvaluationDataFrameRow(BaseModel):
+class ReportColumnTag(str, Enum):
+    """
+    Used to apply styles to html cells for the given value in the DataFrame.
+    """
+    STYLE = "style" # Applies a style tag (or render logic) to the html cell.
+    FORMATTED_STRING = "formatted_string" # Formats numerical value with a given format string (F-string).
+
+class ReportStyleType(str, Enum):
+    """Formatting values for the ColumnTag.STYLE ('style') tag."""
+    STATUS = "status" # CSS: Green/Red background depending on value
+    SCORE = "score" # CSS: Blue data bar with width based on float value from 0 to 1.0
+    PREFORMATTED = "preformatted" # HTML: <pre> tag wrapping
+
+
+class ReportStyleMixin:
+    """
+    Mixin to select column styles and formatting for a report.
+    """
+
+    @classmethod
+    def get_columns_by_style(cls, style_type: ReportStyleType) -> list[str]:
+        """Specific helper to get columns for a specific style enum."""
+        return [
+            name for name, field in cls.model_fields.items()
+            if field.json_schema_extra and
+            field.json_schema_extra.get(ReportColumnTag.STYLE) == style_type
+        ]
+
+    @classmethod
+    def get_format_map(cls) -> dict[str, str]:
+        """Returns a dict of {column_name: format_string} for Pandas styling."""
+        result = {}
+        for name, field in cls.model_fields.items():
+            if field.json_schema_extra:
+                val = field.json_schema_extra.get(ReportColumnTag.FORMATTED_STRING)
+                if val:
+                    result[name] = val
+        return result
+
+# Metric scores are styled with a score bar and formatted to 3 decimal places.
+MetricScore = Annotated[
+    float | None,
+    Field(json_schema_extra={
+        ReportColumnTag.STYLE: ReportStyleType.SCORE,
+        ReportColumnTag.FORMATTED_STRING: "{:.3f}"
+    })
+]
+
+# Float values are formatted to 3 decimal places.
+FormattedFloat = Annotated[
+    float | None,
+    Field(json_schema_extra={ReportColumnTag.FORMATTED_STRING: "{:.3f}"})
+]
+
+# A string representing a pass/fail status, styled in green for "pass" and red for "fail".
+StatusLabel = Annotated[
+    str | None,
+    Field(json_schema_extra={ReportColumnTag.STYLE: ReportStyleType.STATUS})
+]
+
+# Large text blobs that need <pre> wrapping in HTML
+PreformattedText = Annotated[
+    str,
+    Field(json_schema_extra={ReportColumnTag.STYLE: ReportStyleType.PREFORMATTED})
+]
+
+
+class EvaluationDataFrameRow(ReportStyleMixin, BaseModel):
     """
     Represents a single row in the evaluation results DataFrame.
 
@@ -103,30 +171,30 @@ class EvaluationDataFrameRow(BaseModel):
     """
 
     # Status fields
-    overall_eval_status: str | None = None
-    overall_tool_eval_status: str | None = None
-    tool_eval_status: str | None = None
-    overall_response_eval_status: str | None = None
-    response_eval_status: str | None = None
+    overall_eval_status: StatusLabel = None
+    overall_tool_eval_status: StatusLabel = None
+    tool_eval_status: StatusLabel = None
+    overall_response_eval_status: StatusLabel = None
+    response_eval_status: StatusLabel = None
 
     # Score fields
-    average_tool_call_score: float | None = None
-    average_response_evaluation_score: float | None = None
+    average_tool_call_score: MetricScore = None
+    average_response_evaluation_score: MetricScore = None
     run_number: int | None = None
 
     # Threshold fields
-    tool_call_score_threshold: float
-    response_evaluation_score_threshold: float
+    tool_call_score_threshold: FormattedFloat = None
+    response_evaluation_score_threshold: FormattedFloat = None
 
     # Direct data from evaluation
-    tool_call_score: float | None
-    response_evaluation_score: float | None
-    time_taken_seconds: float
+    tool_call_score: MetricScore = None
+    response_evaluation_score: MetricScore = None
+    time_taken_seconds: FormattedFloat = None
     prompt: str
     expected_response: str
     actual_response: str
-    expected_tool_calls: str  # JSON string
-    actual_tool_calls: str  # JSON string
+    expected_tool_calls: PreformattedText
+    actual_tool_calls: PreformattedText
 
 
 def load_expected_agent_turns(file_path: str) -> list[AgentTurn]:
