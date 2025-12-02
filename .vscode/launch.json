@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Data Commons MCP: Serve HTTP",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "datacommons_mcp.cli",
+            "args": [
+                "serve",
+                "http",
+                "--skip-api-key-validation"
+            ],
+            "cwd": "${workspaceFolder}/packages/datacommons-mcp",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/packages/datacommons-mcp"
+            },
+            "justMyCode": true
+        }
+    ]
+}
