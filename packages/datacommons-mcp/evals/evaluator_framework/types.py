@@ -99,14 +99,17 @@ class ReportColumnTag(str, Enum):
     """
     Used to apply styles to html cells for the given value in the DataFrame.
     """
-    STYLE = "style" # Applies a style tag (or render logic) to the html cell.
-    FORMATTED_STRING = "formatted_string" # Formats numerical value with a given format string (F-string).
+
+    STYLE = "style"  # Applies a style tag (or render logic) to the html cell.
+    FORMATTED_STRING = "formatted_string"  # Formats numerical value with a given format string (F-string).
+
 
 class ReportStyleType(str, Enum):
     """Formatting values for the ColumnTag.STYLE ('style') tag."""
-    STATUS = "status" # CSS: Green/Red background depending on value
-    SCORE = "score" # CSS: Blue data bar with width based on float value from 0 to 1.0
-    PREFORMATTED = "preformatted" # HTML: <pre> tag wrapping
+
+    STATUS = "status"  # CSS: Green/Red background depending on value
+    SCORE = "score"  # CSS: Blue data bar with width based on float value from 0 to 1.0
+    PREFORMATTED = "preformatted"  # HTML: <pre> tag wrapping
 
 
 class ReportStyleMixin:
@@ -118,9 +121,10 @@ class ReportStyleMixin:
     def get_columns_by_style(cls, style_type: ReportStyleType) -> list[str]:
         """Specific helper to get columns for a specific style enum."""
         return [
-            name for name, field in cls.model_fields.items()
-            if field.json_schema_extra and
-            field.json_schema_extra.get(ReportColumnTag.STYLE) == style_type
+            name
+            for name, field in cls.model_fields.items()
+            if field.json_schema_extra
+            and field.json_schema_extra.get(ReportColumnTag.STYLE) == style_type
         ]
 
     @classmethod
@@ -134,31 +138,31 @@ class ReportStyleMixin:
                     result[name] = val
         return result
 
+
 # Metric scores are styled with a score bar and formatted to 3 decimal places.
 MetricScore = Annotated[
     float | None,
-    Field(json_schema_extra={
-        ReportColumnTag.STYLE: ReportStyleType.SCORE,
-        ReportColumnTag.FORMATTED_STRING: "{:.3f}"
-    })
+    Field(
+        json_schema_extra={
+            ReportColumnTag.STYLE: ReportStyleType.SCORE,
+            ReportColumnTag.FORMATTED_STRING: "{:.3f}",
+        }
+    ),
 ]
 
 # Float values are formatted to 3 decimal places.
 FormattedFloat = Annotated[
-    float | None,
-    Field(json_schema_extra={ReportColumnTag.FORMATTED_STRING: "{:.3f}"})
+    float | None, Field(json_schema_extra={ReportColumnTag.FORMATTED_STRING: "{:.3f}"})
 ]
 
 # A string representing a pass/fail status, styled in green for "pass" and red for "fail".
 StatusLabel = Annotated[
-    str | None,
-    Field(json_schema_extra={ReportColumnTag.STYLE: ReportStyleType.STATUS})
+    str | None, Field(json_schema_extra={ReportColumnTag.STYLE: ReportStyleType.STATUS})
 ]
 
 # Large text blobs that need <pre> wrapping in HTML
 PreformattedText = Annotated[
-    str,
-    Field(json_schema_extra={ReportColumnTag.STYLE: ReportStyleType.PREFORMATTED})
+    str, Field(json_schema_extra={ReportColumnTag.STYLE: ReportStyleType.PREFORMATTED})
 ]
 
 

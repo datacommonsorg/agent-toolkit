@@ -172,9 +172,7 @@ class AgentEvaluator:
         return results
 
     @staticmethod
-    def create_styled_html_report(
-        df: pd.DataFrame, output_path: pathlib.Path
-    ) -> None:
+    def create_styled_html_report(df: pd.DataFrame, output_path: pathlib.Path) -> None:
         """
         Applies styling to the results DataFrame and saves it as an HTML file.
 
@@ -199,17 +197,24 @@ class AgentEvaluator:
         format_dict = EvaluationDataFrameRow.get_format_map()
 
         # Get column groups based on their semantic style tag
-        status_cols = EvaluationDataFrameRow.get_columns_by_style(ReportStyleType.STATUS)
+        status_cols = EvaluationDataFrameRow.get_columns_by_style(
+            ReportStyleType.STATUS
+        )
         score_cols = EvaluationDataFrameRow.get_columns_by_style(ReportStyleType.SCORE)
-        pre_cols = EvaluationDataFrameRow.get_columns_by_style(ReportStyleType.PREFORMATTED)
+        pre_cols = EvaluationDataFrameRow.get_columns_by_style(
+            ReportStyleType.PREFORMATTED
+        )
 
         # --- 2. Define Visual Renderers ---
 
         def render_status_css(series: pd.Series) -> list[str]:
             """CSS generator for Pass/Fail columns."""
             return [
-                "background-color: #d4edda; color: #155724; font-weight: bold;" if v == "PASSED" else
-                "background-color: #f8d7da; color: #721c24; font-weight: bold;" if v == "FAILED" else ""
+                "background-color: #d4edda; color: #155724; font-weight: bold;"
+                if v == "PASSED"
+                else "background-color: #f8d7da; color: #721c24; font-weight: bold;"
+                if v == "FAILED"
+                else ""
                 for v in series
             ]
 
@@ -222,8 +227,8 @@ class AgentEvaluator:
                 f'<div style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa; '
                 f'border: 1px solid #eee; border-radius: 4px; padding: 4px;">'
                 f'<pre style="margin: 0; white-space: pre-wrap; font-family: monospace; font-size: 11px;">'
-                f'{val}'
-                f'</pre></div>'
+                f"{val}"
+                f"</pre></div>"
             )
 
         # Update format dictionary with the HTML renderers for preformatted columns
@@ -239,21 +244,18 @@ class AgentEvaluator:
                 # 3a. Apply Colors to Verdicts (StatusLabel)
                 .apply(
                     render_status_css,
-                    subset=[c for c in status_cols if c in df.columns]
+                    subset=[c for c in status_cols if c in df.columns],
                 )
-
                 # 3b. Apply String Formats & HTML wrappers (FormattedFloat, PreformattedText)
                 .format(format_dict)
-
                 # 3c. Apply Data Bars to Scores (MetricScore)
                 .bar(
                     subset=[c for c in score_cols if c in df.columns],
                     vmin=0,
                     vmax=1.0,
                     align="zero",
-                    color="#5bc0de" # Bootstrap Info Blue
+                    color="#5bc0de",  # Bootstrap Info Blue
                 )
-
                 # 3d. Global Layout & Typography
                 .set_properties(
                     **{
