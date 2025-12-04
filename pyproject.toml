@@ -34,6 +34,9 @@ test = [
 [tool.uv.sources]
 datacommons-mcp = { workspace = true }
 
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+
 [tool.uv.workspace]
 members = ["packages/*"]
 
