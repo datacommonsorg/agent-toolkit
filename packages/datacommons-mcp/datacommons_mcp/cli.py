@@ -4,7 +4,7 @@ import sys
 
 import click
 from click.core import Context, Option, ParameterSource
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 from .exceptions import APIKeyValidationError, InvalidAPIKeyError
 from .utils import validate_api_key
