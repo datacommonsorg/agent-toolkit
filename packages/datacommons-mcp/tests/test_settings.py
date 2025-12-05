@@ -63,9 +63,7 @@ class TestBaseSettings:
         ("env_value", "expected"),
         [("true", True), ("false", False), ("1", True), ("0", False)],
     )
-    def test_use_search_indicators_endpoint_parsing(
-        self, env_value, expected
-    ):
+    def test_use_search_indicators_endpoint_parsing(self, env_value, expected):
         """Tests that DC_USE_SEARCH_INDICATORS_ENDPOINT is parsed correctly."""
         env_vars = {
             "DC_API_KEY": "test_key",
@@ -133,7 +131,10 @@ class TestCustomSettings:
     def test_missing_custom_url_raises_error(self):
         """Tests that a ValueError is raised for custom type without CUSTOM_DC_URL."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "custom"}
-        with patch.dict(os.environ, env_vars), pytest.raises(ValueError, match="CUSTOM_DC_URL"):
+        with (
+            patch.dict(os.environ, env_vars),
+            pytest.raises(ValueError, match="CUSTOM_DC_URL"),
+        ):
             get_dc_settings()
 
 

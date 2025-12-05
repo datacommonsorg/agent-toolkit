@@ -38,6 +38,3 @@ def clean_env(tmp_path, monkeypatch):
     # Clear environment variables
     with patch.dict(os.environ, {}, clear=True):
         yield
-
-
-
