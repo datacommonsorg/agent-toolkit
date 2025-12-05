@@ -76,17 +76,16 @@ def test_serve_validation_failure_exits(mock_validate, mock_run):
 def test_serve_stdio_rejects_http_options():
     """Tests that stdio mode rejects http-specific options."""
     runner = CliRunner()
-    # Try passing --host to stdio mode
-    result = runner.invoke(cli, ["serve", "stdio", "--host", "localhost"])
-    assert result.exit_code != 0
-    assert "not applicable in 'stdio' mode" in result.output
-    assert "--host" in result.output
 
-    # Try passing --port to stdio mode
-    result = runner.invoke(cli, ["serve", "stdio", "--port", "8080"])
-    assert result.exit_code != 0
-    assert "not applicable in 'stdio' mode" in result.output
-    assert "--port" in result.output
+    def _assert_rejection(option, value):
+        """Helper to assert rejection of an option."""
+        result = runner.invoke(cli, ["serve", "stdio", option, value])
+        assert result.exit_code != 0
+        assert "not applicable in 'stdio' mode" in result.output
+        assert option in result.output
+    
+    _assert_rejection("--host", "localhost")
+    _assert_rejection("--port", "8080")
 
 
 def test_serve_http_accepts_http_options():
@@ -126,11 +125,10 @@ def test_serve_stdio_success():
 def test_serve_missing_api_key():
     """Tests that the command fails if DC_API_KEY is missing."""
     runner = CliRunner()
-    # Ensure DC_API_KEY is not set
-    with mock.patch.dict(os.environ, {}, clear=True):
-        result = runner.invoke(cli, ["serve", "http"])
-        assert result.exit_code == 1
-        assert "DC_API_KEY is not set" in result.output
+    # The 'clean_env' autouse fixture in conftest.py ensures DC_API_KEY is not set.
+    result = runner.invoke(cli, ["serve", "http"])
+    assert result.exit_code == 1
+    assert "DC_API_KEY is not set" in result.output
 
 
 def test_cli_loads_dotenv_end_to_end():
@@ -146,7 +144,6 @@ def test_cli_loads_dotenv_end_to_end():
         from dotenv import load_dotenv
 
         with (
-            mock.patch.dict(os.environ, {}, clear=True),
             mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
             mock.patch("datacommons_mcp.server.mcp.run"),
             # Restore load_dotenv to verify end-to-end behavior
