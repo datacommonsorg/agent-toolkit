@@ -83,7 +83,7 @@ def test_serve_stdio_rejects_http_options():
         assert result.exit_code != 0
         assert "not applicable in 'stdio' mode" in result.output
         assert option in result.output
-    
+
     _assert_rejection("--host", "localhost")
     _assert_rejection("--port", "8080")
 
