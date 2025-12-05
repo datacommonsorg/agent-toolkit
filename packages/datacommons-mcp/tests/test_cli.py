@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 from unittest import mock
 
 from click.testing import CliRunner
@@ -36,15 +35,15 @@ def test_version_option():
     assert f"version {__version__}" in result.output
 
 
-@mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch("datacommons_mcp.cli.validate_api_key")
-def test_serve_validates_key_by_default(mock_validate, mock_run):
+def test_serve_validates_key_by_default(mock_validate, mock_run, env_patcher):
     """Tests that the serve command calls validate_api_key by default."""
-    runner = CliRunner()
-    runner.invoke(cli, ["serve", "http"])
-    mock_validate.assert_called_once()
-    mock_run.assert_called_once()
+    with env_patcher({"DC_API_KEY": "test-key"}):
+        runner = CliRunner()
+        runner.invoke(cli, ["serve", "http"])
+        mock_validate.assert_called_once()
+        mock_run.assert_called_once()
 
 
 @mock.patch("datacommons_mcp.server.mcp.run")
@@ -57,19 +56,19 @@ def test_serve_skip_validation_flag(mock_validate, mock_run):
     mock_run.assert_called_once()
 
 
-@mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch(
     "datacommons_mcp.cli.validate_api_key", side_effect=InvalidAPIKeyError("Test error")
 )
-def test_serve_validation_failure_exits(mock_validate, mock_run):
+def test_serve_validation_failure_exits(mock_validate, mock_run, env_patcher):
     """Tests that the command exits on validation failure."""
-    runner = CliRunner()
-    result = runner.invoke(cli, ["serve", "http"])
-    mock_validate.assert_called_once()
-    mock_run.assert_not_called()
-    assert result.exit_code == 1
-    assert "Test error" in result.output
+    with env_patcher({"DC_API_KEY": "test-key"}):
+        runner = CliRunner()
+        result = runner.invoke(cli, ["serve", "http"])
+        mock_validate.assert_called_once()
+        mock_run.assert_not_called()
+        assert result.exit_code == 1
+        assert "Test error" in result.output
 
 
 def test_serve_stdio_rejects_http_options():
@@ -87,11 +86,11 @@ def test_serve_stdio_rejects_http_options():
     _assert_rejection("--port", "8080")
 
 
-def test_serve_http_accepts_http_options():
+def test_serve_http_accepts_http_options(env_patcher):
     """Tests that http mode accepts http-specific options."""
     runner = CliRunner()
     with (
-        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
+        env_patcher({"DC_API_KEY": "test-key"}),
         mock.patch("datacommons_mcp.cli.validate_api_key"),
         mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
     ):
@@ -107,11 +106,11 @@ def test_serve_http_accepts_http_options():
         )
 
 
-def test_serve_stdio_success():
+def test_serve_stdio_success(env_patcher):
     """Tests that stdio mode starts the server correctly."""
     runner = CliRunner()
     with (
-        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
+        env_patcher({"DC_API_KEY": "test-key"}),
         mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
         mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
     ):
@@ -140,13 +139,9 @@ def test_cli_loads_dotenv_end_to_end():
         # Clear environment to ensure we rely on .env
         # clear=True ensures that even if DC_API_KEY is set in the outer environment,
         # it is removed for this test, preventing interference.
-        from dotenv import load_dotenv
-
         with (
             mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
             mock.patch("datacommons_mcp.server.mcp.run"),
-            # Restore load_dotenv to verify end-to-end behavior
-            mock.patch("datacommons_mcp.cli.load_dotenv", side_effect=load_dotenv),
         ):
             result = runner.invoke(cli, ["serve", "http"])
             assert result.exit_code == 0
