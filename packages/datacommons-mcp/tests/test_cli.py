@@ -87,16 +87,22 @@ def test_serve_stdio_rejects_http_options():
     _assert_rejection("--port", "8080")
 
 
-def test_serve_http_accepts_http_options():
+@mock.patch("datacommons_mcp.server.mcp.run")
+def test_serve_http_accepts_http_options(mock_run):
     """Tests that http mode accepts http-specific options."""
     runner = CliRunner()
-    with (
-        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
-        mock.patch("datacommons_mcp.cli.validate_api_key"),
-        mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
-    ):
+    with mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}):
         result = runner.invoke(
-            cli, ["serve", "http", "--host", "localhost", "--port", "9090"]
+            cli,
+            [
+                "serve",
+                "http",
+                "--host",
+                "localhost",
+                "--port",
+                "9090",
+                "--skip-api-key-validation",
+            ],
         )
         assert result.exit_code == 0
         mock_run.assert_called_with(
@@ -107,14 +113,12 @@ def test_serve_http_accepts_http_options():
         )
 
 
-def test_serve_stdio_success():
+@mock.patch("datacommons_mcp.server.mcp.run")
+@mock.patch("datacommons_mcp.cli.validate_api_key")
+def test_serve_stdio_success(mock_validate, mock_run):
     """Tests that stdio mode starts the server correctly."""
     runner = CliRunner()
-    with (
-        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
-        mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
-        mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
-    ):
+    with mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}):
         result = runner.invoke(cli, ["serve", "stdio"])
         assert result.exit_code == 0
         mock_validate.assert_called_once()
