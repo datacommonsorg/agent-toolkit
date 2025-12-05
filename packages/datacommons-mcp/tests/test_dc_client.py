@@ -44,18 +44,6 @@ from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSetting
 
 
 @pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
-
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
-
-
-@pytest.fixture
 def mocked_datacommons_client():
     """
     Provides a mocked instance of the underlying `DataCommonsClient`.

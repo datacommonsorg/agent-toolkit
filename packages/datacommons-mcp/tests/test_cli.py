@@ -1,3 +1,16 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import os
 from unittest import mock
 
@@ -76,19 +89,48 @@ def test_serve_stdio_rejects_http_options():
     assert "--port" in result.output
 
 
-@mock.patch("datacommons_mcp.server.mcp.run")
-@mock.patch("datacommons_mcp.cli.validate_api_key")
-def test_serve_http_accepts_http_options(mock_validate, mock_run):
+def test_serve_http_accepts_http_options():
     """Tests that http mode accepts http-specific options."""
     runner = CliRunner()
-    with mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}):
+    with (
+        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
+        mock.patch("datacommons_mcp.cli.validate_api_key"),
+        mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
+    ):
         result = runner.invoke(
-            cli, ["serve", "http", "--host", "0.0.0.0", "--port", "9090"]
+            cli, ["serve", "http", "--host", "localhost", "--port", "9090"]
         )
         assert result.exit_code == 0
         mock_run.assert_called_with(
-            host="0.0.0.0", port=9090, transport="streamable-http", stateless_http=True
+            host="localhost",
+            port=9090,
+            transport="streamable-http",
+            stateless_http=True,
         )
+
+
+def test_serve_stdio_success():
+    """Tests that stdio mode starts the server correctly."""
+    runner = CliRunner()
+    with (
+        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
+        mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
+        mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
+    ):
+        result = runner.invoke(cli, ["serve", "stdio"])
+        assert result.exit_code == 0
+        mock_validate.assert_called_once()
+        mock_run.assert_called_with(transport="stdio")
+
+
+def test_serve_missing_api_key():
+    """Tests that the command fails if DC_API_KEY is missing."""
+    runner = CliRunner()
+    # Ensure DC_API_KEY is not set
+    with mock.patch.dict(os.environ, {}, clear=True):
+        result = runner.invoke(cli, ["serve", "http"])
+        assert result.exit_code == 1
+        assert "DC_API_KEY is not set" in result.output
 
 
 def test_cli_loads_dotenv_end_to_end():
@@ -101,11 +143,16 @@ def test_cli_loads_dotenv_end_to_end():
         # Clear environment to ensure we rely on .env
         # clear=True ensures that even if DC_API_KEY is set in the outer environment,
         # it is removed for this test, preventing interference.
-        with mock.patch.dict(os.environ, {}, clear=True):
-            with mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate:
-                with mock.patch("datacommons_mcp.server.mcp.run"):
-                    result = runner.invoke(cli, ["serve", "http"])
-                    assert result.exit_code == 0
-                    # Verify validate_api_key was called with the key from .env
-                    mock_validate.assert_called_with("generated-key")
+        from dotenv import load_dotenv
 
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
+            mock.patch("datacommons_mcp.server.mcp.run"),
+            # Restore load_dotenv to verify end-to-end behavior
+            mock.patch("datacommons_mcp.cli.load_dotenv", side_effect=load_dotenv),
+        ):
+            result = runner.invoke(cli, ["serve", "http"])
+            assert result.exit_code == 0
+            # Verify validate_api_key was called with the key from .env
+            mock_validate.assert_called_with("generated-key")

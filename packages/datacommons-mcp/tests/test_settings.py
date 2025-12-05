@@ -15,25 +15,10 @@
 Tests for settings module.
 """
 
-import os
-from unittest.mock import patch
-
 import pytest
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSettings
 from datacommons_mcp.settings import get_dc_settings
-
-
-@pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
-
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
 
 
 class TestBaseSettings:

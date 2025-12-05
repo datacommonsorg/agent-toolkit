@@ -1,3 +1,16 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # TODO(https://github.com/datacommonsorg/agent-toolkit/issues/47): Remove once the new endpoint is live.
 import os
 from unittest.mock import Mock, patch
@@ -30,22 +43,6 @@ def mocked_datacommons_client():
 
         mock_constructor.return_value = mock_instance
         yield mock_instance
-
-
-@pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """
-    NOTE: This is a temporary copy of the code in `test_settingst`. It will be removed
-    once these tests are no longer necessary.
-
-    A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
-
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
 
 
 def test_merge_dicts_unions_values():
