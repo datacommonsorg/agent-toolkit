@@ -26,29 +26,23 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def clean_env():
+def clean_env(tmp_path, monkeypatch):
     """
-    Automatically clear environment variables for all tests to ensure
-    tests are hermetic and don't depend on the host environment.
+    Automatically clear environment variables and change to a temporary directory
+    for all tests. This ensures tests are hermetic and don't depend on the
+    host environment or local .env files.
     """
+    # Change to a temporary directory to hide local .env files
+    monkeypatch.chdir(tmp_path)
+
+    # Clear environment variables
     with patch.dict(os.environ, {}, clear=True):
         yield
 
 
-@pytest.fixture(autouse=True)
-def mock_load_dotenv():
-    """
-    Automatically mock load_dotenv for all tests to prevent
-    loading environment variables from local .env files.
-    """
-    with patch("datacommons_mcp.cli.load_dotenv"):
-        yield
-
-
 @pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
+def env_patcher():
+    """A fixture that returns a helper to patch environment variables."""
 
     # This inner function will be the fixture's return value
     def _patch_env(env_vars):

@@ -47,7 +47,6 @@ def test_serve_validates_key_by_default(mock_validate, mock_run):
     mock_run.assert_called_once()
 
 
-@mock.patch.dict(os.environ, {})
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch("datacommons_mcp.cli.validate_api_key")
 def test_serve_skip_validation_flag(mock_validate, mock_run):

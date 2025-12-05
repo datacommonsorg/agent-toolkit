@@ -124,20 +124,20 @@ def test_create_custom_client_passes_place_like_constraints(
         mock_compute_store.assert_called_once()
 
 
-def test_loads_with_minimal_config(isolated_env):
+def test_loads_with_minimal_config(env_patcher):
     """Tests that CustomDCSettings loads with minimal config and correct defaults."""
     env_vars = {
         "DC_API_KEY": "test_key",
         "DC_TYPE": "custom",
         "CUSTOM_DC_URL": "https://test.com",
     }
-    with isolated_env(env_vars):
+    with env_patcher(env_vars):
         settings = get_dc_settings()
 
         assert settings.place_like_constraints is None
 
 
-def test_place_like_constraints_parsing_empty_and_whitespace(isolated_env):
+def test_place_like_constraints_parsing_empty_and_whitespace(env_patcher):
     """PLACE_LIKE_CONSTRAINTS empty string becomes None; whitespace trimmed and empties dropped."""
     env_vars = {
         "DC_API_KEY": "test_key",
@@ -145,7 +145,7 @@ def test_place_like_constraints_parsing_empty_and_whitespace(isolated_env):
         "CUSTOM_DC_URL": "https://test.com",
         "PLACE_LIKE_CONSTRAINTS": "  ,  ",
     }
-    with isolated_env(env_vars):
+    with env_patcher(env_vars):
         settings = get_dc_settings()
         assert not settings.place_like_constraints
 
@@ -155,12 +155,12 @@ def test_place_like_constraints_parsing_empty_and_whitespace(isolated_env):
         "CUSTOM_DC_URL": "https://test.com",
         "PLACE_LIKE_CONSTRAINTS": " prop/a , ,prop/b ",
     }
-    with isolated_env(env_vars):
+    with env_patcher(env_vars):
         settings = get_dc_settings()
         assert settings.place_like_constraints == ["prop/a", "prop/b"]
 
 
-def test_loads_with_env_var_overrides(isolated_env):
+def test_loads_with_env_var_overrides(env_patcher):
     """Tests that environment variables override defaults for CustomDCSettings."""
     env_vars = {
         "DC_API_KEY": "test_key",
@@ -172,7 +172,7 @@ def test_loads_with_env_var_overrides(isolated_env):
         "DC_ROOT_TOPIC_DCIDS": "topic1, topic2",
         "PLACE_LIKE_CONSTRAINTS": "prop/containedInPlace, prop/overlapsWith",
     }
-    with isolated_env(env_vars):
+    with env_patcher(env_vars):
         settings = get_dc_settings()
         assert settings.place_like_constraints == [
             "prop/containedInPlace",
