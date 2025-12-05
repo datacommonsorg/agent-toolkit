@@ -5,6 +5,10 @@ on:
   # This workflow ONLY runs on pull_request_target for security.
   # It runs the workflow defined in the 'main' branch, not the one from the PR.
   pull_request_target:
+    # We include 'closed' to trigger the concurrency group cancellation.
+    # If a PR is merged or closed, we want to cancel any pending eval runs immediately.
+    # The job itself has an 'if' check to skip execution on 'closed' events.
+    types: [opened, synchronize, reopened, closed]
     branches:
       - main
     paths:
@@ -29,6 +33,7 @@ concurrency:
 
 jobs:
   agent-evals:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     environment: evals-and-secrets
     permissions:
