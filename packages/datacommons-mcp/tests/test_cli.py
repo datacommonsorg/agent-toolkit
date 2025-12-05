@@ -139,12 +139,12 @@ def test_serve_missing_api_key():
 def test_cli_loads_dotenv_end_to_end(mock_validate, mock_run):
     """Tests that the CLI loads environment variables from .env in the current directory."""
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        with open(".env", "w") as f:
-            f.write("DC_API_KEY=generated-key\n")
+    # The 'clean_env' fixture already sets CWD to a temp dir.
+    with open(".env", "w") as f:
+        f.write("DC_API_KEY=generated-key\n")
 
-        result = runner.invoke(cli, ["serve", "http"])
-        assert result.exit_code == 0
-        # Verify validate_api_key was called with the key from .env
-        mock_validate.assert_called_with("generated-key")
-        mock_run.assert_called_once()
+    result = runner.invoke(cli, ["serve", "http"])
+    assert result.exit_code == 0
+    # Verify validate_api_key was called with the key from .env
+    mock_validate.assert_called_with("generated-key")
+    mock_run.assert_called_once()
