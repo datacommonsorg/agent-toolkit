@@ -137,9 +137,6 @@ def test_cli_loads_dotenv_end_to_end():
         with open(".env", "w") as f:
             f.write("DC_API_KEY=generated-key\n")
 
-        # Clear environment to ensure we rely on .env
-        # clear=True ensures that even if DC_API_KEY is set in the outer environment,
-        # it is removed for this test, preventing interference.
         with (
             mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
             mock.patch("datacommons_mcp.server.mcp.run"),
