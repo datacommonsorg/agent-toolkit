@@ -79,7 +79,7 @@ def test_serve_stdio_rejects_http_options():
     def _assert_rejection(option, value):
         """Helper to assert rejection of an option."""
         result = runner.invoke(cli, ["serve", "stdio", option, value])
-        assert result.exit_code == 2 # default exit code for click.UsageError
+        assert result.exit_code == 2  # default exit code for click.UsageError
         assert "not applicable in 'stdio' mode" in result.output
         assert option in result.output
 
