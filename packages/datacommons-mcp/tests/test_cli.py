@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from unittest import mock
 
 from click.testing import CliRunner
@@ -37,10 +38,10 @@ def test_version_option():
 
 @mock.patch("datacommons_mcp.server.mcp.run")
 @mock.patch("datacommons_mcp.cli.validate_api_key")
-def test_serve_validates_key_by_default(mock_validate, mock_run, env_patcher):
+def test_serve_validates_key_by_default(mock_validate, mock_run):
     """Tests that the serve command calls validate_api_key by default."""
-    with env_patcher({"DC_API_KEY": "test-key"}):
-        runner = CliRunner()
+    runner = CliRunner()
+    with mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}):
         runner.invoke(cli, ["serve", "http"])
         mock_validate.assert_called_once()
         mock_run.assert_called_once()
@@ -60,10 +61,10 @@ def test_serve_skip_validation_flag(mock_validate, mock_run):
 @mock.patch(
     "datacommons_mcp.cli.validate_api_key", side_effect=InvalidAPIKeyError("Test error")
 )
-def test_serve_validation_failure_exits(mock_validate, mock_run, env_patcher):
+def test_serve_validation_failure_exits(mock_validate, mock_run):
     """Tests that the command exits on validation failure."""
-    with env_patcher({"DC_API_KEY": "test-key"}):
-        runner = CliRunner()
+    runner = CliRunner()
+    with mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}):
         result = runner.invoke(cli, ["serve", "http"])
         mock_validate.assert_called_once()
         mock_run.assert_not_called()
@@ -86,11 +87,11 @@ def test_serve_stdio_rejects_http_options():
     _assert_rejection("--port", "8080")
 
 
-def test_serve_http_accepts_http_options(env_patcher):
+def test_serve_http_accepts_http_options():
     """Tests that http mode accepts http-specific options."""
     runner = CliRunner()
     with (
-        env_patcher({"DC_API_KEY": "test-key"}),
+        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
         mock.patch("datacommons_mcp.cli.validate_api_key"),
         mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
     ):
@@ -106,11 +107,11 @@ def test_serve_http_accepts_http_options(env_patcher):
         )
 
 
-def test_serve_stdio_success(env_patcher):
+def test_serve_stdio_success():
     """Tests that stdio mode starts the server correctly."""
     runner = CliRunner()
     with (
-        env_patcher({"DC_API_KEY": "test-key"}),
+        mock.patch.dict(os.environ, {"DC_API_KEY": "test-key"}),
         mock.patch("datacommons_mcp.cli.validate_api_key") as mock_validate,
         mock.patch("datacommons_mcp.server.mcp.run") as mock_run,
     ):

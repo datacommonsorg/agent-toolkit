@@ -40,12 +40,4 @@ def clean_env(tmp_path, monkeypatch):
         yield
 
 
-@pytest.fixture
-def env_patcher():
-    """A fixture that returns a helper to patch environment variables."""
 
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
