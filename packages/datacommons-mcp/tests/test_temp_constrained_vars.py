@@ -1,3 +1,16 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # TODO(https://github.com/datacommonsorg/agent-toolkit/issues/47): Remove once the new endpoint is live.
 import os
 from unittest.mock import Mock, patch
@@ -30,22 +43,6 @@ def mocked_datacommons_client():
 
         mock_constructor.return_value = mock_instance
         yield mock_instance
-
-
-@pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """
-    NOTE: This is a temporary copy of the code in `test_settingst`. It will be removed
-    once these tests are no longer necessary.
-
-    A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
-
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
 
 
 def test_merge_dicts_unions_values():
@@ -127,20 +124,20 @@ def test_create_custom_client_passes_place_like_constraints(
         mock_compute_store.assert_called_once()
 
 
-def test_loads_with_minimal_config(isolated_env):
+def test_loads_with_minimal_config():
     """Tests that CustomDCSettings loads with minimal config and correct defaults."""
     env_vars = {
         "DC_API_KEY": "test_key",
         "DC_TYPE": "custom",
         "CUSTOM_DC_URL": "https://test.com",
     }
-    with isolated_env(env_vars):
+    with patch.dict(os.environ, env_vars):
         settings = get_dc_settings()
 
         assert settings.place_like_constraints is None
 
 
-def test_place_like_constraints_parsing_empty_and_whitespace(isolated_env):
+def test_place_like_constraints_parsing_empty_and_whitespace():
     """PLACE_LIKE_CONSTRAINTS empty string becomes None; whitespace trimmed and empties dropped."""
     env_vars = {
         "DC_API_KEY": "test_key",
@@ -148,7 +145,7 @@ def test_place_like_constraints_parsing_empty_and_whitespace(isolated_env):
         "CUSTOM_DC_URL": "https://test.com",
         "PLACE_LIKE_CONSTRAINTS": "  ,  ",
     }
-    with isolated_env(env_vars):
+    with patch.dict(os.environ, env_vars):
         settings = get_dc_settings()
         assert not settings.place_like_constraints
 
@@ -158,12 +155,12 @@ def test_place_like_constraints_parsing_empty_and_whitespace(isolated_env):
         "CUSTOM_DC_URL": "https://test.com",
         "PLACE_LIKE_CONSTRAINTS": " prop/a , ,prop/b ",
     }
-    with isolated_env(env_vars):
+    with patch.dict(os.environ, env_vars):
         settings = get_dc_settings()
         assert settings.place_like_constraints == ["prop/a", "prop/b"]
 
 
-def test_loads_with_env_var_overrides(isolated_env):
+def test_loads_with_env_var_overrides():
     """Tests that environment variables override defaults for CustomDCSettings."""
     env_vars = {
         "DC_API_KEY": "test_key",
@@ -175,7 +172,7 @@ def test_loads_with_env_var_overrides(isolated_env):
         "DC_ROOT_TOPIC_DCIDS": "topic1, topic2",
         "PLACE_LIKE_CONSTRAINTS": "prop/containedInPlace, prop/overlapsWith",
     }
-    with isolated_env(env_vars):
+    with patch.dict(os.environ, env_vars):
         settings = get_dc_settings()
         assert settings.place_like_constraints == [
             "prop/containedInPlace",

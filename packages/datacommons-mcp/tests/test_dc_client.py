@@ -44,18 +44,6 @@ from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSetting
 
 
 @pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
-
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
-
-
-@pytest.fixture
 def mocked_datacommons_client():
     """
     Provides a mocked instance of the underlying `DataCommonsClient`.
@@ -1595,11 +1583,11 @@ class TestCreateDCClient:
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.read_topic_caches")
     def test_create_dc_client_base_dc(
-        self, mock_read_caches: Mock, mock_dc_client: Mock, isolated_env
+        self, mock_read_caches: Mock, mock_dc_client: Mock
     ):
         """Test base DC creation with defaults."""
         # Arrange
-        with isolated_env({"DC_API_KEY": "test_api_key", "DC_TYPE": "base"}):
+        with patch.dict(os.environ, {"DC_API_KEY": "test_api_key", "DC_TYPE": "base"}):
             settings = BaseDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
@@ -1623,7 +1611,7 @@ class TestCreateDCClient:
     @patch("datacommons_mcp.clients.DataCommonsClient")
     @patch("datacommons_mcp.clients.create_topic_store")
     def test_create_dc_client_custom_dc(
-        self, mock_create_store: Mock, mock_dc_client: Mock, isolated_env
+        self, mock_create_store: Mock, mock_dc_client: Mock
     ):
         """Test custom DC creation with defaults."""
         # Arrange
@@ -1632,7 +1620,7 @@ class TestCreateDCClient:
             "DC_TYPE": "custom",
             "CUSTOM_DC_URL": "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app",
         }
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = CustomDCSettings()
             mock_dc_instance = Mock()
             mock_dc_client.return_value = mock_dc_instance
@@ -1772,12 +1760,11 @@ class TestCreateDCClient:
         mock_create_base_store: Mock,
         mock_dc_client: Mock,
         test_case: dict,
-        isolated_env,
     ):
         """Test that topic store creation calls match search scope."""
         # Arrange
         env_vars = test_case["env_vars"]
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = (
                 BaseDCSettings()
                 if test_case["dc_type"] == "base"

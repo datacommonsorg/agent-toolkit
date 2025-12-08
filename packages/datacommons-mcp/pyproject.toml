@@ -13,8 +13,17 @@ dependencies = [
     "pydantic>=2.11.7",
     "pydantic-settings",
     "python-dateutil>=2.9.0.post0",
+    "python-dotenv>=1.1.1",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
+license = {file = "LICENSE"}
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 
 [project.scripts]
 datacommons-mcp = "datacommons_mcp.cli:cli"

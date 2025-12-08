@@ -24,25 +24,13 @@ from datacommons_mcp.data_models.settings import BaseDCSettings, CustomDCSetting
 from datacommons_mcp.settings import get_dc_settings
 
 
-@pytest.fixture
-def isolated_env(tmp_path, monkeypatch):
-    """A fixture to isolate tests from .env files and existing env vars."""
-    monkeypatch.chdir(tmp_path)
-
-    # This inner function will be the fixture's return value
-    def _patch_env(env_vars):
-        return patch.dict(os.environ, env_vars, clear=True)
-
-    return _patch_env
-
-
 class TestBaseSettings:
     """Test suite for loading BaseDCSettings."""
 
-    def test_loads_with_minimal_config(self, isolated_env):
+    def test_loads_with_minimal_config(self):
         """Tests that BaseDCSettings loads with minimal config and correct defaults."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "base"}
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
 
             assert isinstance(settings, BaseDCSettings)
@@ -51,7 +39,7 @@ class TestBaseSettings:
             assert settings.base_index == "base_uae_mem"
             assert settings.topic_cache_paths is None
 
-    def test_loads_with_env_var_overrides(self, isolated_env):
+    def test_loads_with_env_var_overrides(self):
         """Tests that environment variables override defaults for BaseDCSettings."""
         env_vars = {
             "DC_API_KEY": "test_key",
@@ -60,7 +48,7 @@ class TestBaseSettings:
             "DC_BASE_INDEX": "custom_index",
             "DC_TOPIC_CACHE_PATHS": "/path/to/cache1.json, /path/to/cache2.json",
         }
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
 
             assert isinstance(settings, BaseDCSettings)
@@ -75,23 +63,21 @@ class TestBaseSettings:
         ("env_value", "expected"),
         [("true", True), ("false", False), ("1", True), ("0", False)],
     )
-    def test_use_search_indicators_endpoint_parsing(
-        self, isolated_env, env_value, expected
-    ):
+    def test_use_search_indicators_endpoint_parsing(self, env_value, expected):
         """Tests that DC_USE_SEARCH_INDICATORS_ENDPOINT is parsed correctly."""
         env_vars = {
             "DC_API_KEY": "test_key",
             "DC_TYPE": "base",
             "DC_USE_SEARCH_INDICATORS_ENDPOINT": env_value,
         }
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
             assert settings.use_search_indicators_endpoint is expected
 
-    def test_default_dc_type_is_base(self, isolated_env):
+    def test_default_dc_type_is_base(self):
         """Tests that DC_TYPE defaults to 'base' when not provided."""
         env_vars = {"DC_API_KEY": "test_key"}
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
             assert isinstance(settings, BaseDCSettings)
             assert settings.dc_type == "base"
@@ -100,14 +86,14 @@ class TestBaseSettings:
 class TestCustomSettings:
     """Test suite for loading CustomDCSettings."""
 
-    def test_loads_with_minimal_config(self, isolated_env):
+    def test_loads_with_minimal_config(self):
         """Tests that CustomDCSettings loads with minimal config and correct defaults."""
         env_vars = {
             "DC_API_KEY": "test_key",
             "DC_TYPE": "custom",
             "CUSTOM_DC_URL": "https://test.com",
         }
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
 
             assert isinstance(settings, CustomDCSettings)
@@ -120,7 +106,7 @@ class TestCustomSettings:
             assert settings.root_topic_dcids is None
             assert settings.use_search_indicators_endpoint is True  # Default value
 
-    def test_loads_with_env_var_overrides(self, isolated_env):
+    def test_loads_with_env_var_overrides(self):
         """Tests that environment variables override defaults for CustomDCSettings."""
         env_vars = {
             "DC_API_KEY": "test_key",
@@ -132,7 +118,7 @@ class TestCustomSettings:
             "DC_ROOT_TOPIC_DCIDS": "topic1, topic2",
             "DC_USE_SEARCH_INDICATORS_ENDPOINT": "false",
         }
-        with isolated_env(env_vars):
+        with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
 
             assert isinstance(settings, CustomDCSettings)
@@ -142,21 +128,24 @@ class TestCustomSettings:
             assert settings.root_topic_dcids == ["topic1", "topic2"]
             assert settings.use_search_indicators_endpoint is False
 
-    def test_missing_custom_url_raises_error(self, isolated_env):
+    def test_missing_custom_url_raises_error(self):
         """Tests that a ValueError is raised for custom type without CUSTOM_DC_URL."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "custom"}
-        with isolated_env(env_vars), pytest.raises(ValueError, match="CUSTOM_DC_URL"):
+        with (
+            patch.dict(os.environ, env_vars),
+            pytest.raises(ValueError, match="CUSTOM_DC_URL"),
+        ):
             get_dc_settings()
 
 
 class TestSettingsValidation:
     """Test suite for generic settings validation."""
 
-    def test_invalid_dc_type_raises_error(self, isolated_env):
+    def test_invalid_dc_type_raises_error(self):
         """Tests that a ValueError is raised for an invalid DC_TYPE."""
         env_vars = {"DC_API_KEY": "test_key", "DC_TYPE": "invalid"}
         with (
-            isolated_env(env_vars),
+            patch.dict(os.environ, env_vars),
             pytest.raises(ValueError, match="Input should be 'base' or 'custom'"),
         ):
             get_dc_settings()

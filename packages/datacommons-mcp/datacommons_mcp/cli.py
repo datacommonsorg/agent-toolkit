@@ -4,6 +4,7 @@ import sys
 
 import click
 from click.core import Context, Option, ParameterSource
+from dotenv import find_dotenv, load_dotenv
 
 from .exceptions import APIKeyValidationError, InvalidAPIKeyError
 from .utils import validate_api_key
@@ -23,6 +24,9 @@ COMMON_OPTIONS: set[str] = {"skip_api_key_validation"}
 @click.version_option(version=__version__)
 def cli() -> None:
     """DataCommons MCP CLI - Model Context Protocol server for Data Commons."""
+    # usecwd=True ensures that we look for .env in the directory where the
+    # command is run, rather than where this file is installed.
+    load_dotenv(find_dotenv(usecwd=True))
     logging.basicConfig(level=logging.INFO)
 
 
