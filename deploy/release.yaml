@@ -31,8 +31,8 @@ steps:
         # Standard PyPI (default args)
         docker build \
           --build-arg MCP_VERSION=$(cat _version.txt) \
-          -t gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME .
-        docker push gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME .
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME
 
   # 4. Deploy
   - name: gcr.io/cloud-builders/gcloud
@@ -40,10 +40,12 @@ steps:
       - run
       - deploy
       - mcp-server-prod
-      - --image=gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME
+      - --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME
       - --region=us-central1
       - --platform=managed
       - --allow-unauthenticated
+      - --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest
+      - --service-account=datacommons-mcp-server@datcom-mixer.iam.gserviceaccount.com
       - --project=datcom-mixer
 
   # 5. Create Version Bump PR
