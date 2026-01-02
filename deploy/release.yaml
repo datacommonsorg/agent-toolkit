@@ -1,0 +1,52 @@
+steps:
+  # 1. Publish to PyPI
+  - name: python:3.12-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install uv
+        TAG_VERSION=${TAG_NAME#v}
+        echo $TAG_VERSION > _version.txt
+        
+        cd packages/datacommons-mcp
+        uv build
+        # Prod PyPI
+        uv publish --token $$PYPI_TOKEN
+    secretEnv: ['PYPI_TOKEN']
+
+  # 2. Wait
+  - name: ubuntu
+    args: ['sleep', '60']
+
+  # 3. Build & Push
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        # Standard PyPI (default args)
+        docker build \
+          --build-arg MCP_VERSION=$(cat _version.txt) \
+          -t gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME .
+        docker push gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME
+
+  # 4. Deploy
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - mcp-server-prod
+      - --image=gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --project=datcom-mixer
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/pypi-token/versions/latest
+    env: 'PYPI_TOKEN'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

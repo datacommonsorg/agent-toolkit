@@ -1,0 +1,59 @@
+steps:
+  # 1. Verify and Publish
+  - name: python:3.12-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install uv
+        TAG_VERSION=${TAG_NAME#v}
+        echo $TAG_VERSION > _version.txt
+        
+        # Check version match
+        FILE_VERSION=$(grep '__version__' packages/datacommons-mcp/datacommons_mcp/version.py | cut -d'"' -f2)
+        if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+          echo "Mismatch: Tag $TAG_VERSION vs File $FILE_VERSION"
+          exit 1
+        fi
+
+        cd packages/datacommons-mcp
+        uv build
+        uv publish --publish-url https://test.pypi.org/legacy/ --token $$TEST_PYPI_TOKEN
+    secretEnv: ['TEST_PYPI_TOKEN']
+
+  # 2. Wait
+  - name: ubuntu
+    args: ['sleep', '60']
+
+  # 3. Build & Push Container
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker build \
+          --build-arg MCP_VERSION=$(cat _version.txt) \
+          --build-arg PIP_INDEX_URL=https://test.pypi.org/simple/ \
+          --build-arg PIP_EXTRA_INDEX_URL=https://pypi.org/simple/ \
+          -t gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME .
+        docker push gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME
+
+  # 4. Deploy
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - mcp-server-staging
+      - --image=gcr.io/$PROJECT_ID/mcp-server:$TAG_NAME
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --project=datcom-mixer-staging
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/test-pypi-token/versions/latest
+    env: 'TEST_PYPI_TOKEN'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

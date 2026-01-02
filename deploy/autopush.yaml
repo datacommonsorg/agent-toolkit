@@ -1,0 +1,57 @@
+steps:
+  # 1. Install uv and build tools
+  - name: python:3.12-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install uv
+        # Generate dynamic version
+        TIMESTAMP=$(date +%s)
+        echo "0.0.1.dev${TIMESTAMP}" > _version.txt
+        # Update version.py
+        sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        
+        # Build and Publish
+        cd packages/datacommons-mcp
+        uv build
+        uv publish --publish-url https://test.pypi.org/legacy/ --token $$TEST_PYPI_TOKEN
+    secretEnv: ['TEST_PYPI_TOKEN']
+
+  # 2. Wait for PyPI propagation
+  - name: ubuntu
+    args: ['sleep', '60']
+
+  # 3. Build Container Image
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker build \
+          --build-arg MCP_VERSION=$(cat _version.txt) \
+          --build-arg PIP_INDEX_URL=https://test.pypi.org/simple/ \
+          --build-arg PIP_EXTRA_INDEX_URL=https://pypi.org/simple/ \
+          -t gcr.io/$PROJECT_ID/mcp-server:autopush .
+        docker push gcr.io/$PROJECT_ID/mcp-server:autopush
+
+  # 4. Deploy to Cloud Run
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - mcp-server-autopush
+      - --image=gcr.io/$PROJECT_ID/mcp-server:autopush
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --set-env-vars=MCP_VERSION=$(cat _version.txt)
+      - --project=datcom-mixer-autopush
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/test-pypi-token/versions/latest
+    env: 'TEST_PYPI_TOKEN'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
