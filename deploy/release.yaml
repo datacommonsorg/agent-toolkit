@@ -9,6 +9,9 @@ steps:
         TAG_VERSION=${TAG_NAME#v}
         echo $TAG_VERSION > _version.txt
         
+        # Inject Tag Version into version.py
+        sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        
         cd packages/datacommons-mcp
         uv build
         # Prod PyPI
@@ -43,10 +46,58 @@ steps:
       - --allow-unauthenticated
       - --project=datcom-mixer
 
+  # 5. Create Version Bump PR
+  - name: python:3.12-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        apt-get update && apt-get install -y git curl
+        
+        # Install gh CLI
+        mkdir -p -m 755 /etc/apt/keyrings && \
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null && \
+        chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+        apt-get update && apt-get install -y gh
+
+        # Config Git
+        git config --global user.email "cloudbuild@datacommons.org"
+        git config --global user.name "Cloud Build Bot"
+
+        # Clone Repo (using token)
+        git clone https://x-access-token:$$GITHUB_TOKEN@github.com/datacommonsorg/agent-toolkit.git repo
+        cd repo
+        
+        # Create Branch
+        TAG_VERSION=${TAG_NAME#v}
+        BRANCH_NAME="chore/bump-version-$TAG_VERSION"
+        git checkout -b $BRANCH_NAME
+
+        # Update Version File
+        echo "Updating version.py to $TAG_VERSION"
+        sed -i "s/__version__ = .*/__version__ = \"$TAG_VERSION\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        
+        # Commit & Push
+        git add packages/datacommons-mcp/datacommons_mcp/version.py
+        git commit -m "chore: bump version to $TAG_VERSION"
+        git push origin $BRANCH_NAME
+
+        # Create PR
+        echo $$GITHUB_TOKEN | gh auth login --with-token
+        gh pr create \
+          --title "chore: bump version to $TAG_VERSION" \
+          --body "Automated PR from Cloud Build release pipeline matching tag $TAG_NAME." \
+          --base main \
+          --head $BRANCH_NAME
+    secretEnv: ['GITHUB_TOKEN']
+
 availableSecrets:
   secretManager:
   - versionName: projects/$PROJECT_ID/secrets/pypi-token/versions/latest
     env: 'PYPI_TOKEN'
+  - versionName: projects/$PROJECT_ID/secrets/github-token/versions/latest
+    env: 'GITHUB_TOKEN'
 
 options:
   logging: CLOUD_LOGGING_ONLY

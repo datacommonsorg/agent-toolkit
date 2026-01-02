@@ -9,13 +9,9 @@ steps:
         TAG_VERSION=${TAG_NAME#v}
         echo $TAG_VERSION > _version.txt
         
-        # Check version match
-        FILE_VERSION=$(grep '__version__' packages/datacommons-mcp/datacommons_mcp/version.py | cut -d'"' -f2)
-        if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
-          echo "Mismatch: Tag $TAG_VERSION vs File $FILE_VERSION"
-          exit 1
-        fi
-
+        # Inject Tag Version into version.py
+        sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        
         cd packages/datacommons-mcp
         uv build
         uv publish --publish-url https://test.pypi.org/legacy/ --token $$TEST_PYPI_TOKEN
