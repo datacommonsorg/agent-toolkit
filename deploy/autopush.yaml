@@ -7,9 +7,9 @@ steps:
       - |
         pip install uv
         # Generate dynamic version and update version.py
-        TIMESTAMP=$(date +%s)
-        BASE_VERSION=$(python3 -c "import sys; sys.path.append('packages/datacommons-mcp'); from datacommons_mcp.version import __version__; print(__version__)")
-        echo "$${BASE_VERSION}.dev$$TIMESTAMP" > _version.txt
+        # Use python script to get next sequential dev version from TestPyPI
+        NEXT_VERSION=$(python3 scripts/get_next_version.py --type dev)
+        echo "$$NEXT_VERSION" > _version.txt
         echo "Generated version: $(cat _version.txt)"
         sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
         

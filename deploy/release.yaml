@@ -2,25 +2,42 @@ steps:
   # 1. Publish to PyPI
   - name: python:3.12-slim
     entrypoint: bash
+    env: ['TAG_NAME=$TAG_NAME']
     args:
       - -c
       - |
         pip install uv
-        TAG_VERSION=${TAG_NAME#v}
-        echo $TAG_VERSION > _version.txt
+        TAG_VERSION=$${TAG_NAME#v}
+        echo $$TAG_VERSION > _version.txt
         
         # Inject Tag Version into version.py
         sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
         
         cd packages/datacommons-mcp
-        uv build
+        uv build --out-dir dist
         # Prod PyPI
         uv publish --token $$PYPI_TOKEN
     secretEnv: ['PYPI_TOKEN']
 
   # 2. Wait
-  - name: ubuntu
-    args: ['sleep', '60']
+  - name: python:3.12-slim
+    entrypoint: python3
+    args:
+    - -c
+    - |
+      import urllib.request, time, sys
+      version = open("_version.txt").read().strip()
+      print(f"Waiting for version {version} on PyPI...")
+      url = "https://pypi.org/simple/datacommons-mcp/"
+      for i in range(50):
+          try:
+              if version.encode() in urllib.request.urlopen(url).read():
+                  print(f"Version {version} found!"); sys.exit(0)
+          except Exception as e:
+              print(f"Error checking: {e}")
+          print(f"Waiting... {i*5}/250s")
+          time.sleep(5)
+      print("Timeout waiting for version propagation"); sys.exit(1)
 
   # 3. Build & Push
   - name: gcr.io/cloud-builders/docker
@@ -51,6 +68,7 @@ steps:
   # 5. Create Version Bump PR
   - name: python:3.12-slim
     entrypoint: bash
+    env: ['TAG_NAME=$TAG_NAME']
     args:
       - -c
       - |
@@ -72,26 +90,26 @@ steps:
         cd repo
         
         # Create Branch
-        TAG_VERSION=${TAG_NAME#v}
-        BRANCH_NAME="chore/bump-version-$TAG_VERSION"
-        git checkout -b $BRANCH_NAME
+        TAG_VERSION=$${TAG_NAME#v}
+        BRANCH_NAME="chore/bump-version-$$TAG_VERSION"
+        git checkout -b $$BRANCH_NAME
 
         # Update Version File
-        echo "Updating version.py to $TAG_VERSION"
-        sed -i "s/__version__ = .*/__version__ = \"$TAG_VERSION\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        echo "Updating version.py to $$TAG_VERSION"
+        sed -i "s/__version__ = .*/__version__ = \"$$TAG_VERSION\"/" packages/datacommons-mcp/datacommons_mcp/version.py
         
         # Commit & Push
         git add packages/datacommons-mcp/datacommons_mcp/version.py
-        git commit -m "chore: bump version to $TAG_VERSION"
-        git push origin $BRANCH_NAME
+        git commit -m "chore: bump version to $$TAG_VERSION"
+        git push origin $$BRANCH_NAME
 
         # Create PR
         echo $$GITHUB_TOKEN | gh auth login --with-token
         gh pr create \
-          --title "chore: bump version to $TAG_VERSION" \
-          --body "Automated PR from Cloud Build release pipeline matching tag $TAG_NAME." \
+          --title "chore: bump version to $$TAG_VERSION" \
+          --body "Automated PR from Cloud Build release pipeline matching tag $$TAG_NAME." \
           --base main \
-          --head $BRANCH_NAME
+          --head $$BRANCH_NAME
     secretEnv: ['GITHUB_TOKEN']
 
 availableSecrets:
