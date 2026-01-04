@@ -15,6 +15,9 @@ ARG PIP_EXTRA_INDEX_URL=https://pypi.org/simple/
 # Check if MCP_VERSION is set
 RUN if [ -z "$MCP_VERSION" ]; then echo "MCP_VERSION is not set" && exit 1; fi
 
+# Pre-install fastapi from PyPI to avoid TestPyPI squatting (FASTAPI==1.0 broken package)
+RUN PIP_EXTRA_INDEX_URL="" pip install "fastapi>=0.115.0" --index-url https://pypi.org/simple/
+
 # Install from PyPI/TestPyPI
 RUN pip install --no-cache-dir \
     --index-url ${PIP_INDEX_URL} \
