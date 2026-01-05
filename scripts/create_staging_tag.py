@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
+
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+ 
 import subprocess
 import sys
 import os
+
+"""
+Helper script to automate the creation of staging tags (Release Candidates).
+It calculates the next sequential RC version (e.g., v1.1.3rc2) using get_next_version.py,
+prompts for confirmation, and pushes the tag to origin to trigger the Staging pipeline.
+
+Usage: python3 scripts/create_staging_tag.py
+"""
 
 def run_command(cmd, capture=True):
     try:
