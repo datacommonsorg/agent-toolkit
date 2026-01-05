@@ -49,17 +49,17 @@ gcloud projects add-iam-policy-binding "$TARGET_PROJECT" \
     --condition=None
 
 # 5. Grant Cloud Build SA permission to access TEST_PYPI_TOKEN and PYPI_TOKEN secrets
-echo "Granting Secret Accessor to CI SA for TEST_PYPI_TOKEN and PYPI_TOKEN..."
-gcloud secrets add-iam-policy-binding test-pypi-token \
-    --project="$CI_PROJECT" \
-    --member="serviceAccount:$CI_SA_EMAIL" \
-    --role="roles/secretmanager.secretAccessor" \
-    --condition=None
-gcloud secrets add-iam-policy-binding pypi-token \
-    --project="$CI_PROJECT" \
-    --member="serviceAccount:$CI_SA_EMAIL" \
-    --role="roles/secretmanager.secretAccessor" \
-    --condition=None
+# echo "Granting Secret Accessor to CI SA for TEST_PYPI_TOKEN and PYPI_TOKEN..."
+# gcloud secrets add-iam-policy-binding TEST_PYPI_TOKEN \
+#     --project="$CI_PROJECT" \
+#     --member="serviceAccount:$CI_SA_EMAIL" \
+#     --role="roles/secretmanager.secretAccessor" \
+#     --condition=None
+# gcloud secrets add-iam-policy-binding PYPI_TOKEN \
+#     --project="$CI_PROJECT" \
+#     --member="serviceAccount:$CI_SA_EMAIL" \
+#     --role="roles/secretmanager.secretAccessor" \
+#     --condition=None
 
 # 5. Grant Runtime SA permission to access secrets in TARGET project
 echo "Granting Secret Accessor to Runtime SA for dc-api-key-for-mcp in $TARGET_PROJECT..."
