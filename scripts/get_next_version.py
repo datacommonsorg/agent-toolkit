@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import json
-import urllib.request
-import sys
 import os
 import re
+import sys
+import tomllib
+import urllib.request
 
 """
 Helper script to determine the next sequential version for 'dev' or 'rc' releases.
@@ -28,13 +30,10 @@ It queries TestPyPI to find existing versions and strictly increments the suffix
 Usage: python3 scripts/get_next_version.py --type dev OR python3 scripts/get_next_version.py --type rc
 """
 
-import argparse
-
 # Add package release path to find the local version
 # Read version from pyproject.toml
-import tomllib
 
-pyproject_path = os.path.join(os.path.dirname(__file__), '../packages/datacommons-mcp/pyproject.toml')
+pyproject_path = os.path.join(os.path.dirname(__file__), "../packages/datacommons-mcp/pyproject.toml")
 try:
     with open(pyproject_path, "rb") as f:
         project_data = tomllib.load(f)
@@ -46,9 +45,9 @@ except (FileNotFoundError, KeyError, tomllib.TOMLDecodeError) as e:
 PACKAGE_NAME = "datacommons-mcp"
 TEST_PYPI_JSON_URL = f"https://test.pypi.org/pypi/{PACKAGE_NAME}/json"
 
-def get_next_version(base_version, release_type="rc"):
+def get_next_version(base_version: str, release_type: str = "rc") -> None:
     try:
-        with urllib.request.urlopen(TEST_PYPI_JSON_URL) as response:
+        with urllib.request.urlopen(TEST_PYPI_JSON_URL) as response: # noqa: S310
             data = json.loads(response.read())
             releases = data.get("releases", {}).keys()
     except urllib.error.HTTPError as e:
@@ -59,9 +58,9 @@ def get_next_version(base_version, release_type="rc"):
 
     # Pattern matches either rcN or devN based on input
     pattern = re.compile(rf"^{re.escape(base_version)}[\.]?{release_type}(\d+)$")
-    
+
     max_ver = 0
-    
+
     for release in releases:
         match = pattern.match(release)
         if match:

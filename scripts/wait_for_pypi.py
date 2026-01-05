@@ -22,17 +22,19 @@ Usage:
 """
 
 import argparse
+import ssl
 import sys
 import time
 import urllib.request
-import ssl
+
 import certifi
 
-def check_pypi(package_name, version, repository_url):
+
+def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
     """Checks for the existence of a package version on a PyPI repository."""
     url = f"{repository_url}/{package_name}/"
     context = ssl.create_default_context(cafile=certifi.where())
-    
+
     # Normalize version: PyPI often normalizes 1.1.3dev1 to 1.1.3.dev1
     normalized_version = version.replace("dev", ".dev").replace("rc", ".rc")
 
@@ -40,7 +42,7 @@ def check_pypi(package_name, version, repository_url):
 
     for i in range(60): # 60 * 5s = 300s = 5 minutes timeout
         try:
-            with urllib.request.urlopen(url, context=context) as response:
+            with urllib.request.urlopen(url, context=context) as response: # noqa: S310
                 content = response.read()
                 # Simple string check in the HTML/Simple API response
                 if version.encode() in content or normalized_version.encode() in content:
@@ -48,18 +50,18 @@ def check_pypi(package_name, version, repository_url):
                     return True
         except Exception as e:
             print(f"Error checking PyPI: {e}")
-        
+
         print(f"Waiting... {i * 5}s/300s")
         time.sleep(5)
-    
+
     return False
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Wait for a package version to appear on PyPI/TestPyPI.")
     parser.add_argument("package_name", help="Name of the package (e.g. datacommons-mcp)")
     parser.add_argument("version", help="Version string to wait for")
     parser.add_argument("--repository", default="https://pypi.org/simple", help="PyPI repository URL (default: PyPI)")
-    
+
     args = parser.parse_args()
 
     if check_pypi(args.package_name, args.version, args.repository):
