@@ -42,13 +42,8 @@ PACKAGE_NAME = "datacommons-mcp"
 TEST_PYPI_JSON_URL = f"https://test.pypi.org/pypi/{PACKAGE_NAME}/json"
 
 def get_next_version(base_version, release_type="rc"):
-    import ssl
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    
     try:
-        with urllib.request.urlopen(TEST_PYPI_JSON_URL, context=ctx) as response:
+        with urllib.request.urlopen(TEST_PYPI_JSON_URL) as response:
             data = json.loads(response.read())
             releases = data.get("releases", {}).keys()
     except urllib.error.HTTPError as e:
@@ -58,7 +53,7 @@ def get_next_version(base_version, release_type="rc"):
         raise
 
     # Pattern matches either rcN or devN based on input
-    pattern = re.compile(rf"^{re.escape(base_version)}{release_type}(\d+)$")
+    pattern = re.compile(rf"^{re.escape(base_version)}[\.]?{release_type}(\d+)$")
     
     max_ver = 0
     
