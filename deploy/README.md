@@ -47,34 +47,42 @@ git push origin v1.1.3rc1
     - `gcr.io/$PROJECT_ID/datacommons-mcp-server:production` - latest production
     - `gcr.io/$PROJECT_ID/datacommons-mcp-server:latest` - latest overall
   - **Cloud Run**: `mcp-server-prod` (Pinned to such tag).
-  - **GitHub**: Creates a Version Bump PR to update `version.py` on `main`.
 - **Purpose**: Official public release to PyPI and Production Cloud Run.
 
 > [!NOTE]
 > The `:latest` tag is pushed by **all** pipelines (Autopush, Staging, and Production). It always points to the single most recently built image, regardless of environment.
 
-### Process Flow
-1.  **Tag Push**: Triggers the release build.
-2.  **Publication**: Pushes official package to PyPI and images to Artifact Registry.
-3.  **Deployment**: Updates `mcp-server-prod` Cloud Run service.
-4.  **Post-Release**:
-    -   Automatically creates a **Version Bump PR** on `main`.
-    -   This synchronizes `version.py` on the main branch to match the release tag, ensuring future dev versions build off this new baseline.
+### Release Process
+The release process is a 2-step workflow: **Prepare** (Version Bump) -> **Release** (Tag & Deploy).
 
-### How to Create a Production Release
-**Prerequisite**: Ensure you have validated the changes in **Staging** (`vX.Y.ZrcN`) first.
+#### Step 1: Version Bump (Prepare)
+Run this script to calculate the next version, update `pyproject.toml`, and create a PR.
 
-**Method 1: GitHub UI (Recommended)**
+```bash
+python3 scripts/create_release_pr.py
+# Follow the interactive prompt (Major/Minor/Patch)
+```
+
+1.  This triggers a Cloud Build job (`deploy/bump_version.yaml`).
+2.  A Pull Request will be created (e.g., `chore: bump version to 1.1.4`).
+3.  **Review and Merge** this PR into `main`.
+
+#### Step 2: Deploy (Release)
+Once the version bump is merged, create the official release to trigger deployment.
+
+**Using GitHub UI (Recommended)**
 1.  Go to [Draft a New Release](https://github.com/datacommonsorg/agent-toolkit/releases/new).
-2.  **Choose a tag**: Create a new tag (e.g., `v1.1.3`).
-    *   *Critical: Must strictly follow Semantic Versioning (No `rc`, no `dev`).*
+2.  **Choose a tag**: Create a new tag matching your bumped version (e.g., `v1.1.4`).
+    *   *Critical: Must match the version you just merged into `pyproject.toml`.*
 3.  **Target**: `main`.
-4.  **Release title**: `v1.1.3`.
-5.  **Description**: Generate release notes using the "Generate release notes" button.
+4.  **Release title**: `v1.1.4`.
+5.  **Description**: Generate release notes.
 6.  Click **Publish release**.
 
-**Method 2: Manual Git Tag**
+**Or Manual Git Tag**
 ```bash
-git tag v1.1.3
-git push origin v1.1.3
+git checkout main
+git pull
+git tag v1.1.4
+git push origin v1.1.4
 ```
