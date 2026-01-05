@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Wait for a package version to appear on PyPI/TestPyPI.
+
+Usage:
+    python wait_for_pypi.py <package_name> <version> [--repository <repository_url>]
+"""
+
 import argparse
 import sys
 import time
