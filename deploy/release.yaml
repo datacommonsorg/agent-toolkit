@@ -68,8 +68,12 @@ steps:
         # Standard PyPI (default args)
         docker build \
           --build-arg MCP_VERSION=$(cat _version.txt) \
-          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME .
-        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:production \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:production-$TAG_NAME \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:latest .
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:production
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:production-$TAG_NAME
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:latest
 
   # 4. Deploy
   - name: gcr.io/cloud-builders/gcloud

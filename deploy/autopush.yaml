@@ -63,8 +63,12 @@ steps:
           --build-arg MCP_VERSION=$(cat _version.txt) \
           --build-arg PIP_INDEX_URL=https://pypi.org/simple/ \
           --build-arg PIP_EXTRA_INDEX_URL=https://test.pypi.org/simple/ \
-          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush .
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:latest \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush-$(cat _version.txt) .
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush-$(cat _version.txt)
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:latest
 
   # # 4. Deploy to Cloud Run
   - name: gcr.io/cloud-builders/gcloud

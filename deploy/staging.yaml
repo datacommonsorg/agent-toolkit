@@ -62,8 +62,12 @@ steps:
           --build-arg MCP_VERSION=$(cat _version.txt) \
           --build-arg PIP_INDEX_URL=https://pypi.org/simple/ \
           --build-arg PIP_EXTRA_INDEX_URL=https://test.pypi.org/simple/ \
-          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME .
-        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:latest \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:staging-$TAG_NAME \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:staging .
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:staging-$TAG_NAME
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:staging
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:latest
 
   # 4. Deploy
   - name: gcr.io/cloud-builders/gcloud
@@ -71,7 +75,7 @@ steps:
       - run
       - deploy
       - mcp-server-staging
-      - --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME
+      - --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:staging
       - --region=us-central1
       - --platform=managed
       - --allow-unauthenticated
