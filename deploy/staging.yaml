@@ -24,8 +24,8 @@ steps:
         TAG_VERSION=$${TAG_NAME#v}
         echo $$TAG_VERSION > _version.txt
         
-        # Inject Tag Version into version.py
-        sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        # Inject Tag Version into pyproject.toml
+        sed -i 's/^version = ".*"/version = "'$(cat _version.txt)'"/' packages/datacommons-mcp/pyproject.toml
         
         cd packages/datacommons-mcp
         uv build --out-dir dist

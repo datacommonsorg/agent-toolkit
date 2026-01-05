@@ -25,7 +25,7 @@ steps:
         NEXT_VERSION=$(python3 scripts/get_next_version.py --type dev)
         echo "$$NEXT_VERSION" > _version.txt
         echo "Generated version: $(cat _version.txt)"
-        sed -i "s/__version__ = .*/__version__ = \"$(cat _version.txt)\"/" packages/datacommons-mcp/datacommons_mcp/version.py
+        sed -i 's/^version = ".*"/version = "'$(cat _version.txt)'"/' packages/datacommons-mcp/pyproject.toml
         
         # Build and Publish
         cd packages/datacommons-mcp

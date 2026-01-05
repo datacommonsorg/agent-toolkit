@@ -1,0 +1,63 @@
+steps:
+  - name: python:3.12-slim
+    entrypoint: bash
+    secretEnv: ['GH_TOKEN']
+    env: ['NEW_VERSION=${_NEW_VERSION}']
+    args:
+      - -c
+      - |
+        apt-get update && apt-get install -y git curl gh
+        
+        # Fail on error
+        set -e
+
+        # Config Git with Robot Author
+        git config --global url."https://${_GITHUB_AUTHOR}:$$GH_TOKEN@github.com/".insteadOf "https://github.com/"
+        git config --global credential.helper store
+        echo "https://${_GITHUB_AUTHOR}:$$GH_TOKEN@github.com" > /root/.git-credentials
+        chmod 600 /root/.git-credentials
+        
+        git config --global user.email "${_GITHUB_AUTHOR}@users.noreply.github.com"
+        git config --global user.name "${_GITHUB_AUTHOR}"
+
+        # Clone Repo
+        rm -rf /workspace/* /workspace/.[!.]*
+        git clone "https://github.com/${_GITHUB_ORG}/${_GITHUB_REPO}.git" /workspace --branch "${_GITHUB_BRANCH}" --single-branch --depth 1
+
+        # Create Branch
+        BRANCH_NAME="chore/bump-version-$$NEW_VERSION"
+        git checkout -b $$BRANCH_NAME
+
+        # Update Version File
+        echo "Updating pyproject.toml to $$NEW_VERSION"
+        grep "version =" packages/datacommons-mcp/pyproject.toml || echo "Version line not found!"
+        sed -i 's/^version = ".*"/version = "'$$NEW_VERSION'"/' packages/datacommons-mcp/pyproject.toml
+        grep "version =" packages/datacommons-mcp/pyproject.toml
+        
+        # Commit & Push
+        git add packages/datacommons-mcp/pyproject.toml
+        git commit -m "chore: bump version to $$NEW_VERSION"
+        git push origin $$BRANCH_NAME
+
+        # Create PR
+        echo $$GH_TOKEN | gh auth login --with-token
+        gh pr create \
+          --repo "${_GITHUB_ORG}/${_GITHUB_REPO}" \
+          --title "chore: bump version to $$NEW_VERSION" \
+          --body "Automated PR from Cloud Build release pipeline matching to update our version to $$NEW_VERSION ahead of its release" \
+          --base "${_GITHUB_BRANCH}" \
+          --head "$$BRANCH_NAME" || echo "PR creation failed, it might already exist."
+
+substitutions:
+  _GITHUB_AUTHOR: 'datacommons-robot-author'
+  _GITHUB_ORG: 'datacommonsorg'
+  _GITHUB_REPO: 'agent-toolkit'
+  _GITHUB_BRANCH: 'main'
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/agent-toolkit-github-pat/versions/latest
+    env: 'GH_TOKEN'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

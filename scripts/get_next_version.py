@@ -31,11 +31,16 @@ Usage: python3 scripts/get_next_version.py --type dev OR python3 scripts/get_nex
 import argparse
 
 # Add package release path to find the local version
-sys.path.append(os.path.join(os.path.dirname(__file__), '../packages/datacommons-mcp'))
+# Read version from pyproject.toml
+import tomllib
+
+pyproject_path = os.path.join(os.path.dirname(__file__), '../packages/datacommons-mcp/pyproject.toml')
 try:
-    from datacommons_mcp.version import __version__ as local_version
-except ImportError:
-    print("Error: Could not find datacommons_mcp.version")
+    with open(pyproject_path, "rb") as f:
+        project_data = tomllib.load(f)
+        local_version = project_data["project"]["version"]
+except (FileNotFoundError, KeyError, tomllib.TOMLDecodeError) as e:
+    print(f"Error reading version from pyproject.toml: {e}")
     sys.exit(1)
 
 PACKAGE_NAME = "datacommons-mcp"

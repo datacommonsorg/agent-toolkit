@@ -96,51 +96,7 @@ steps:
       - --service-account=datacommons-mcp-server@datcom-mixer.iam.gserviceaccount.com
       - --project=datcom-mixer
 
-  # 5. Create Version Bump PR
-  - name: python:3.12-slim
-    entrypoint: bash
-    secretEnv: ['GH_TOKEN']
-    env: ['TAG_NAME=$TAG_NAME']
-    args:
-      - -c
-      - |
-        apt-get update && apt-get install -y git curl gh
-        
-        # Config Git with Robot Author
-        git config --global url."https://${_GITHUB_AUTHOR}:$$GH_TOKEN@github.com/".insteadOf "https://github.com/"
-        git config --global credential.helper store
-        echo "https://${_GITHUB_AUTHOR}:$$GH_TOKEN@github.com" > /root/.git-credentials
-        chmod 600 /root/.git-credentials
-        
-        git config --global user.email "${_GITHUB_AUTHOR}@users.noreply.github.com"
-        git config --global user.name "${_GITHUB_AUTHOR}"
 
-        # Clone Repo
-        rm -rf /workspace/* /workspace/.[!.]*
-        git clone "https://github.com/${_GITHUB_ORG}/${_GITHUB_REPO}.git" /workspace --branch "${_GITHUB_BRANCH}" --single-branch --depth 1
-
-        # Create Branch
-        TAG_VERSION=$${TAG_NAME#v}
-        BRANCH_NAME="chore/bump-version-$$TAG_VERSION"
-        git checkout -b $$BRANCH_NAME
-
-        # Update Version File
-        echo "Updating version.py to $$TAG_VERSION"
-        sed -i "s/__version__ = .*/__version__ = \"$$TAG_VERSION\"/" packages/datacommons-mcp/datacommons_mcp/version.py
-        
-        # Commit & Push
-        git add packages/datacommons-mcp/datacommons_mcp/version.py
-        git commit -m "chore: bump version to $$TAG_VERSION"
-        git push origin $$BRANCH_NAME
-
-        # Create PR
-        echo $$GH_TOKEN | gh auth login --with-token
-        gh pr create \
-          --repo "${_GITHUB_ORG}/${_GITHUB_REPO}" \
-          --title "Version Bump to $$TAG_VERSION following successful deployment" \
-          --body "Automated PR from Cloud Build release pipeline matching to update our version to $$TAG_VERSION since we successfully deployed to production." \
-          --base "${_GITHUB_BRANCH}" \
-          --head $$BRANCH_NAME
 
 availableSecrets:
   secretManager:
