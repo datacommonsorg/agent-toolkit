@@ -39,8 +39,8 @@ RUN PIP_EXTRA_INDEX_URL="" pip install --no-cache-dir "fastapi>=0.115.0" --index
     --extra-index-url ${PIP_EXTRA_INDEX_URL} \
     datacommons-mcp==${MCP_VERSION}
 
-# Create non-root user
-RUN useradd -m mcp
+# Create non-root user with explicit UID/GID and disabled shell
+RUN groupadd --gid 1001 mcp && useradd -m --uid 1001 --gid 1001 --shell /bin/false mcp
 USER mcp
 
 ENV PORT=8080

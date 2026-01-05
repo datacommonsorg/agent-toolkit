@@ -26,7 +26,6 @@ import sys
 import argparse
 import tomllib
 import subprocess
-import re
 
 def get_current_version():
     pyproject_path = os.path.join(os.path.dirname(__file__), '../packages/datacommons-mcp/pyproject.toml')
