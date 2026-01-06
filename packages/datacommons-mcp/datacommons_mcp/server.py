@@ -602,5 +602,5 @@ async def search_indicators(
 if __name__ == "__main__":
     import os
 
-    port = int(os.environ.get("PORT", 8080))
-    mcp.run(transport="sse", port=port, host="0.0.0.0")
+    port = int(os.environ.get("PORT", "8080"))
+    mcp.run(transport="sse", port=port, host="0.0.0.0")  # noqa: S104
