@@ -29,7 +29,9 @@ import tomllib
 
 
 def get_current_version() -> str:
-    pyproject_path = os.path.join(os.path.dirname(__file__), "../packages/datacommons-mcp/pyproject.toml")
+    pyproject_path = os.path.join(
+        os.path.dirname(__file__), "../packages/datacommons-mcp/pyproject.toml"
+    )
     try:
         with open(pyproject_path, "rb") as f:
             data = tomllib.load(f)
@@ -37,6 +39,7 @@ def get_current_version() -> str:
     except Exception as e:
         print(f"Error reading version: {e}")
         sys.exit(1)
+
 
 def bump_version(current_version: str, bump_type: str) -> str:
     major, minor, patch = map(int, current_version.split("."))
@@ -48,8 +51,11 @@ def bump_version(current_version: str, bump_type: str) -> str:
         return f"{major}.{minor}.{patch + 1}"
     return current_version
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create a version bump PR via Cloud Build")
+    parser = argparse.ArgumentParser(
+        description="Create a version bump PR via Cloud Build"
+    )
     parser.add_argument("--project", default="datcom-ci", help="GCP Project ID")
     parser.add_argument("--type", choices=["major", "minor", "patch"], help="Bump type")
 
@@ -82,14 +88,20 @@ def main() -> None:
         sys.exit(0)
 
     cmd = [
-        "gcloud", "builds", "submit", ".",
-        "--config", "deploy/bump_version.yaml",
-        "--project", args.project,
-        f"--substitutions=_NEW_VERSION={new_version}"
+        "gcloud",
+        "builds",
+        "submit",
+        ".",
+        "--config",
+        "deploy/bump_version.yaml",
+        "--project",
+        args.project,
+        f"--substitutions=_NEW_VERSION={new_version}",
     ]
 
     print(f"Running: {' '.join(cmd)}")
-    subprocess.check_call(cmd) # noqa: S603
+    subprocess.check_call(cmd)  # noqa: S603
+
 
 if __name__ == "__main__":
     main()

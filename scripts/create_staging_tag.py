@@ -26,14 +26,16 @@ prompts for confirmation, and pushes the tag to origin to trigger the Staging pi
 Usage: python3 scripts/create_staging_tag.py
 """
 
+
 def run_command(cmd: str, *, capture: bool = True) -> str | int:
     try:
         if capture:
-            return subprocess.check_output(cmd, shell=True).decode().strip() # noqa: S602
-        return subprocess.check_call(cmd, shell=True) # noqa: S602
+            return subprocess.check_output(cmd, shell=True).decode().strip()  # noqa: S602
+        return subprocess.check_call(cmd, shell=True)  # noqa: S602
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {cmd}")
         sys.exit(e.returncode)
+
 
 def main() -> None:
     print("Finding next Staging (RC) tag...")
@@ -65,7 +67,10 @@ def main() -> None:
     run_command(f"git push origin {tag}", capture=False)
 
     print(f"\n\033[1;32mSuccess! Staging build triggered for {tag}.\033[0m")
-    print("View build status at: https://console.cloud.google.com/cloud-build/builds?project=datcom-ci")
+    print(
+        "View build status at: https://console.cloud.google.com/cloud-build/builds?project=datcom-ci"
+    )
+
 
 if __name__ == "__main__":
     main()

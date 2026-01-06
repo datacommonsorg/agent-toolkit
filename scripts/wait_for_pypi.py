@@ -38,14 +38,19 @@ def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
     # Normalize version: PyPI often normalizes 1.1.3dev1 to 1.1.3.dev1
     normalized_version = version.replace("dev", ".dev").replace("rc", ".rc")
 
-    print(f"Checking for {package_name}=={version} (or {normalized_version}) at {url}...")
+    print(
+        f"Checking for {package_name}=={version} (or {normalized_version}) at {url}..."
+    )
 
-    for i in range(60): # 60 * 5s = 300s = 5 minutes timeout
+    for i in range(60):  # 60 * 5s = 300s = 5 minutes timeout
         try:
-            with urllib.request.urlopen(url, context=context) as response: # noqa: S310
+            with urllib.request.urlopen(url, context=context) as response:  # noqa: S310
                 content = response.read()
                 # Simple string check in the HTML/Simple API response
-                if version.encode() in content or normalized_version.encode() in content:
+                if (
+                    version.encode() in content
+                    or normalized_version.encode() in content
+                ):
                     print(f"Success: Version {version} found!")
                     return True
         except Exception as e:
@@ -56,19 +61,31 @@ def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
 
     return False
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Wait for a package version to appear on PyPI/TestPyPI.")
-    parser.add_argument("package_name", help="Name of the package (e.g. datacommons-mcp)")
+    parser = argparse.ArgumentParser(
+        description="Wait for a package version to appear on PyPI/TestPyPI."
+    )
+    parser.add_argument(
+        "package_name", help="Name of the package (e.g. datacommons-mcp)"
+    )
     parser.add_argument("version", help="Version string to wait for")
-    parser.add_argument("--repository", default="https://pypi.org/simple", help="PyPI repository URL (default: PyPI)")
+    parser.add_argument(
+        "--repository",
+        default="https://pypi.org/simple",
+        help="PyPI repository URL (default: PyPI)",
+    )
 
     args = parser.parse_args()
 
     if check_pypi(args.package_name, args.version, args.repository):
         sys.exit(0)
     else:
-        print(f"Timeout: Version {args.version} did not appear on {args.repository} within 5 minutes.")
+        print(
+            f"Timeout: Version {args.version} did not appear on {args.repository} within 5 minutes."
+        )
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
