@@ -52,25 +52,29 @@ steps:
         docker build \
           --build-arg MCP_VERSION=$(cat _version.txt) \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:production \
+          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:production-$TAG_NAME \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:latest .
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:production
+        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:$TAG_NAME
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:production-$TAG_NAME
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:latest
 
   # 4. Deploy
   - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - mcp-server-prod
-      - --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:production
-      - --region=us-central1
-      - --platform=managed
-      - --allow-unauthenticated
-      - --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest
-      - --service-account=datacommons-mcp-server@datcom-mixer.iam.gserviceaccount.com
-      - --project=datcom-mixer
+      - -c
+      - |
+        gcloud run deploy mcp-server-prod \
+        --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:production \
+        --region=us-central1 \
+        --platform=managed \
+        --no-allow-unauthenticated \
+        --set-env-vars=MCP_VERSION=$(cat _version.txt) \
+        --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
+        --service-account=datacommons-mcp-server@datcom-mixer.iam.gserviceaccount.com \
+        --project=datcom-mixer
 
 availableSecrets:
   secretManager:

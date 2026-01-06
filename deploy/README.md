@@ -52,8 +52,8 @@ git push origin v1.1.3rc1
 > [!NOTE]
 > The `:latest` tag is pushed by **all** pipelines (Autopush, Staging, and Production). It always points to the single most recently built image, regardless of environment.
 
-### Release Process
-The release process is a 2-step workflow: **Prepare** (Version Bump) -> **Release** (Tag & Deploy).
+### Production Release Process
+The process to release to production is a 2-step workflow: **Prepare** (Version Bump) -> **Release** (Tag & Deploy).
 
 #### Step 1: Version Bump (Prepare)
 Run this script to calculate the next version, update `pyproject.toml`, and create a PR.

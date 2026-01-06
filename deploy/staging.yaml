@@ -51,26 +51,26 @@ steps:
           --build-arg MCP_VERSION=$(cat _version.txt) \
           --build-arg PIP_INDEX_URL=https://pypi.org/simple/ \
           --build-arg PIP_EXTRA_INDEX_URL=https://test.pypi.org/simple/ \
-          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:latest \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:staging-$TAG_NAME \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:staging .
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:staging-$TAG_NAME
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:staging
-        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:latest
 
   # 4. Deploy
   - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - mcp-server-staging
-      - --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:staging
-      - --region=us-central1
-      - --platform=managed
-      - --allow-unauthenticated
-      - --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest
-      - --service-account=datacommons-mcp-server@datcom-mixer-staging.iam.gserviceaccount.com
-      - --project=datcom-mixer-staging
+      - -c
+      - |
+        gcloud run deploy mcp-server-staging \
+        --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:staging \
+        --region=us-central1 \
+        --platform=managed \
+        --no-allow-unauthenticated \
+        --set-env-vars=MCP_VERSION=$(cat _version.txt) \
+        --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
+        --service-account=datacommons-mcp-server@datcom-mixer-staging.iam.gserviceaccount.com \
+        --project=datcom-mixer-staging
 
 availableSecrets:
   secretManager:

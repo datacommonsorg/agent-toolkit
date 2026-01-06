@@ -42,7 +42,7 @@ steps:
       pip install certifi
       python3 scripts/wait_for_pypi.py datacommons-mcp $(cat _version.txt) --repository https://test.pypi.org/simple
 
-  # # 3. Build Container Image
+  # 3. Build Container Image
   - name: gcr.io/cloud-builders/docker
     entrypoint: bash
     args:
@@ -53,26 +53,25 @@ steps:
           --build-arg PIP_INDEX_URL=https://pypi.org/simple/ \
           --build-arg PIP_EXTRA_INDEX_URL=https://test.pypi.org/simple/ \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush \
-          -t gcr.io/$PROJECT_ID/datacommons-mcp-server:latest \
           -t gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush-$(cat _version.txt) .
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush-$(cat _version.txt)
-        docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:latest
 
-  # # 4. Deploy to Cloud Run
+  # 4. Deploy to Cloud Run
   - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - mcp-server-autopush
-      - --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush
-      - --region=us-central1
-      - --platform=managed
-      - --allow-unauthenticated
-      - --set-env-vars=MCP_VERSION=$(cat _version.txt)
-      - --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest
-      - --service-account=datacommons-mcp-server@datcom-mixer-autopush.iam.gserviceaccount.com
-      - --project=datcom-mixer-autopush
+      - -c
+      - |
+        gcloud run deploy mcp-server-autopush \
+        --image=gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush \
+        --region=us-central1 \
+        --platform=managed \
+        --no-allow-unauthenticated \
+        --set-env-vars=MCP_VERSION=$(cat _version.txt) \
+        --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
+        --service-account=datacommons-mcp-server@datcom-mixer-autopush.iam.gserviceaccount.com \
+        --project=datcom-mixer-autopush
 
 availableSecrets:
   secretManager:
