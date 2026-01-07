@@ -22,11 +22,11 @@ steps:
         pip install uv
         # Generate dynamic version and update version.py
         # Use python script to get next sequential dev version from TestPyPI
-        NEXT_VERSION=$(python3 scripts/get_next_version.py --type dev)
-        echo "$$NEXT_VERSION" > _version.txt
-        echo "Generated version: ${NEXT_VERSION}"
-        sed -i 's/^version = ".*"/version = "'$$NEXT_VERSION'"/' packages/datacommons-mcp/pyproject.toml        
-        
+        new_version=$(python3 scripts/get_next_version.py --type dev)
+        echo "$new_version" > _version.txt
+        echo "Generated version: $new_version"
+        sed -i 's/^version = ".*"/version = "'$new_version'"/' packages/datacommons-mcp/pyproject.toml
+
         # Build and Publish
         cd packages/datacommons-mcp
         uv build --out-dir dist

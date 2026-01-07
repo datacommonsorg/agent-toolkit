@@ -21,11 +21,11 @@ steps:
       - -c
       - |
         pip install uv
-        TAG_VERSION=$${TAG_NAME#v}
-        echo $$TAG_VERSION > _version.txt
+        tag_version=$${TAG_NAME#v}
+        echo "$tag_version" > _version.txt
         
         # Inject Tag Version into pyproject.toml
-        sed -i 's/^version = ".*"/version = "'$$TAG_VERSION'"/' packages/datacommons-mcp/pyproject.toml
+        sed -i 's/^version = ".*"/version = "'$tag_version'"/' packages/datacommons-mcp/pyproject.toml
         cd packages/datacommons-mcp
         uv build --out-dir dist
         uv publish --publish-url https://test.pypi.org/legacy/ --token $$TEST_PYPI_TOKEN
