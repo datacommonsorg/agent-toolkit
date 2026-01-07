@@ -24,8 +24,8 @@ steps:
         # Use python script to get next sequential dev version from TestPyPI
         NEXT_VERSION=$(python3 scripts/get_next_version.py --type dev)
         echo "$$NEXT_VERSION" > _version.txt
-        echo "Generated version: $(cat _version.txt)"
-        sed -i 's/^version = ".*"/version = "'$(cat _version.txt)'"/' packages/datacommons-mcp/pyproject.toml
+        echo "Generated version: ${NEXT_VERSION}"
+        sed -i 's/^version = ".*"/version = "'$$NEXT_VERSION'"/' packages/datacommons-mcp/pyproject.toml        
         
         # Build and Publish
         cd packages/datacommons-mcp
@@ -33,7 +33,7 @@ steps:
         uv publish --publish-url https://test.pypi.org/legacy/ --token $$TEST_PYPI_TOKEN
     secretEnv: ['TEST_PYPI_TOKEN']
 
-  # 2. Wait for PyPI propagation
+  # 2. Wait for TestPyPI propagation
   - name: python:3.12-slim
     entrypoint: bash
     args:

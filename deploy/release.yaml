@@ -25,7 +25,7 @@ steps:
         echo $$TAG_VERSION > _version.txt
         
         # Inject Tag Version into pyproject.toml (Safety override)
-        sed -i 's/^version = ".*"/version = "'$(cat _version.txt)'"/' packages/datacommons-mcp/pyproject.toml
+        sed -i 's/^version = ".*"/version = "'$$TAG_VERSION'"/' packages/datacommons-mcp/pyproject.toml
         
         cd packages/datacommons-mcp
         uv build --out-dir dist

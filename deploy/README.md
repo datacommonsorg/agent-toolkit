@@ -50,7 +50,7 @@ git push origin v1.1.3rc1
 - **Purpose**: Official public release to PyPI and Production Cloud Run.
 
 > [!NOTE]
-> The `:latest` tag is pushed by **all** pipelines (Autopush, Staging, and Production). It always points to the single most recently built image, regardless of environment.
+> The `:latest` tag is pushed by **production** pipeline only. It always points to the single most recently built image deployed to prod.
 
 ### Production Release Process
 The process to release to production is a 2-step workflow: **Prepare** (Version Bump) -> **Release** (Tag & Deploy).
