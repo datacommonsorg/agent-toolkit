@@ -7,5 +7,5 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("datacommons-mcp")
 except PackageNotFoundError:
-    # Package is not installed
+    logger.warning("Could not determine package version")
     __version__ = "0.0.0+unknown"
