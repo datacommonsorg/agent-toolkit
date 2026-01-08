@@ -69,7 +69,7 @@ def main() -> None:
     try:
         run_command(f"git push upstream {tag}", capture=False, check=False)
     except subprocess.CalledProcessError:
-        print(f"\n\033[1;31mError: Failed to push to upstream remote.\033[0m")
+        print("\n\033[1;31mError: Failed to push to upstream remote.\033[0m")
         print("Please ensure you have the 'upstream' remote configured:")
         print(
             "  git remote add upstream https://github.com/datacommonsorg/agent-toolkit.git"
