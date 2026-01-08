@@ -27,12 +27,14 @@ Usage: python3 scripts/create_staging_tag.py
 """
 
 
-def run_command(cmd: str, *, capture: bool = True) -> str | int:
+def run_command(cmd: str, *, capture: bool = True, check: bool = True) -> str | int:
     try:
         if capture:
             return subprocess.check_output(cmd, shell=True).decode().strip()  # noqa: S602
         return subprocess.check_call(cmd, shell=True)  # noqa: S602
     except subprocess.CalledProcessError as e:
+        if not check:
+            raise e
         print(f"Error running command: {cmd}")
         sys.exit(e.returncode)
 
@@ -63,12 +65,21 @@ def main() -> None:
     print(f"Creating tag {tag}...")
     run_command(f"git tag {tag}", capture=False)
 
-    print(f"Pushing tag {tag} to origin...")
-    run_command(f"git push origin {tag}", capture=False)
+    print(f"Pushing tag {tag} to upstream...")
+    try:
+        run_command(f"git push upstream {tag}", capture=False, check=False)
+    except subprocess.CalledProcessError:
+        print(f"\n\033[1;31mError: Failed to push to upstream remote.\033[0m")
+        print("Please ensure you have the 'upstream' remote configured:")
+        print(
+            "  git remote add upstream https://github.com/datacommonsorg/agent-toolkit.git"
+        )
+        print("  git remote -v")
+        sys.exit(1)
 
     print(f"\n\033[1;32mSuccess! Staging build triggered for {tag}.\033[0m")
     print(
-        "View build status at: https://console.cloud.google.com/cloud-build/builds?project=datcom-ci"
+        "View build status at: https://pantheon.corp.google.com/cloud-build/builds;region=global?query=trigger_id%3D%2282c43c13-4c16-4527-8110-f4abf72cd9d5%22&e=13803378&invt=AcGVmQ&mods=-monitoring_api_staging&project=datcom-ci"
     )
 
 
