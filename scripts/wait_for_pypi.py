@@ -28,31 +28,44 @@ import time
 import urllib.request
 
 import certifi
-
+import subprocess
 
 def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
-    """Checks for the existence of a package version on a PyPI repository."""
-    url = f"{repository_url}/{package_name}/"
-    context = ssl.create_default_context(cafile=certifi.where())
+    """Checks for the existence of a package version using pip."""
+    index_args = ["--index-url", repository_url]
+    if "test.pypi.org" in repository_url:
+        # If checking TestPyPI, we need to handle dependencies that might be on main PyPI
+        # But for existence check, we can just say --no-deps
+        pass
 
-    # Normalize version: PyPI often normalizes 1.1.3dev1 to 1.1.3.dev1
     normalized_version = version.replace("dev", ".dev").replace("rc", ".rc")
+    print(f"Verifying downloadability of {package_name}=={version} from {repository_url}...")
 
-    print(
-        f"Checking for {package_name}=={version} (or {normalized_version}) at {url}..."
-    )
-
-    for i in range(60):  # 60 * 5s = 300s = 5 minutes timeout
+    for i in range(60):  # 5 minutes
         try:
-            with urllib.request.urlopen(url, context=context) as response:  # noqa: S310
-                content = response.read()
-                # Simple string check in the HTML/Simple API response
-                if (
-                    version.encode() in content
-                    or normalized_version.encode() in content
-                ):
-                    print(f"Success: Version {version} found!")
-                    return True
+            # Use pip download --no-deps to verify the file is actually resolvable
+            # We use --no-cache-dir to avoid false positives from local cache
+            cmd = [
+                sys.executable, "-m", "pip", "download",
+                f"{package_name}=={version}",
+                "--no-deps",
+                "--no-cache-dir",
+                "--index-url", repository_url,
+                "--dest", "/tmp"  # Download to tmp to verify file retrieval
+            ]
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                print(f"Success: pip successfully located and downloaded {package_name}=={version}!")
+                return True
+            else:
+                pass
+
         except Exception as e:
             print(f"Error checking PyPI: {e}")
 

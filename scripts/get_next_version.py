@@ -55,7 +55,7 @@ def get_next_version(base_version: str, release_type: str = "rc") -> None:
             releases = data.get("releases", {}).keys()
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            print(f"{base_version}{release_type}1")
+            print(f"{base_version}.{release_type}1")
             return
         raise
 
@@ -72,7 +72,7 @@ def get_next_version(base_version: str, release_type: str = "rc") -> None:
                 max_ver = ver_num
 
     next_ver = max_ver + 1
-    print(f"{base_version}{release_type}{next_ver}")
+    print(f"{base_version}.{release_type}{next_ver}")
 
 
 if __name__ == "__main__":
