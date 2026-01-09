@@ -52,7 +52,41 @@ def bump_version(current_version: str, bump_type: str) -> str:
     return current_version
 
 
+def run_command(cmd: str, *, capture: bool = True, exit_on_error: bool = True) -> str | int:
+    try:
+        if capture:
+            return subprocess.check_output(cmd, shell=True).decode().strip()  # noqa: S602
+        return subprocess.check_call(cmd, shell=True)  # noqa: S602
+    except subprocess.CalledProcessError as e:
+        if not exit_on_error:
+            raise e
+        print(f"Error running command: {cmd}")
+        sys.exit(e.returncode)
+
+
+def check_preconditions() -> None:
+    print("Checking preconditions...")
+
+    # 1. Check branch is main
+    current_branch = str(run_command("git branch --show-current", capture=True))
+    if current_branch != "main":
+        print(
+            f"\033[1;31mError: Script must be run from 'main' branch. Current branch: {current_branch}\033[0m"
+        )
+        sys.exit(1)
+
+    # 2. Check for uncommitted changes
+    status = str(run_command("git status --porcelain", capture=True))
+    if status:
+        print(
+            "\033[1;31mError: Working directory is not clean. Please commit or stash changes.\033[0m"
+        )
+        print(status)
+        sys.exit(1)
+
+
 def main() -> None:
+    check_preconditions()
     parser = argparse.ArgumentParser(
         description="Create a version bump PR via Cloud Build"
     )

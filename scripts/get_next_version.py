@@ -33,16 +33,21 @@ Usage: python3 scripts/get_next_version.py --type dev OR python3 scripts/get_nex
 # Add package release path to find the local version
 # Read version from pyproject.toml
 
-pyproject_path = os.path.join(
-    os.path.dirname(__file__), "../packages/datacommons-mcp/pyproject.toml"
-)
-try:
-    with open(pyproject_path, "rb") as f:
-        project_data = tomllib.load(f)
-        local_version = project_data["project"]["version"]
-except (FileNotFoundError, KeyError, tomllib.TOMLDecodeError) as e:
-    print(f"Error reading version from pyproject.toml: {e}")
-    sys.exit(1)
+def get_local_version() -> str:
+    pyproject_path = os.path.join(
+        os.path.dirname(__file__), "../packages/datacommons-mcp/pyproject.toml"
+    )
+    try:
+        with open(pyproject_path, "rb") as f:
+            project_data = tomllib.load(f)
+            return project_data["project"]["version"]
+    except (FileNotFoundError, KeyError, tomllib.TOMLDecodeError) as e:
+        print(f"Error reading version from pyproject.toml: {e}")
+        sys.exit(1)
+
+
+local_version = get_local_version()
+
 
 PACKAGE_NAME = "datacommons-mcp"
 TEST_PYPI_JSON_URL = f"https://test.pypi.org/pypi/{PACKAGE_NAME}/json"
@@ -85,6 +90,11 @@ if __name__ == "__main__":
         default="rc",
         help="Release type: rc (default) or dev",
     )
+    parser.add_argument(
+        "--base-version",
+        help="Base version to increment from (defaults to local pyproject.toml version)",
+    )
     args = parser.parse_args()
 
-    get_next_version(local_version, args.type)
+    base_version = args.base_version or local_version
+    get_next_version(base_version, args.type)
