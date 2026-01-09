@@ -79,7 +79,7 @@ def main() -> None:
 
     print(f"\n\033[1;32mSuccess! Staging build triggered for {tag}.\033[0m")
     print(
-        "View build status at: https://pantheon.corp.google.com/cloud-build/builds;region=global?query=trigger_id%3D%2282c43c13-4c16-4527-8110-f4abf72cd9d5%22&e=13803378&invt=AcGVmQ&mods=-monitoring_api_staging&project=datcom-ci"
+                'View build status at: https://pantheon.corp.google.com/cloud-build/builds;region=global?query=trigger_id="82c43c13-4c16-4527-8110-f4abf72cd9d5"&project=datcom-ci'
     )
 
 
