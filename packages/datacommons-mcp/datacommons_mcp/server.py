@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Union, get_args, get_origin
 from fastmcp import FastMCP
 from pydantic import ValidationError
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
+from starlette.responses import JSONResponse
 
 import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
@@ -44,6 +44,7 @@ from datacommons_mcp.services import (
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
+from datacommons_mcp.version import __version__
 
 # The `datacommons_mcp.data_models.search` module is imported under `if TYPE_CHECKING:`
 # because the `SearchResponse` model is only needed for type hinting. This pattern
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 # Create client based on settings
 try:
     dc_settings = settings.get_dc_settings()
@@ -69,12 +71,12 @@ except Exception as e:
     logger.error("Failed to create DC client: %s", e)
     raise
 
-mcp = FastMCP("DC MCP Server")
+mcp = FastMCP("DC MCP Server", version=__version__)
 
 
 @mcp.custom_route("/health", methods=["GET"])
-async def health_check(request: Request) -> PlainTextResponse:  # noqa: ARG001 request param required for decorator
-    return PlainTextResponse("OK")
+async def health_check(request: Request) -> JSONResponse:  # noqa: ARG001 request param required for decorator
+    return JSONResponse({"status": "OK", "version": __version__})
 
 
 @mcp.tool()
