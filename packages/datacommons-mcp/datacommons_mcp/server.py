@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Union, get_args, get_origin
 from fastmcp import FastMCP
 from pydantic import ValidationError
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import JSONResponse
 
 import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
@@ -44,6 +44,7 @@ from datacommons_mcp.services import (
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
+from datacommons_mcp.version import __version__
 
 # The `datacommons_mcp.data_models.search` module is imported under `if TYPE_CHECKING:`
 # because the `SearchResponse` model is only needed for type hinting. This pattern
@@ -57,7 +58,8 @@ if TYPE_CHECKING:
 # Configure logging
 logger = logging.getLogger(__name__)
 
-from datacommons_mcp.version import __version__
+
+
 
 # Create client based on settings
 try:

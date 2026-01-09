@@ -22,49 +22,45 @@ Usage:
 """
 
 import argparse
-import ssl
+import subprocess
 import sys
 import time
-import urllib.request
 
-import certifi
-import subprocess
 
 def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
     """Checks for the existence of a package version using pip."""
-    index_args = ["--index-url", repository_url]
     if "test.pypi.org" in repository_url:
         # If checking TestPyPI, we need to handle dependencies that might be on main PyPI
         # But for existence check, we can just say --no-deps
         pass
 
-    normalized_version = version.replace("dev", ".dev").replace("rc", ".rc")
     print(f"Verifying downloadability of {package_name}=={version} from {repository_url}...")
+
+    import tempfile
 
     for i in range(60):  # 5 minutes
         try:
             # Use pip download --no-deps to verify the file is actually resolvable
             # We use --no-cache-dir to avoid false positives from local cache
-            cmd = [
-                sys.executable, "-m", "pip", "download",
-                f"{package_name}=={version}",
-                "--no-deps",
-                "--no-cache-dir",
-                "--index-url", repository_url,
-                "--dest", "/tmp"  # Download to tmp to verify file retrieval
-            ]
-            
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True
-            )
-            
-            if result.returncode == 0:
-                print(f"Success: pip successfully located and downloaded {package_name}=={version}!")
-                return True
-            else:
-                pass
+            with tempfile.TemporaryDirectory() as temp_dir:
+                cmd = [
+                    sys.executable, "-m", "pip", "download",
+                    f"{package_name}=={version}",
+                    "--no-deps",
+                    "--no-cache-dir",
+                    "--index-url", repository_url,
+                    "--dest", temp_dir  # Download to tmp to verify file retrieval
+                ]
+
+                result = subprocess.run(  # noqa: S603
+                    cmd,
+                    check=False, capture_output=True,
+                    text=True
+                )
+
+                if result.returncode == 0:
+                    print(f"Success: pip successfully located and downloaded {package_name}=={version}!")
+                    return True
 
         except Exception as e:
             print(f"Error checking PyPI: {e}")
