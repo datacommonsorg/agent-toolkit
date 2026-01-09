@@ -34,7 +34,9 @@ def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
         # But for existence check, we can just say --no-deps
         pass
 
-    print(f"Verifying downloadability of {package_name}=={version} from {repository_url}...")
+    print(
+        f"Verifying downloadability of {package_name}=={version} from {repository_url}..."
+    )
 
     import tempfile
 
@@ -44,22 +46,27 @@ def check_pypi(package_name: str, version: str, repository_url: str) -> bool:
             # We use --no-cache-dir to avoid false positives from local cache
             with tempfile.TemporaryDirectory() as temp_dir:
                 cmd = [
-                    sys.executable, "-m", "pip", "download",
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "download",
                     f"{package_name}=={version}",
                     "--no-deps",
                     "--no-cache-dir",
-                    "--index-url", repository_url,
-                    "--dest", temp_dir  # Download to tmp to verify file retrieval
+                    "--index-url",
+                    repository_url,
+                    "--dest",
+                    temp_dir,  # Download to tmp to verify file retrieval
                 ]
 
                 result = subprocess.run(  # noqa: S603
-                    cmd,
-                    check=False, capture_output=True,
-                    text=True
+                    cmd, check=False, capture_output=True, text=True
                 )
 
                 if result.returncode == 0:
-                    print(f"Success: pip successfully located and downloaded {package_name}=={version}!")
+                    print(
+                        f"Success: pip successfully located and downloaded {package_name}=={version}!"
+                    )
                     return True
 
         except Exception as e:

@@ -59,8 +59,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-
-
 # Create client based on settings
 try:
     dc_settings = settings.get_dc_settings()
