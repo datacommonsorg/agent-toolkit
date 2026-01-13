@@ -32,7 +32,8 @@ root_agent = LlmAgent(
                 url=f"https://api.datacommons.org/mcp",
                 headers={
                     "Content-Type": "application/json",
-                    "Accept": "application/json, text/event-stream"
+                    "Accept": "application/json, text/event-stream",
+                    "X-API-Key": DC_API_KEY
                 },
             ),
         )
