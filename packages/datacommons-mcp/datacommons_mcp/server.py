@@ -17,7 +17,13 @@ Server module for the DC MCP server.
 
 import logging
 import types
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Union,
+    get_args,
+    get_origin,
+)
 
 from fastmcp import FastMCP
 from pydantic import ValidationError
@@ -57,6 +63,37 @@ if TYPE_CHECKING:
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+# Monkeypatch EventSourceResponse in mcp.server.sse to send data-based pings
+# instead of comment-based pings, to prevent client timeouts (Gemini CLI).
+try:
+    import mcp.server.sse
+    from sse_starlette.event import ServerSentEvent
+
+    class DataPingEventSourceResponse(mcp.server.sse.EventSourceResponse):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
+            # Ensure a ping interval is set (defaulting to 15s if not provided)
+            kwargs.setdefault("ping", 15)
+
+            # Send explicit 'ping' event with data to reset client timeout
+            if "ping_message_factory" not in kwargs:
+                kwargs["ping_message_factory"] = lambda: ServerSentEvent(
+                    data="{}", event="ping"
+                )
+            super().__init__(*args, **kwargs)
+
+    mcp.server.sse.EventSourceResponse = DataPingEventSourceResponse
+
+    # Also patch streamable_http if available, as that's what cli.py uses
+    try:
+        import mcp.server.streamable_http
+
+        mcp.server.streamable_http.EventSourceResponse = DataPingEventSourceResponse
+    except ImportError:
+        pass
+except ImportError:
+    logger.warning("Failed to monkeypatch sse_starlette.EventSourceResponse")
 
 
 # Create client based on settings
