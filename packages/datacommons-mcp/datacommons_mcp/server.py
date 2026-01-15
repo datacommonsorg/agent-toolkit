@@ -76,10 +76,11 @@ try:
             # Ensure a ping interval is set (defaulting to 15s if not provided)
             kwargs.setdefault("ping", 15)
 
-            # Send explicit 'ping' event with data to reset client timeout
+            # Send 'message' event with JSON-RPC notification to force client processing
             if "ping_message_factory" not in kwargs:
                 kwargs["ping_message_factory"] = lambda: ServerSentEvent(
-                    data="{}", event="ping"
+                    data='{"jsonrpc": "2.0", "method": "notifications/ping", "params": {}}',
+                    event="message",
                 )
             super().__init__(*args, **kwargs)
 
