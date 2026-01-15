@@ -30,4 +30,8 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
                 logger.error("Error during API key override context propagation: %s", e)
                 raise
         else:
+            logger.info(
+                "No X-API-Key header received, proceeding without override: %s",
+                request.headers,
+            )
             return await call_next(request)
