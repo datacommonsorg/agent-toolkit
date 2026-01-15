@@ -20,7 +20,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         api_key = request.headers.get("X-API-Key")
         if api_key:
-            logger.debug("Received X-API-Key header, applying override.")
+            logger.info("Received X-API-Key header: %s, applying override.", api_key)
             try:
                 with use_api_key(api_key):
                     return await call_next(request)
