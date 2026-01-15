@@ -1,5 +1,5 @@
 import logging
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from datacommons_client import use_api_key
 from starlette.middleware.base import BaseHTTPMiddleware

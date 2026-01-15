@@ -9,7 +9,7 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 
-async def homepage(request):
+async def homepage(request):  # noqa: ARG001
     return JSONResponse({"status": "ok"})
 
 
@@ -28,10 +28,10 @@ def test_api_key_header_present(client):
         # Configuration for the mock context manager
         mock_context_manager = MagicMock()
         mock_use_api_key.return_value.__enter__.return_value = mock_context_manager
-        
+
         headers = {"X-API-Key": "test-key-123"}
         response = client.get("/", headers=headers)
-        
+
         assert response.status_code == 200
         mock_use_api_key.assert_called_once_with("test-key-123")
         # Ensure the context manager was actually entered
@@ -43,7 +43,7 @@ def test_api_key_header_missing(client):
     """Verify use_api_key is NOT called when X-API-Key header is missing."""
     with patch("datacommons_mcp.middleware.use_api_key") as mock_use_api_key:
         response = client.get("/")
-        
+
         assert response.status_code == 200
         mock_use_api_key.assert_not_called()
 
@@ -53,6 +53,6 @@ def test_api_key_header_empty(client):
     with patch("datacommons_mcp.middleware.use_api_key") as mock_use_api_key:
         headers = {"X-API-Key": ""}
         response = client.get("/", headers=headers)
-        
+
         assert response.status_code == 200
         mock_use_api_key.assert_not_called()
