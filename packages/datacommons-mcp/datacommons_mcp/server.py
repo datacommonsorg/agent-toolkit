@@ -76,10 +76,12 @@ try:
             # Ensure a ping interval is set (defaulting to 15s if not provided)
             kwargs.setdefault("ping", 15)
 
-            # Send 'message' event with JSON-RPC notification to force client processing
+            # Send 'message' event with a standard MCP logging notification.
+            # This counts as valid traffic to reset timeouts but causes no side effects
+            # other than potentially appearing in debug logs.
             if "ping_message_factory" not in kwargs:
                 kwargs["ping_message_factory"] = lambda: ServerSentEvent(
-                    data='{"jsonrpc": "2.0", "method": "notifications/ping", "params": {}}',
+                    data='{"jsonrpc": "2.0", "method": "notifications/message", "params": {"level": "debug", "logger": "keepalive", "data": "ping"}}',
                     event="message",
                 )
             super().__init__(*args, **kwargs)
