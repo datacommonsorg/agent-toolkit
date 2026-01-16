@@ -22,10 +22,10 @@ from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 
 logger = logging.getLogger(__name__)
 
-VALIDATION_API_URL = "https://api.datacommons.org/v2/node?nodes=geoId/06"
+VALIDATION_API_PATH = "/v2/node?nodes=geoId/06"
 
 
-def validate_api_key(api_key: str) -> None:
+def validate_api_key(api_key: str, validation_api_root: str) -> None:
     """
     Validates the Data Commons API key by making a simple API call.
 
@@ -36,9 +36,12 @@ def validate_api_key(api_key: str) -> None:
         InvalidAPIKeyError: If the API key is invalid or has expired.
         APIKeyValidationError: For other network-related validation errors.
     """
+    validation_api_url = f"{validation_api_root}{VALIDATION_API_PATH}"
+    logger.info("Validating API key with URL: %s", validation_api_url)
+
     try:
         response = requests.get(
-            VALIDATION_API_URL,
+            validation_api_url,
             headers={"X-API-Key": api_key},
             timeout=10,  # 10-second timeout
         )

@@ -61,7 +61,10 @@ def _run_api_key_validation(ctx: Context, *, skip_validation: bool) -> None:
         api_key = os.getenv("DC_API_KEY")
         if not api_key:
             raise InvalidAPIKeyError("DC_API_KEY is not set.")
-        validate_api_key(api_key)
+        validation_api_root = os.getenv(
+            "DC_API_KEY_VALIDATION_ROOT", "https://api.datacommons.org"
+        ).rstrip("/")
+        validate_api_key(api_key, validation_api_root)
     except (InvalidAPIKeyError, APIKeyValidationError) as e:
         click.echo(str(e), err=True)
         click.echo(
