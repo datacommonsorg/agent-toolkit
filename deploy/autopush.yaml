@@ -69,7 +69,10 @@ steps:
         --platform=managed \
         --no-allow-unauthenticated \
         --set-env-vars=MCP_VERSION=$(cat _version.txt) \
-        --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
+        --set-env-vars=DC_API_ROOT=https://autopush.api.datacommons.org/v2 \
+        --set-env-vars=DC_SEARCH_ROOT=https://autopush.datacommons.org \
+        --set-env-vars=DC_API_KEY_VALIDATION_ROOT=https://autopush.api.datacommons.org \
+        --set-secrets=DC_API_KEY=dc-autopush-api-key-for-mcp:latest \
         --service-account=datacommons-mcp-server@datcom-mixer-autopush.iam.gserviceaccount.com \
         --project=datcom-mixer-autopush
 
