@@ -82,6 +82,7 @@ def _run_http_server(host: str, port: int) -> None:
     click.echo(f"Server URL: http://{host}:{port}")
     click.echo(f"Streamable HTTP endpoint: http://{host}:{port}/mcp")
     click.echo("Press CTRL+C to stop")
+    print("[DEBUG] Starting with middleware: ", [Middleware(APIKeyMiddleware)])
     mcp.run(
         host=host,
         port=port,

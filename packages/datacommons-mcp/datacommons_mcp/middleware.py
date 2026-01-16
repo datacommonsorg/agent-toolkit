@@ -20,18 +20,18 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         api_key = request.headers.get("X-API-Key")
         if api_key:
-            logger.info("Received X-API-Key header: %s, applying override.", api_key)
+            print("[DEBUG] Received X-API-Key header: ", api_key)
             try:
                 with use_api_key(api_key):
                     return await call_next(request)
             except Exception as e:
                 # We log and re-raise to ensure we don't swallow application errors,
                 # but we want to know if the context manager itself failed.
-                logger.error("Error during API key override context propagation: %s", e)
+                print("[DEBUG] Error during API key override context propagation: ", e)
                 raise
         else:
-            logger.info(
-                "No X-API-Key header received, proceeding without override: %s",
+            print(
+                "[DEBUG] No X-API-Key header received, proceeding without override: ",
                 request.headers,
             )
             return await call_next(request)
