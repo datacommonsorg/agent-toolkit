@@ -5,8 +5,10 @@ import sys
 import click
 from click.core import Context, Option, ParameterSource
 from dotenv import find_dotenv, load_dotenv
+from starlette.middleware import Middleware
 
 from .exceptions import APIKeyValidationError, InvalidAPIKeyError
+from .middleware import APIKeyMiddleware
 from .utils import validate_api_key
 from .version import __version__
 
@@ -59,7 +61,10 @@ def _run_api_key_validation(ctx: Context, *, skip_validation: bool) -> None:
         api_key = os.getenv("DC_API_KEY")
         if not api_key:
             raise InvalidAPIKeyError("DC_API_KEY is not set.")
-        validate_api_key(api_key)
+        validation_api_root = os.getenv(
+            "DC_API_KEY_VALIDATION_ROOT", "https://api.datacommons.org"
+        ).rstrip("/")
+        validate_api_key(api_key, validation_api_root)
     except (InvalidAPIKeyError, APIKeyValidationError) as e:
         click.echo(str(e), err=True)
         click.echo(
@@ -80,7 +85,13 @@ def _run_http_server(host: str, port: int) -> None:
     click.echo(f"Server URL: http://{host}:{port}")
     click.echo(f"Streamable HTTP endpoint: http://{host}:{port}/mcp")
     click.echo("Press CTRL+C to stop")
-    mcp.run(host=host, port=port, transport="streamable-http", stateless_http=True)
+    mcp.run(
+        host=host,
+        port=port,
+        transport="streamable-http",
+        stateless_http=True,
+        middleware=[Middleware(APIKeyMiddleware)],
+    )
 
 
 def _run_stdio_server() -> None:

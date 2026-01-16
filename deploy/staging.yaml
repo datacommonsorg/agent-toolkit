@@ -67,7 +67,10 @@ steps:
         --platform=managed \
         --no-allow-unauthenticated \
         --set-env-vars=MCP_VERSION=$(cat _version.txt) \
-        --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
+        --set-env-vars=DC_API_ROOT=https://staging.api.datacommons.org/v2 \
+        --set-env-vars=DC_SEARCH_ROOT=https://staging.datacommons.org \
+        --set-env-vars=DC_API_KEY_VALIDATION_ROOT=https://staging.api.datacommons.org \
+        --set-secrets=DC_API_KEY=dc-staging-api-key-for-mcp:latest \
         --service-account=datacommons-mcp-server@datcom-mixer-staging.iam.gserviceaccount.com \
         --project=datcom-mixer-staging
 

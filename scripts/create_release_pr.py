@@ -52,7 +52,9 @@ def bump_version(current_version: str, bump_type: str) -> str:
     return current_version
 
 
-def run_command(cmd: str, *, capture: bool = True, exit_on_error: bool = True) -> str | int:
+def run_command(
+    cmd: str, *, capture: bool = True, exit_on_error: bool = True
+) -> str | int:
     try:
         if capture:
             return subprocess.check_output(cmd, shell=True).decode().strip()  # noqa: S602

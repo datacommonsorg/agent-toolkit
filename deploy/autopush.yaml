@@ -58,6 +58,9 @@ steps:
         docker push gcr.io/$PROJECT_ID/datacommons-mcp-server:autopush-$(cat _version.txt)
 
   # 4. Deploy to Cloud Run
+  # NOTE: Using prod search root because autopush search root (autopush.datacommons.org) requires a Google login.
+  # The search root will completely go away once we start using the new resolve endpoint.
+  # TODO: Remove this once we start using the new resolve endpoint.
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
     args:
@@ -69,7 +72,10 @@ steps:
         --platform=managed \
         --no-allow-unauthenticated \
         --set-env-vars=MCP_VERSION=$(cat _version.txt) \
-        --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
+        --set-env-vars=DC_API_ROOT=https://autopush.api.datacommons.org/v2 \
+        --set-env-vars=DC_SEARCH_ROOT=https://datacommons.org \
+        --set-env-vars=DC_API_KEY_VALIDATION_ROOT=https://autopush.api.datacommons.org \
+        --set-secrets=DC_API_KEY=dc-autopush-api-key-for-mcp:latest \
         --service-account=datacommons-mcp-server@datcom-mixer-autopush.iam.gserviceaccount.com \
         --project=datcom-mixer-autopush
 
