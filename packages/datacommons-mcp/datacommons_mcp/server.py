@@ -16,8 +16,7 @@ Server module for the DC MCP server.
 """
 
 import logging
-import types
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import TYPE_CHECKING
 
 from fastmcp import FastMCP
 from pydantic import ValidationError
@@ -26,14 +25,6 @@ from starlette.responses import JSONResponse
 
 import datacommons_mcp.settings as settings
 from datacommons_mcp.clients import create_dc_client
-from datacommons_mcp.data_models.charts import (
-    CHART_CONFIG_MAP,
-    DataCommonsChartConfig,
-    HierarchyLocation,
-    MultiPlaceLocation,
-    SinglePlaceLocation,
-    SingleVariableChart,
-)
 from datacommons_mcp.data_models.observations import (
     ObservationDateType,
     ObservationToolResponse,
@@ -171,159 +162,6 @@ async def get_observations(
     )
     # Dump the Pydantic model to a dictionary
     return response.model_dump(exclude_none=True)
-
-
-# TODO(clincoln8): Add to optional visualization toolset
-async def get_datacommons_chart_config(
-    chart_type: str,
-    chart_title: str,
-    variable_dcids: list[str],
-    place_dcids: list[str] | None = None,
-    parent_place_dcid: str | None = None,
-    child_place_type: str | None = None,
-) -> DataCommonsChartConfig:
-    """Constructs and validates a DataCommons chart configuration.
-
-    This unified factory function serves as a robust constructor for creating
-    any type of DataCommons chart configuration from primitive inputs. It uses a
-    dispatch map to select the appropriate Pydantic model based on the provided
-    `chart_type` and validates the inputs against that model's rules.
-
-    **Crucially** use the DCIDs of variables, places and/or child place types
-    returned by other tools as the args to the chart config.
-
-    Valid chart types include:
-     - line: accepts multiple variables and either location specification
-     - bar: accepts multiple variables and either location specification
-     - pie: accepts multiple variables for a single place_dcid
-     - map: accepts a single variable for a parent-child spec
-        - a heat map based on the provided statistical variable
-     - highlight: accepts a single variable and single place_dcid
-        - displays a single statistical value for a given place in a nice format
-     - ranking: accepts multiple variables for a parent-child spec
-        - displays a list of places ranked by the provided statistical variable
-     - gauge: accepts a single variable and a single place_dcid
-        - displays a single value on a scale range from 0 to 100
-
-    The function supports two mutually exclusive methods for specifying location:
-    1. By a specific list of places via `place_dcids`.
-    2. By a parent-child relationship via `parent_place_dcid` and
-        `child_place_type`.
-
-    Prefer supplying a parent-child relationship pair over a long list of dcids
-    where appilicable. If there is an error, it may be worth trying the other
-    location option (ie if there is an error with generating a config for a place-dcid
-    list, try again with a parent-child relationship if it's relevant).
-
-    It handles all validation internally and returns a strongly-typed Pydantic
-    object, ensuring that any downstream consumer receives a valid and complete
-    chart configuration.
-
-    Args:
-        chart_type: The key for the desired chart type (e.g., "bar", "scatter").
-            This determines the required structure and validation rules.
-        chart_title: The title to be displayed on the chart header.
-        variable_dcids: A list of Data Commons Statistical Variable DCIDs.
-            Note: For charts that only accept a single variable, only the first
-            element of this list will be used.
-        place_dcids: An optional list of specific Data Commons Place DCIDs. Use
-            this for charts that operate on one or more enumerated places.
-            Cannot be used with `parent_place_dcid` or `child_place_type`.
-        parent_place_dcid: An optional DCID for a parent geographical entity.
-            Use this for hierarchy-based charts. Must be provided along with
-            `child_place_type`.
-        child_place_type: An optional entity type for child places (e.g.,
-            "County", "City"). Use this for hierarchy-based charts. Must be
-            provided along with `parent_place_dcid`.
-
-    Returns:
-        A validated Pydantic object representing the complete chart
-        configuration. The specific class of the object (e.g., BarChartConfig,
-        ScatterChartConfig) is determined by the `chart_type`.
-
-    Raises:
-        ValueError:
-            - If `chart_type` is not a valid, recognized chart type.
-            - If `variable_dcids` is an empty list.
-            - If no location information is provided at all.
-            - If both `place_dcids` and hierarchy parameters are provided.
-            - If the provided location parameters are incompatible with the
-              requirements of the specified `chart_type` (e.g., providing
-              `place_dcids` for a chart that requires a hierarchy).
-            - If any inputs fail Pydantic's model validation for the target
-              chart configuration.
-    """
-    # Validate chart_type param
-    chart_config_class = CHART_CONFIG_MAP.get(chart_type)
-    if not chart_config_class:
-        raise ValueError(
-            f"Invalid chart_type: '{chart_type}'. Valid types are: {list(CHART_CONFIG_MAP.keys())}"
-        )
-
-    # Validate provided place params
-    if not place_dcids and not (parent_place_dcid and child_place_type):
-        raise ValueError(
-            "Supply either a list of place_dcids or a single parent_dcid-child_place_type pair."
-        )
-    if place_dcids and (parent_place_dcid or child_place_type):
-        raise ValueError(
-            "Provide either 'place_dcids' or a 'parent_dcid'/'child_place_type' pair, but not both."
-        )
-
-    # Validate variable params
-    if not variable_dcids:
-        raise ValueError("At least one variable_dcid is required.")
-
-    # 2. Intelligently construct the location object based on the input
-    #    This part makes some assumptions based on the provided signature.
-    #    For single-place charts, we use the first DCID. For multi-place, we use all.
-    try:
-        location_model = chart_config_class.model_fields["location"].annotation
-        location_obj = None
-
-        # Check if the annotation is a Union (e.g., Union[A, B] or A | B)
-        if get_origin(location_model) in (Union, types.UnionType):
-            # Get the types inside the Union
-            # e.g., (SinglePlaceLocation, MultiPlaceLocation)
-            possible_location_types = get_args(location_model)
-        else:
-            possible_location_types = [location_model]
-
-        # Now, check if our desired types are possible options
-        if MultiPlaceLocation in possible_location_types and place_dcids:
-            # Prioritize MultiPlaceLocation if multiple places are given
-            location_obj = MultiPlaceLocation(place_dcids=place_dcids)
-        elif SinglePlaceLocation in possible_location_types and place_dcids:
-            # Fall back to SinglePlaceLocation if it's an option
-            location_obj = SinglePlaceLocation(place_dcid=place_dcids[0])
-        elif HierarchyLocation in possible_location_types and (
-            parent_place_dcid and child_place_type
-        ):
-            location_obj = HierarchyLocation(
-                parent_place_dcid=parent_place_dcid, child_place_type=child_place_type
-            )
-        else:
-            # The Union doesn't contain a type we can build
-            raise ValueError(
-                f"Chart type '{chart_type}' requires a location type "
-                f"('{location_model.__name__}') that this function cannot build from "
-                "the provided args."
-            )
-
-        if issubclass(chart_config_class, SingleVariableChart):
-            return chart_config_class(
-                header=chart_title,
-                location=location_obj,
-                variable_dcid=variable_dcids[0],
-            )
-
-        return chart_config_class(
-            header=chart_title, location=location_obj, variable_dcids=variable_dcids
-        )
-
-    except ValidationError as e:
-        # Catch Pydantic errors and make them more user-friendly
-        raise ValueError(f"Validation failed for chart_type '{chart_type}': {e}") from e
 
 
 @mcp.tool()
