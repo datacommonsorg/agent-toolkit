@@ -59,20 +59,7 @@ class TestBaseSettings:
                 "/path/to/cache2.json",
             ]
 
-    @pytest.mark.parametrize(
-        ("env_value", "expected"),
-        [("true", True), ("false", False), ("1", True), ("0", False)],
-    )
-    def test_use_search_indicators_endpoint_parsing(self, env_value, expected):
-        """Tests that DC_USE_SEARCH_INDICATORS_ENDPOINT is parsed correctly."""
-        env_vars = {
-            "DC_API_KEY": "test_key",
-            "DC_TYPE": "base",
-            "DC_USE_SEARCH_INDICATORS_ENDPOINT": env_value,
-        }
-        with patch.dict(os.environ, env_vars):
-            settings = get_dc_settings()
-            assert settings.use_search_indicators_endpoint is expected
+
 
     def test_default_dc_type_is_base(self):
         """Tests that DC_TYPE defaults to 'base' when not provided."""
@@ -104,7 +91,7 @@ class TestCustomSettings:
             assert settings.base_index == "medium_ft"
             assert settings.custom_index == "user_all_minilm_mem"
             assert settings.root_topic_dcids is None
-            assert settings.use_search_indicators_endpoint is True  # Default value
+            assert settings.root_topic_dcids is None
 
     def test_loads_with_env_var_overrides(self):
         """Tests that environment variables override defaults for CustomDCSettings."""
@@ -116,7 +103,7 @@ class TestCustomSettings:
             "DC_BASE_INDEX": "custom_base",
             "DC_CUSTOM_INDEX": "custom_custom",
             "DC_ROOT_TOPIC_DCIDS": "topic1, topic2",
-            "DC_USE_SEARCH_INDICATORS_ENDPOINT": "false",
+
         }
         with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
@@ -126,7 +113,7 @@ class TestCustomSettings:
             assert settings.base_index == "custom_base"
             assert settings.custom_index == "custom_custom"
             assert settings.root_topic_dcids == ["topic1", "topic2"]
-            assert settings.use_search_indicators_endpoint is False
+
 
     def test_missing_custom_url_raises_error(self):
         """Tests that a ValueError is raised for custom type without CUSTOM_DC_URL."""

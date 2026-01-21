@@ -47,11 +47,7 @@ class DCSettings(BaseSettings):
         default="", alias="DC_API_KEY", description="API key for Data Commons"
     )
 
-    use_search_indicators_endpoint: bool = Field(
-        default=True,
-        alias="DC_USE_SEARCH_INDICATORS_ENDPOINT",
-        description=("Toggles between search-indicators and search-vector endpoint."),
-    )
+
 
 
 class BaseDCSettings(DCSettings):

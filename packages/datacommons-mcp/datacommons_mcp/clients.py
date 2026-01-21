@@ -69,8 +69,6 @@ class DCClient:
         sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
         _place_like_constraints: list[str] | None = None,
-        *,
-        use_search_indicators_endpoint: bool = True,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -93,7 +91,6 @@ class DCClient:
         # Precompute search indices to validate configuration at instantiation time
         self.search_indices = self._compute_search_indices()
         self.sv_search_base_url = sv_search_base_url
-        self.use_search_indicators_endpoint = use_search_indicators_endpoint
         self.variable_cache = LruCache(128)
 
         if topic_store is None:
@@ -656,60 +653,6 @@ class DCClient:
 
         return list(expanded_variables.values())
 
-    #
-    # Legacy Search Indicators Endpoint (/api/nl/search-vector)
-    #
-    async def search_svs(
-        self, queries: list[str], *, skip_topics: bool = True, max_results: int = 10
-    ) -> dict:
-        results_map = {}
-        skip_topics_param = "&skip_topics=true" if skip_topics else ""
-        endpoint_url = f"{self.sv_search_base_url}/api/nl/search-vector"
-        headers = {"Content-Type": "application/json", **SURFACE_HEADER}
-
-        # Use precomputed indices based on configured search scope
-        indices = self.search_indices
-
-        for query in queries:
-            # Search all indices in a single API call using comma-separated list
-            indices_param = ",".join(indices)
-            api_endpoint = f"{endpoint_url}?idx={indices_param}{skip_topics_param}"
-            payload = {"queries": [query]}
-
-            try:
-                response = requests.post(  # noqa: S113
-                    api_endpoint, data=json.dumps(payload), headers=headers
-                )
-                response.raise_for_status()
-                data = response.json()
-                results = data.get("queryResults", {})
-
-                if (
-                    query in results
-                    and "SV" in results[query]
-                    and "CosineScore" in results[query]
-                ):
-                    sv_list = results[query]["SV"]
-                    score_list = results[query]["CosineScore"]
-
-                    # Return results in API order (no ranking)
-                    all_results = [
-                        {"SV": sv_list[i], "CosineScore": score_list[i]}
-                        for i in range(len(sv_list))
-                    ]
-                    results_map[query] = all_results[
-                        :max_results
-                    ]  # Limit to max_results
-                else:
-                    results_map[query] = []
-
-            except Exception as e:  # noqa: BLE001
-                logger.error(
-                    "An unexpected error occurred for query '%s': %s", query, e
-                )
-                results_map[query] = []
-
-        return results_map
 
     async def _call_search_indicators_temp(
         self, queries: list[str], *, max_results: int = 10
@@ -914,17 +857,11 @@ class DCClient:
         Search for topics and variables using the search-indicators or search-vector endpoint.
         """
         # Always include topics since we need to expand topics to variables.
-        if self.use_search_indicators_endpoint:
-            logger.info("Calling search-indicators endpoint for: '%s'", query)
-            search_results = await self._call_search_indicators_temp(
-                queries=[query],
-                max_results=max_results,
-            )
-        else:
-            logger.info("Calling search-vector endpoint for: '%s'", query)
-            search_results = await self.search_svs(
-                [query], skip_topics=False, max_results=max_results
-            )
+        logger.info("Calling search-indicators endpoint for: '%s'", query)
+        search_results = await self._call_search_indicators_temp(
+            queries=[query],
+            max_results=max_results,
+        )
 
         results = search_results.get(query, [])
 
@@ -1140,7 +1077,6 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         base_index=settings.base_index,
         custom_index=None,
         sv_search_base_url=settings.search_root,
-        use_search_indicators_endpoint=settings.use_search_indicators_endpoint,
         topic_store=topic_store,
     )
 
@@ -1177,7 +1113,6 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         base_index=settings.base_index,
         custom_index=settings.custom_index,
         sv_search_base_url=settings.custom_dc_url,  # Use custom_dc_url as sv_search_base_url
-        use_search_indicators_endpoint=settings.use_search_indicators_endpoint,
         topic_store=topic_store,
         # TODO (@jm-rivera): Remove place-like parameter new search endpoint is live.
         _place_like_constraints=settings.place_like_constraints,
