@@ -17,7 +17,6 @@ Provides classes for managing connections to both base and custom Data Commons i
 """
 
 import asyncio
-import json
 import logging
 import re
 from pathlib import Path
@@ -35,9 +34,6 @@ from datacommons_mcp.data_models.observations import (
 from datacommons_mcp.data_models.search import (
     NodeInfo,
     SearchIndicator,
-    SearchResponse,
-    SearchResult,
-    SearchTask,
     SearchTopic,
     SearchVariable,
 )
@@ -279,7 +275,6 @@ class DCClient:
     # New Search Indicators Endpoint (/api/nl/search-indicators)
     #
 
-
     def _check_topic_exists_recursive(
         self, topic_dcid: str, place_dcids: list[str]
     ) -> bool:
@@ -359,7 +354,6 @@ class DCClient:
                 expanded_variables[indicator.dcid] = indicator
 
         return list(expanded_variables.values())
-
 
     async def _call_search_indicators_temp(
         self, queries: list[str], *, max_results: int = 10

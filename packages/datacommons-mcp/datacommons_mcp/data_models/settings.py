@@ -48,8 +48,6 @@ class DCSettings(BaseSettings):
     )
 
 
-
-
 class BaseDCSettings(DCSettings):
     """Settings for base Data Commons instance."""
 
