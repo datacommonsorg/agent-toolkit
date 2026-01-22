@@ -20,8 +20,8 @@ on:
   workflow_dispatch:
     inputs:
       pr:
-        description: "PR number to run tests for"
-        required: true
+        description: "PR number to run tests for (optional). If left empty, runs on the current branch/commit."
+        required: false
 
 concurrency:
   # When a new run starts (e.g., from a new push), automatically
@@ -29,7 +29,8 @@ concurrency:
   cancel-in-progress: true
 
   # The group key is unique per PR, handling both 'pull_request_target' and 'workflow_dispatch' triggers.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.inputs.pr }}
+  # Falls back to github.ref for manual runs without a PR (e.g. running on main/HEAD).
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.inputs.pr || github.ref }}
 
 jobs:
   agent-evals:
@@ -42,7 +43,7 @@ jobs:
 
     steps:
       - name: Get PR's HEAD SHA for manual run
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr != ''
         id: get_pr_sha
         run: |
           PR_SHA=$(gh pr view ${{ github.event.inputs.pr }} --json headRefOid -q '.headRefOid')
