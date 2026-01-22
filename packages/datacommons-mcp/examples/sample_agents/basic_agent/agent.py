@@ -29,7 +29,7 @@ root_agent = LlmAgent(
     tools=[
         MCPToolset(
             connection_params=StreamableHTTPConnectionParams(
-                url=f"https://api.datacommons.org/mcp",
+                url="https://api.datacommons.org/mcp",
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json, text/event-stream",
