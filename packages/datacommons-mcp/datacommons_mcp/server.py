@@ -425,7 +425,6 @@ async def search_indicators(
 
     **Final Reminder:** Always treat results as *candidates*. You must filter and rank them based on the user's full context.
     """
-    # Call the real search_indicators service
     response: SearchResponse = await search_indicators_service(
         client=dc_client,
         query=query,
