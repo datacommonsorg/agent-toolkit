@@ -494,6 +494,11 @@ test = [
     { name = "pytest-asyncio" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "requests-mock" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "datacommons-client", specifier = ">=2.1.6", index = "https://test.pypi.org/simple/" },
@@ -509,6 +514,9 @@ requires-dist = [
     { name = "uvicorn" },
 ]
 provides-extras = ["test"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "requests-mock", specifier = ">=1.12.1" }]
 
 [[package]]
 name = "diskcache"

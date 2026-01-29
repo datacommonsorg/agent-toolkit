@@ -44,6 +44,11 @@ datacommons-mcp = "datacommons_mcp.cli:cli"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[dependency-groups]
+dev = [
+    "requests-mock>=1.12.1",
+]
+
 [tool.setuptools]
 include-package-data = true
 

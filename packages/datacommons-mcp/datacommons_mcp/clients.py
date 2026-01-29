@@ -65,6 +65,7 @@ class DCClient:
         sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
         _place_like_constraints: list[str] | None = None,
+        use_search_indicators: bool = False,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -97,6 +98,8 @@ class DCClient:
             self._compute_place_like_statvar_store(constraints=_place_like_constraints)
         else:
             self._place_like_statvar_store = {}
+
+        self.use_search_indicators = use_search_indicators
 
     #
     # Initialization & Configuration
@@ -409,6 +412,51 @@ class DCClient:
 
         return results_map
 
+    def _call_fetch_indicators(self, queries: list[str]) -> dict:
+        """
+        Helper method to call the new datacommons-client fetch_indicators method.
+        """
+        results_map = {q: [] for q in queries}
+        if not queries:
+            return results_map
+
+        try:
+            # The resolve endpoint returns a ResolveResponse
+            response = self.dc.resolve.fetch_indicators(queries=queries)
+
+            if response.entities:
+                for entity in response.entities:
+                    query = entity.node
+                    if not query:
+                        continue
+
+                    candidates = entity.candidates or []
+                    results = []
+                    for candidate in candidates:
+                        metadata = candidate.metadata or {}
+                        try:
+                            score = float(metadata.get("score", 0.0))
+                        except (ValueError, TypeError):
+                            logger.warning(
+                                "Invalid score for candidate %s: %s",
+                                candidate.dcid,
+                                metadata.get("score"),
+                            )
+                            score = 0.0
+
+                        sentence = metadata.get("sentence", "")
+                        results.append({
+                            "SV": candidate.dcid,
+                            "CosineScore": score,
+                            "alternate_descriptions": [sentence] if sentence else []
+                        })
+                    results_map[query] = results
+
+        except Exception as e:
+            logger.error(f"Error calling fetch_indicators for queries '{queries}': {e}")
+
+        return results_map
+
     def _transform_search_indicators_to_svs_format(
         self, api_response: dict, *, max_results: int = 10
     ) -> list[dict]:
@@ -558,11 +606,20 @@ class DCClient:
         Search for topics and variables using the search-indicators or search-vector endpoint.
         """
         # Always include topics since we need to expand topics to variables.
-        logger.info("Calling search-indicators endpoint for: '%s'", query)
-        search_results = await self._call_search_indicators_temp(
-            queries=[query],
-            max_results=max_results,
-        )
+        if self.use_search_indicators:
+            logger.info("Calling legacy search-indicators endpoint for: '%s'", query)
+            search_results = await self._call_search_indicators_temp(
+                queries=[query],
+                max_results=max_results,
+            )
+        else:
+            logger.info("Calling client library fetch_indicators for: '%s'", query)
+            # Run the synchronous client method in a thread
+            search_results = await asyncio.to_thread(
+                self._call_fetch_indicators,
+                queries=[query],
+            )
+
 
         results = search_results.get(query, [])
 
@@ -779,6 +836,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
         custom_index=None,
         sv_search_base_url=settings.search_root,
         topic_store=topic_store,
+        use_search_indicators=settings.use_search_indicators,
     )
 
 
@@ -817,4 +875,5 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
         topic_store=topic_store,
         # TODO (@jm-rivera): Remove place-like parameter new search endpoint is live.
         _place_like_constraints=settings.place_like_constraints,
+        use_search_indicators=settings.use_search_indicators,
     )
