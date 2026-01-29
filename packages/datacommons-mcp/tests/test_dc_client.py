@@ -597,9 +597,7 @@ class TestDCClientFetchIndicators:
         assert "dc/variable/Count_Person" in result["variables"]
 
     @pytest.mark.asyncio
-    async def test_fetch_indicators_checks_flag(
-        self, mocked_datacommons_client: Mock
-    ):
+    async def test_fetch_indicators_checks_flag(self, mocked_datacommons_client: Mock):
         """
         Test that _search_vector calls the correct method based on use_search_indicators.
         """

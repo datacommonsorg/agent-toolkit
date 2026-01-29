@@ -65,6 +65,7 @@ class DCClient:
         sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
         _place_like_constraints: list[str] | None = None,
+        *,
         use_search_indicators: bool = False,
     ) -> None:
         """
@@ -445,15 +446,21 @@ class DCClient:
                             score = 0.0
 
                         sentence = metadata.get("sentence", "")
-                        results.append({
-                            "SV": candidate.dcid,
-                            "CosineScore": score,
-                            "alternate_descriptions": [sentence] if sentence else []
-                        })
+                        results.append(
+                            {
+                                "SV": candidate.dcid,
+                                "CosineScore": score,
+                                "alternate_descriptions": [sentence]
+                                if sentence
+                                else [],
+                            }
+                        )
                     results_map[query] = results
 
         except Exception as e:
-            logger.error(f"Error calling fetch_indicators for queries '{queries}': {e}")
+            logger.error(
+                "Error calling fetch_indicators for queries '%s': %s", queries, e
+            )
 
         return results_map
 
@@ -619,7 +626,6 @@ class DCClient:
                 self._call_fetch_indicators,
                 queries=[query],
             )
-
 
         results = search_results.get(query, [])
 
