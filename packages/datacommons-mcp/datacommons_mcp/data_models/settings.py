@@ -47,6 +47,12 @@ class DCSettings(BaseSettings):
         default="", alias="DC_API_KEY", description="API key for Data Commons"
     )
 
+    use_search_indicators: bool = Field(
+        default=False,
+        alias="USE_SEARCH_INDICATORS",
+        description="Whether to use the legacy search-indicators endpoint logic (True) or the new client library logic (False)."
+    )
+
 
 class BaseDCSettings(DCSettings):
     """Settings for base Data Commons instance."""
