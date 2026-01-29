@@ -9,7 +9,7 @@ dependencies = [
     "uvicorn",
     "fastmcp",
     "requests",
-    "datacommons-client>=2.1.5",
+    "datacommons-client>=2.1.6",
     "pydantic>=2.11.7",
     "pydantic-settings",
     "python-dateutil>=2.9.0.post0",
@@ -21,9 +21,21 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+]
+
+[tool.uv.sources]
+datacommons-client = { index = "testpypi" }
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
 
 [project.scripts]
 datacommons-mcp = "datacommons_mcp.cli:cli"
