@@ -415,7 +415,14 @@ class DCClient:
 
     def _call_fetch_indicators(self, queries: list[str]) -> dict:
         """
-        Helper method to call the new datacommons-client fetch_indicators method.
+        Helper method to call the datacommons-client fetch_indicators and transform the response.
+        Returns:
+            dict[str, list[dict]]: A mapping where each key is the requested query and the
+            value is a list of candidate matches. Each candidate dict contains:
+            - 'SV' (str): The identifier (DCID) of the matched entity.
+            - 'CosineScore' (float): The similarity score for the match.
+            - 'alternate_descriptions' (list[str]): A list containing the
+              contextual sentence if available, otherwise an empty list.
         """
         results_map = {q: [] for q in queries}
         if not queries:

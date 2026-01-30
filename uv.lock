@@ -492,10 +492,6 @@ dependencies = [
 test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
-]
-
-[package.dev-dependencies]
-dev = [
     { name = "requests-mock" },
 ]
 
@@ -511,12 +507,10 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "requests" },
+    { name = "requests-mock", marker = "extra == 'test'", specifier = ">=1.12.1" },
     { name = "uvicorn" },
 ]
 provides-extras = ["test"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "requests-mock", specifier = ">=1.12.1" }]
 
 [[package]]
 name = "diskcache"

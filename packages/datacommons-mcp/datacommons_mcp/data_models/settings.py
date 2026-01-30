@@ -49,8 +49,8 @@ class DCSettings(BaseSettings):
 
     use_search_indicators: bool = Field(
         default=False,
-        alias="USE_SEARCH_INDICATORS",
-        description="Whether to use the legacy search-indicators endpoint logic (True) or the new client library logic (False).",
+        alias="DC_USE_SEARCH_INDICATORS",
+        description="Whether to use the legacy search-indicators endpoint (True) or the client library (False) for fetching indicators.",
     )
 
 
