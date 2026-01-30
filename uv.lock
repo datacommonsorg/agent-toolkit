@@ -461,15 +461,15 @@ provides-extras = ["test"]
 [[package]]
 name = "datacommons-client"
 version = "2.1.6"
-source = { registry = "https://test.pypi.org/simple/" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://test-files.pythonhosted.org/packages/36/c6/67776e19a96e9fe282b080e767f40354e3e699ddeff8758ca0c9b1011544/datacommons_client-2.1.6.tar.gz", hash = "sha256:b97171e8e2abd7ee1689be971473769f4ef3e57081a1550469e97e41598fb253", size = 59988, upload-time = "2026-01-28T21:59:56.446Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/c6/67776e19a96e9fe282b080e767f40354e3e699ddeff8758ca0c9b1011544/datacommons_client-2.1.6.tar.gz", hash = "sha256:b97171e8e2abd7ee1689be971473769f4ef3e57081a1550469e97e41598fb253", size = 59988, upload-time = "2026-01-29T21:28:51.619Z" }
 wheels = [
-    { url = "https://test-files.pythonhosted.org/packages/7f/df/ed1a2bf50fcebfce95eeabb316a966b4b6f6f3ba6443f02c17af36737a85/datacommons_client-2.1.6-py3-none-any.whl", hash = "sha256:4e33ffe967730fcf2421489cbad04008e80b335d91c0c022586a904c4183e57b", size = 77401, upload-time = "2026-01-28T21:59:55.015Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/df/ed1a2bf50fcebfce95eeabb316a966b4b6f6f3ba6443f02c17af36737a85/datacommons_client-2.1.6-py3-none-any.whl", hash = "sha256:4e33ffe967730fcf2421489cbad04008e80b335d91c0c022586a904c4183e57b", size = 77401, upload-time = "2026-01-29T21:28:50.141Z" },
 ]
 
 [[package]]
@@ -501,7 +501,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datacommons-client", specifier = ">=2.1.6", index = "https://test.pypi.org/simple/" },
+    { name = "datacommons-client", specifier = ">=2.1.6" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "fastmcp" },
     { name = "pydantic", specifier = ">=2.11.7" },
