@@ -46,7 +46,7 @@ USER mcp
 ENV PORT=8080
 
 # Health check with Accept header and explicit PORT
-HEALTHCHECK CMD curl --fail -H "Accept: application/json" http://localhost:${PORT}/health || exit 1
+HEALTHCHECK CMD curl --fail -H "Accept: application/json" http://localhost:${PORT}/mcp/health || exit 1
 
 # Use sh -c for variable expansion
 CMD ["sh", "-c", "datacommons-mcp serve http --host 0.0.0.0 --port ${PORT}"]
