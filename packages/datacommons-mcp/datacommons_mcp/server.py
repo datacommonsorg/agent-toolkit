@@ -65,7 +65,7 @@ except Exception as e:
 mcp = FastMCP("DC MCP Server", version=__version__)
 
 
-@mcp.custom_route("/health", methods=["GET"])
+@mcp.custom_route("/mcp/health", methods=["GET"])
 async def health_check(request: Request) -> JSONResponse:  # noqa: ARG001 request param required for decorator
     return JSONResponse({"status": "OK", "version": __version__})
 
