@@ -460,16 +460,16 @@ provides-extras = ["test"]
 
 [[package]]
 name = "datacommons-client"
-version = "2.1.5"
+version = "2.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/be/378f623f2e7dd3d06108a940b2916bb6afdc3a132598e23cee5239012725/datacommons_client-2.1.5.tar.gz", hash = "sha256:1cc691778a6d0d251b6565dc20669c9529746e4cae71743e5c4a1030c331b94a", size = 60037, upload-time = "2026-01-12T20:04:47.683Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/c6/67776e19a96e9fe282b080e767f40354e3e699ddeff8758ca0c9b1011544/datacommons_client-2.1.6.tar.gz", hash = "sha256:b97171e8e2abd7ee1689be971473769f4ef3e57081a1550469e97e41598fb253", size = 59988, upload-time = "2026-01-29T21:28:51.619Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/99/fc2814651c64ce2a6e5c2da1dce10d7092852ac5ab23a58092981721f2ae/datacommons_client-2.1.5-py3-none-any.whl", hash = "sha256:d8ebf3cd568ed2a7cdcbdb42fd48fc09c124c2fd3cdbb51ac7f9115721374cc2", size = 77052, upload-time = "2026-01-12T20:04:46.659Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/df/ed1a2bf50fcebfce95eeabb316a966b4b6f6f3ba6443f02c17af36737a85/datacommons_client-2.1.6-py3-none-any.whl", hash = "sha256:4e33ffe967730fcf2421489cbad04008e80b335d91c0c022586a904c4183e57b", size = 77401, upload-time = "2026-01-29T21:28:50.141Z" },
 ]
 
 [[package]]
@@ -488,18 +488,29 @@ dependencies = [
     { name = "uvicorn" },
 ]
 
+[package.optional-dependencies]
+test = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "requests-mock" },
+]
+
 [package.metadata]
 requires-dist = [
-    { name = "datacommons-client", specifier = ">=2.1.5" },
+    { name = "datacommons-client", specifier = ">=2.1.6" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "fastmcp" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.4" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.25.3" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "requests" },
+    { name = "requests-mock", marker = "extra == 'test'", specifier = ">=1.12.1" },
     { name = "uvicorn" },
 ]
+provides-extras = ["test"]
 
 [[package]]
 name = "diskcache"

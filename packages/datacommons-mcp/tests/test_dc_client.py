@@ -218,6 +218,7 @@ class TestDCClientFetchIndicators:
         """Test basic functionality without place filtering."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.use_search_indicators = True
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -287,6 +288,7 @@ class TestDCClientFetchIndicators:
         """Test basic functionality without place filtering."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.use_search_indicators = True
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -350,6 +352,7 @@ class TestDCClientFetchIndicators:
         """Test functionality with place filtering."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.use_search_indicators = True
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -503,6 +506,7 @@ class TestDCClientFetchIndicators:
         """Test that _search_entities filters out topics that don't exist in the topic store."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.use_search_indicators = True
 
         # Mock search_svs to return topics (some valid, some invalid) and variables
         mock_search_results = {
@@ -558,6 +562,7 @@ class TestDCClientFetchIndicators:
         """
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.use_search_indicators = True
 
         # Mock search_svs to return topics and variables
         mock_search_results = {
@@ -592,6 +597,47 @@ class TestDCClientFetchIndicators:
         assert "dc/variable/Count_Person" in result["variables"]
 
     @pytest.mark.asyncio
+    async def test_fetch_indicators_checks_flag(self, mocked_datacommons_client: Mock):
+        """
+        Test that _search_vector calls the correct method based on use_search_indicators.
+        """
+        # Arrange
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+        # Default is False
+        assert client_under_test.use_search_indicators is False
+
+        # Mock _call_fetch_indicators
+        mock_results = {"test query": []}
+        client_under_test._call_fetch_indicators = Mock(return_value=mock_results)
+        client_under_test._call_search_indicators_temp = AsyncMock()
+
+        # Act
+        await client_under_test._search_vector("test query")
+
+        # Assert
+        # Should call _call_fetch_indicators (in a thread, so we check the mock)
+        client_under_test._call_fetch_indicators.assert_called_once_with(
+            queries=["test query"]
+        )
+        # Should NOT call _call_search_indicators_temp
+        client_under_test._call_search_indicators_temp.assert_not_called()
+
+        # Step 2: Set flag to True
+        client_under_test.use_search_indicators = True
+        client_under_test._call_fetch_indicators.reset_mock()
+        client_under_test._call_search_indicators_temp.reset_mock()
+        client_under_test._call_search_indicators_temp.return_value = {}
+
+        # Act
+        await client_under_test._search_vector("test query")
+
+        # Assert
+        # Should call _call_search_indicators_temp
+        client_under_test._call_search_indicators_temp.assert_awaited_once()
+        # Should NOT call _call_fetch_indicators
+        client_under_test._call_fetch_indicators.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_search_entities_with_per_search_limit(
         self, mocked_datacommons_client: Mock
     ):
@@ -599,6 +645,7 @@ class TestDCClientFetchIndicators:
         Test _search_vector with per_search_limit parameter.
         """
         client_under_test = DCClient(dc=mocked_datacommons_client)
+        client_under_test.use_search_indicators = True
 
         # Mock search_svs to return results
         mock_search_results = {
