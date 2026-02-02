@@ -7,7 +7,7 @@ import os
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.tools.mcp_tool.mcp_toolset import (
     MCPToolset,
-    StreamableHTTPConnectionParams
+    StreamableHTTPConnectionParams,
 )
 
 from .instructions import AGENT_INSTRUCTIONS
@@ -29,12 +29,12 @@ root_agent = LlmAgent(
     tools=[
         MCPToolset(
             connection_params=StreamableHTTPConnectionParams(
-                url=f"https://api.datacommons.org/mcp",
+                url="https://api.datacommons.org/mcp",
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json, text/event-stream",
-                    "X-API-Key": DC_API_KEY
-                }
+                    "X-API-Key": DC_API_KEY,
+                },
             )
         )
     ],
