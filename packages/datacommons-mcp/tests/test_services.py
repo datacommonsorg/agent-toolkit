@@ -817,7 +817,6 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_basic(self):
         """Test basic search in browse mode without place filtering."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
         )
@@ -839,7 +838,6 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_with_places(self):
         """Test search in browse mode with place filtering."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
         mock_client.fetch_indicators = AsyncMock(
             return_value={
@@ -894,7 +892,6 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_with_custom_per_search_limit(self):
         """Test search in browse mode with custom per_search_limit parameter."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.fetch_indicators = AsyncMock(
             return_value={
                 "topics": [{"dcid": "topic/health"}],
@@ -922,7 +919,6 @@ class TestSearchIndicators:
     async def test_search_indicators_browse_mode_per_search_limit_validation(self):
         """Test per_search_limit parameter validation in browse mode."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
 
         # Test invalid per_search_limit values
         with pytest.raises(
@@ -952,7 +948,6 @@ class TestSearchIndicators:
     async def test_search_indicators_exclude_topics(self):
         """Test basic search in lookup mode with a single place."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(return_value={"USA": "country/USA"})
         mock_client.fetch_indicators = AsyncMock(
             return_value={
@@ -984,7 +979,6 @@ class TestSearchIndicators:
     async def test_search_indicators_exclude_topics_merge_results(self):
         """Test that results from multiple bilateral searches are properly merged and deduplicated."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={"France": "country/FRA", "Germany": "country/DEU"}
         )
@@ -1035,7 +1029,6 @@ class TestSearchIndicators:
     async def test_search_indicators_exclude_topics_per_search_limit_validation(self):
         """Test per_search_limit parameter when topics are excluded."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
 
         # Test invalid per_search_limit values
         with pytest.raises(
@@ -1083,7 +1076,6 @@ class TestSearchIndicators:
     async def test_search_indicators_exclude_topics_no_places(self):
         """Test that lookup mode works when no places are provided."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.fetch_indicators = AsyncMock(
             return_value={
                 "variables": [{"dcid": "Count_Person"}],
@@ -1118,7 +1110,6 @@ class TestSearchIndicators:
     async def test_search_indicators_places_parameter_behavior(self):
         """Test places parameter behavior across browse and lookup modes."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={
                 "France": "country/FRA",
@@ -1148,7 +1139,6 @@ class TestSearchIndicators:
 
         # Reset mocks for next test
         mock_client.reset_mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(return_value={"France": "country/FRA"})
         mock_client.fetch_indicators = AsyncMock(
             return_value={"topics": [], "variables": [], "lookups": {}}
@@ -1173,7 +1163,6 @@ class TestSearchIndicators:
 
         # Reset mocks for next test
         mock_client.reset_mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={
                 "USA": "country/USA",
@@ -1205,7 +1194,6 @@ class TestSearchIndicators:
     async def test_search_indicators_maybe_bilateral_behavior(self):
         """Test maybe_bilateral parameter behavior across browse and lookup modes."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
@@ -1251,7 +1239,6 @@ class TestSearchIndicators:
 
         # Reset mocks for next test
         mock_client.reset_mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
@@ -1300,7 +1287,6 @@ class TestSearchIndicators:
     async def test_search_indicators_parameter_validation(self):
         """Test parameter validation for new place parameters."""
         mock_client = Mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )
@@ -1319,7 +1305,6 @@ class TestSearchIndicators:
 
         # Test maybe_bilateral=False with places (should work)
         mock_client.reset_mock()
-        mock_client.use_search_indicators_endpoint = False
         mock_client.search_places = AsyncMock(
             return_value={"USA": "country/USA", "France": "country/FRA"}
         )

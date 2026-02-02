@@ -27,7 +27,9 @@ Usage: python3 scripts/create_staging_tag.py
 """
 
 
-def run_command(cmd: str, *, capture: bool = True, exit_on_error: bool = True) -> str | int:
+def run_command(
+    cmd: str, *, capture: bool = True, exit_on_error: bool = True
+) -> str | int:
     try:
         if capture:
             return subprocess.check_output(cmd, shell=True).decode().strip()  # noqa: S602
@@ -45,13 +47,17 @@ def check_preconditions() -> None:
     # 1. Check branch is main
     current_branch = str(run_command("git branch --show-current", capture=True))
     if current_branch != "main":
-        print(f"\033[1;31mError: Script must be run from 'main' branch. Current branch: {current_branch}\033[0m")
+        print(
+            f"\033[1;31mError: Script must be run from 'main' branch. Current branch: {current_branch}\033[0m"
+        )
         sys.exit(1)
 
     # 2. Check for uncommitted changes
     status = str(run_command("git status --porcelain", capture=True))
     if status:
-        print("\033[1;31mError: Working directory is not clean. Please commit or stash changes.\033[0m")
+        print(
+            "\033[1;31mError: Working directory is not clean. Please commit or stash changes.\033[0m"
+        )
         print(status)
         sys.exit(1)
 
@@ -92,8 +98,8 @@ def main() -> None:
             if isinstance(pyproject_content, bytes):
                 pyproject_content = pyproject_content.decode()
             elif isinstance(pyproject_content, int):
-                 print("Error reading file content.")
-                 sys.exit(1)
+                print("Error reading file content.")
+                sys.exit(1)
 
             project_data = tomllib.loads(pyproject_content)
             base_version = project_data["project"]["version"]
@@ -145,7 +151,7 @@ def main() -> None:
 
     print(f"\n\033[1;32mSuccess! Staging build triggered for {tag}.\033[0m")
     print(
-                'View build status at: https://pantheon.corp.google.com/cloud-build/builds;region=global?query=trigger_id="82c43c13-4c16-4527-8110-f4abf72cd9d5"&project=datcom-ci'
+        'View build status at: https://pantheon.corp.google.com/cloud-build/builds;region=global?query=trigger_id="82c43c13-4c16-4527-8110-f4abf72cd9d5"&project=datcom-ci'
     )
 
 

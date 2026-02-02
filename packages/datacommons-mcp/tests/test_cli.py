@@ -110,6 +110,7 @@ def test_serve_http_accepts_http_options(mock_run):
             port=9090,
             transport="streamable-http",
             stateless_http=True,
+            middleware=mock.ANY,
         )
 
 
@@ -146,5 +147,5 @@ def test_cli_loads_dotenv_end_to_end(mock_validate, mock_run):
     result = runner.invoke(cli, ["serve", "http"])
     assert result.exit_code == 0
     # Verify validate_api_key was called with the key from .env
-    mock_validate.assert_called_with("generated-key")
+    mock_validate.assert_called_with("generated-key", "https://api.datacommons.org")
     mock_run.assert_called_once()

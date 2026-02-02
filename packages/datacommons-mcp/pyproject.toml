@@ -1,6 +1,6 @@
 [project]
 name = "datacommons-mcp"
-version = "1.1.4"
+version = "1.1.5"
 description = "Data Commons MCP server."
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -9,7 +9,7 @@ dependencies = [
     "uvicorn",
     "fastmcp",
     "requests",
-    "datacommons-client",
+    "datacommons-client>=2.1.6",
     "pydantic>=2.11.7",
     "pydantic-settings",
     "python-dateutil>=2.9.0.post0",
@@ -25,12 +25,22 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+    "requests-mock>=1.12.1",
+]
+
+
 [project.scripts]
 datacommons-mcp = "datacommons_mcp.cli:cli"
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+
 
 [tool.setuptools]
 include-package-data = true

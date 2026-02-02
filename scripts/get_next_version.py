@@ -33,6 +33,7 @@ Usage: python3 scripts/get_next_version.py --type dev OR python3 scripts/get_nex
 # Add package release path to find the local version
 # Read version from pyproject.toml
 
+
 def get_local_version() -> str:
     pyproject_path = os.path.join(
         os.path.dirname(__file__), "../packages/datacommons-mcp/pyproject.toml"
