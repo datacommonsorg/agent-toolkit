@@ -6,9 +6,8 @@ import os
 
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.tools.mcp_tool.mcp_toolset import (
-    McpToolset,
-    StdioConnectionParams,
-    StdioServerParameters,
+    MCPToolset,
+    StreamableHTTPConnectionParams,
 )
 
 from .instructions import AGENT_INSTRUCTIONS
@@ -28,14 +27,14 @@ root_agent = LlmAgent(
     name="basic_agent",
     instruction=AGENT_INSTRUCTIONS,
     tools=[
-        McpToolset(
-            connection_params=StdioConnectionParams(
-                timeout=10,
-                server_params=StdioServerParameters(
-                    command="uvx",
-                    args=["datacommons-mcp", "serve", "stdio"],
-                    env={"DC_API_KEY": DC_API_KEY},
-                ),
+        MCPToolset(
+            connection_params=StreamableHTTPConnectionParams(
+                url="https://api.datacommons.org/mcp",
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                    "X-API-Key": DC_API_KEY,
+                },
             )
         )
     ],
