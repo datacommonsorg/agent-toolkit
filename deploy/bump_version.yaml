@@ -40,7 +40,6 @@ steps:
         git push origin $$BRANCH_NAME
 
         # Create PR
-        echo $$GH_TOKEN | gh auth login --with-token
         gh pr create \
           --repo "${_GITHUB_ORG}/${_GITHUB_REPO}" \
           --title "chore: bump version to $$NEW_VERSION" \
