@@ -430,7 +430,9 @@ class DCClient:
 
         try:
             # The resolve endpoint returns a ResolveResponse
-            response = self.dc.resolve.fetch_indicators(queries=queries)
+            response = self.dc.resolve.fetch_indicators(
+                queries=queries, target=self.search_scope.value
+            )
 
             if response.entities:
                 for entity in response.entities:

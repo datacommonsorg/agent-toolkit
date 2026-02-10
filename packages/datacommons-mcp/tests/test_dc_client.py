@@ -52,6 +52,7 @@ def mocked_datacommons_client():
         mock_instance = Mock(spec=DataCommonsClient)
         # Manually add the client endpoints which aren't picked up by spec
         mock_instance.observation = Mock()
+        mock_instance.resolve = Mock()
 
         mock_constructor.return_value = mock_instance
         yield mock_instance
@@ -673,6 +674,52 @@ class TestDCClientFetchIndicators:
         assert len(result["variables"]) == 2  # Both variables should be included
         assert "Count_Person" in result["variables"]
         assert "Count_Household" in result["variables"]
+
+    def test_call_fetch_indicators_passes_target_default(
+        self, mocked_datacommons_client
+    ):
+        """Test that _call_fetch_indicators passes the default target scope."""
+        # Arrange
+        client_under_test = DCClient(dc=mocked_datacommons_client)
+
+        # Mock the resolve endpoint
+        mock_response = Mock()
+        mock_response.entities = []
+        mocked_datacommons_client.resolve.fetch_indicators.return_value = mock_response
+
+        # Act
+        client_under_test._call_fetch_indicators(["query"])
+
+        # Assert
+        mocked_datacommons_client.resolve.fetch_indicators.assert_called_once_with(
+            queries=["query"],
+            target=SearchScope.BASE_ONLY.value,
+        )
+
+    def test_call_fetch_indicators_passes_target_custom(
+        self, mocked_datacommons_client
+    ):
+        """Test that _call_fetch_indicators passes the custom target scope."""
+        # Arrange
+        client_under_test = DCClient(
+            dc=mocked_datacommons_client,
+            search_scope=SearchScope.CUSTOM_ONLY,
+            custom_index="test_index",
+        )
+
+        # Mock the resolve endpoint
+        mock_response = Mock()
+        mock_response.entities = []
+        mocked_datacommons_client.resolve.fetch_indicators.return_value = mock_response
+
+        # Act
+        client_under_test._call_fetch_indicators(["query"])
+
+        # Assert
+        mocked_datacommons_client.resolve.fetch_indicators.assert_called_once_with(
+            queries=["query"],
+            target=SearchScope.CUSTOM_ONLY.value,
+        )
 
 
 class TestCreateDCClient:
