@@ -95,8 +95,6 @@ def main() -> None:
         bump_choice = input().strip().lower()
         if bump_choice == "y":
             args.bump_type = prompt_for_bump_type()
-            if args.bump_type == "none":
-                print("Invalid choice, defaulting to none.")
 
     print("Finding next Staging (RC) tag...")
 
