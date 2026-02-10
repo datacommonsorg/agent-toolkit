@@ -54,7 +54,37 @@ PACKAGE_NAME = "datacommons-mcp"
 TEST_PYPI_JSON_URL = f"https://test.pypi.org/pypi/{PACKAGE_NAME}/json"
 
 
-def get_next_version(base_version: str, release_type: str = "rc") -> None:
+
+def bump_version(current_version: str, bump_type: str) -> str:
+    major, minor, patch = map(int, current_version.split("."))
+    if bump_type == "major":
+        return f"{major + 1}.0.0"
+    if bump_type == "minor":
+        return f"{major}.{minor + 1}.0"
+    if bump_type == "patch":
+        return f"{major}.{minor}.{patch + 1}"
+    return current_version
+
+
+def prompt_for_bump_type() -> str:
+    print("Select bump type:")
+    print("1. Patch (x.y.z -> x.y.z+1)")
+    print("2. Minor (x.y.z -> x.y+1.0)")
+    print("3. Major (x.y.z -> x+1.0.0)")
+    choice = input("Enter choice [1-3]: ").strip()
+    if choice == "1":
+        return "patch"
+    if choice == "2":
+        return "minor"
+    if choice == "3":
+        return "major"
+    return "none"
+
+
+def get_next_version(base_version: str, bump_type: str = "none", release_type: str = "rc") -> None:
+    if bump_type and bump_type != "none":
+        base_version = bump_version(base_version, bump_type)
+
     try:
         with urllib.request.urlopen(TEST_PYPI_JSON_URL) as response:  # noqa: S310
             data = json.loads(response.read())
@@ -95,7 +125,13 @@ if __name__ == "__main__":
         "--base-version",
         help="Base version to increment from (defaults to local pyproject.toml version)",
     )
+    parser.add_argument(
+        "--bump-type",
+        choices=["major", "minor", "patch", "none"],
+        default="none",
+        help="Bump type before calculating next version",
+    )
     args = parser.parse_args()
 
     base_version = args.base_version or local_version
-    get_next_version(base_version, args.type)
+    get_next_version(base_version, args.bump_type, args.type)

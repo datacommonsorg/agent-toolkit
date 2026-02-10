@@ -18,6 +18,8 @@ import os
 import subprocess
 import sys
 
+from get_next_version import prompt_for_bump_type
+
 """
 Helper script to automate the creation of staging tags (Release Candidates).
 It calculates the next sequential RC version (e.g., v1.1.3rc2) using get_next_version.py,
@@ -71,6 +73,9 @@ def main() -> None:
         "--commit",
         help="Specific commit hash to tag (defaults to HEAD). If provided, version is read from this commit.",
     )
+    parser.add_argument("--bump-type", choices=["none", "major", "minor", "patch"], help="Bump type",
+        default="none",
+    )
     args = parser.parse_args()
 
     commit_hash = args.commit
@@ -84,6 +89,14 @@ def main() -> None:
     else:
         check_preconditions()
         print("Using current HEAD.")
+
+    if args.bump_type == "none":
+        print("\nDo you want to bump the base version before creating the RC? (y/N) [n]: ", end="")
+        bump_choice = input().strip().lower()
+        if bump_choice == "y":
+            args.bump_type = prompt_for_bump_type()
+            if args.bump_type == "none":
+                print("Invalid choice, defaulting to none.")
 
     print("Finding next Staging (RC) tag...")
 
@@ -112,7 +125,7 @@ def main() -> None:
     # Use the existing helper script to get the tag
     script_path = os.path.join(os.path.dirname(__file__), "get_next_version.py")
     try:
-        cmd = f"python3 {script_path} --type rc {base_version_arg}"
+        cmd = f"python3 {script_path} --type rc {base_version_arg} --bump-type {args.bump_type}"
         raw_tag = run_command(cmd)
 
         # Ensure it starts with v
