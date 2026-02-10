@@ -25,7 +25,7 @@ Helper script to automate the creation of staging tags (Release Candidates).
 It calculates the next sequential RC version (e.g., v1.1.3rc2) using get_next_version.py,
 prompts for confirmation, and pushes the tag to origin to trigger the Staging pipeline.
 
-Usage: python3 scripts/create_staging_tag.py
+Usage: python3 scripts/create_staging_tag.py --bump-type <major|minor|patch|none>
 """
 
 

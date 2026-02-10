@@ -27,7 +27,8 @@ Helper script to determine the next sequential version for 'dev' or 'rc' release
 It queries TestPyPI to find existing versions and strictly increments the suffix number
 (e.g., 1.1.3dev1 -> 1.1.3dev2) to ensure monotonic versioning for automated pipelines.
 
-Usage: python3 scripts/get_next_version.py --type dev OR python3 scripts/get_next_version.py --type rc
+Usage:  python3 scripts/get_next_version.py --type dev --bump-type <major|minor|patch|none>
+        python3 scripts/get_next_version.py --type rc --bump-type <major|minor|patch|none>
 """
 
 # Add package release path to find the local version

@@ -18,7 +18,7 @@
 Script to create a version bump PR via Cloud Build.
 
 Usage:
-    python scripts/create_release_pr.py --project datcom-ci --type <major|minor|patch>
+    python scripts/create_release_pr.py --project datcom-ci --bump-type <major|minor|patch>
 """
 
 import argparse
