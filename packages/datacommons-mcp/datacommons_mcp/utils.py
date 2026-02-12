@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.resources
 import logging
+from pathlib import Path
 
 import requests
 from datacommons_client.models.observation import Observation
@@ -89,3 +91,65 @@ def filter_by_date(
         filtered_list.append(obs)
 
     return filtered_list
+
+
+def read_external_content(base_path: str, filename: str) -> str | None:
+    """Reads content from an external location (currently only local paths).
+
+    Args:
+        base_path: The base directory to look in.
+        filename: The name of the file to read (relative to base_path). Can include
+            subdirectories (e.g. "tools/search_indicators.md").
+
+    Returns:
+        The content of the file as a string, or None if the file does not exist
+        or cannot be read.
+
+    Example:
+        >>> content = read_external_content("/path/to/instructions", "server.md")
+    """
+    # TODO: Add support for GCS if needed. This is useful for Custom DCs deployed in the cloud.
+    try:
+        path = Path(base_path) / filename
+        if path.exists() and path.is_file():
+            return path.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.warning(
+            "Failed to read external instruction %s from %s: %s", filename, base_path, e
+        )
+    return None
+
+
+def read_package_content(package: str, filename: str) -> str:
+    """Reads content from the package resources.
+
+    Args:
+        package: The python package to read from (e.g. "datacommons_mcp.instructions").
+        filename: The name of the resource to read. Can include subdirectories
+            (e.g. "tools/search_indicators.md").
+
+    Returns:
+        The content of the resource as a string, or an empty string if not found.
+
+    Example:
+        >>> content = read_package_content("datacommons_mcp.instructions", "server.md")
+    """
+    try:
+        # Handle potential subdirectories in filename (e.g. tools/foo.md)
+        parts = filename.split("/")
+        # Start at instructions package
+        resource = importlib.resources.files(package)
+
+        # Traverse down the path
+        for part in parts:
+            resource = resource.joinpath(part)
+
+        if resource.is_file():
+            return resource.read_text(encoding="utf-8")
+        else:
+            logger.warning("Instruction resource %s not found in package", filename)
+            return ""
+
+    except Exception as e:
+        logger.warning("Failed to load instruction %s: %s", filename, e)
+        return ""
