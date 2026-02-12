@@ -53,6 +53,12 @@ class DCSettings(BaseSettings):
         description="Whether to use the legacy search-indicators endpoint (True) or the client library (False) for fetching indicators.",
     )
 
+    instructions_dir: str | None = Field(
+        default=None,
+        alias="DC_INSTRUCTIONS_DIR",
+        description="Directory containing custom instruction files (markdown overrides)",
+    )
+
 
 class BaseDCSettings(DCSettings):
     """Settings for base Data Commons instance."""
