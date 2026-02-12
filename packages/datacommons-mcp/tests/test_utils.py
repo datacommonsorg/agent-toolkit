@@ -14,12 +14,15 @@
 
 import pytest
 import requests
+from unittest.mock import MagicMock, mock_open, patch
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 from datacommons_mcp.utils import (
     VALIDATION_API_PATH,
     filter_by_date,
+    read_external_content,
+    read_package_content,
     validate_api_key,
 )
 
@@ -79,3 +82,28 @@ class TestValidateAPIKey:
         )
         with pytest.raises(APIKeyValidationError):
             validate_api_key("any_key", TEST_ROOT)
+
+
+class TestReadContent:
+    def test_read_external_content_success(self, tmp_path, create_test_file):
+        create_test_file("test.md", "content")
+        assert read_external_content(str(tmp_path), "test.md") == "content"
+
+    def test_read_external_content_subdir(self, tmp_path, create_test_file):
+        create_test_file("subdir/test.md", "content")
+        # Filename includes subdir relative to base
+        assert read_external_content(str(tmp_path), "subdir/test.md") == "content"
+
+    def test_read_external_content_missing(self, tmp_path):
+        assert read_external_content(str(tmp_path), "missing.md") is None
+
+
+    def test_read_package_content_success(self):
+        # Read actual content from the package
+        content = read_package_content("datacommons_mcp.instructions", "server.md")
+        assert "Data Commons" in content
+
+    def test_read_package_content_missing(self):
+        # Read a file that definitely doesn't exist in the package
+        content = read_package_content("datacommons_mcp.instructions", "non_existent_file.md")
+        assert content == ""

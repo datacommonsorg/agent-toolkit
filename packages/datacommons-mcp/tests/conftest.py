@@ -38,3 +38,19 @@ def clean_env(tmp_path, monkeypatch):
     # Clear environment variables
     with patch.dict(os.environ, {}, clear=True):
         yield
+
+
+@pytest.fixture
+def create_test_file(tmp_path):
+    """
+    Fixture that returns a helper function to create files in tmp_path.
+    Usage: create_test_file("path/to/file.txt", "content")
+    """
+
+    def _create(filename, content):
+        path = tmp_path / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    return _create
