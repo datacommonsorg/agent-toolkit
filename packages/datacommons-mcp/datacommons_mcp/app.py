@@ -15,6 +15,7 @@
 Core application module for the DC MCP server.
 """
 
+import json
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -44,9 +45,11 @@ class DCApp:
         # Load settings
         try:
             self.settings = settings.get_dc_settings()
-            logger.info(
-                "Loaded DC settings:\n%s", self.settings.model_dump_json(indent=2)
+            settings_dict = self.settings.model_dump()
+            settings_dict["api_key"] = (
+                "<SET>" if settings_dict.get("api_key") else "<NOT_SET>"
             )
+            logger.info("Loaded DC settings:\n%s", json.dumps(settings_dict, indent=2))
         except ValidationError as e:
             logger.error("Settings error: %s", e)
             raise

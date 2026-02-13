@@ -32,11 +32,12 @@ logger = logging.getLogger(__name__)
 mcp = app.mcp
 
 
+# Instruction file paths
 @mcp.custom_route("/mcp/health", methods=["GET"])
 async def health_check(request: Request) -> JSONResponse:  # noqa: ARG001 request param required for decorator
     return JSONResponse({"status": "OK", "version": __version__})
 
 
 # Register tools
-app.register_tool(tools.get_observations, "tools/get_observations.md")
-app.register_tool(tools.search_indicators, "tools/search_indicators.md")
+app.register_tool(tools.get_observations, tools.GET_OBSERVATIONS_INSTRUCTION_FILE)
+app.register_tool(tools.search_indicators, tools.SEARCH_INDICATORS_INSTRUCTION_FILE)

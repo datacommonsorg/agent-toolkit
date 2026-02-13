@@ -231,6 +231,7 @@ Returns a dictionary containing candidate indicators.
   },
   "status": "SUCCESS"
 }
+```
 
 ### How to Process the Response
 

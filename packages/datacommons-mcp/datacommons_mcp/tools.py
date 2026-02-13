@@ -35,6 +35,11 @@ if TYPE_CHECKING:
     )
 
 
+# Instruction file paths
+GET_OBSERVATIONS_INSTRUCTION_FILE = "tools/get_observations.md"
+SEARCH_INDICATORS_INSTRUCTION_FILE = "tools/search_indicators.md"
+
+
 async def get_observations(
     variable_dcid: str,
     place_dcid: str,
