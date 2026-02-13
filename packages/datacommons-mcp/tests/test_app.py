@@ -18,14 +18,16 @@ Unit tests for the DCApp class.
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from datacommons_mcp.app import DCApp
 
 
 @pytest.fixture
 def mock_settings():
+    from datacommons_mcp.data_models.settings import BaseDCSettings
+
     with patch("datacommons_mcp.app.settings.get_dc_settings") as mock:
-        mock.return_value = MagicMock(instructions_dir=None, api_key="test-key")
+        # Return a real BaseDCSettings object
+        mock.return_value = BaseDCSettings(api_key="test-key")
         yield mock
 
 
@@ -44,7 +46,7 @@ def mock_fastmcp():
         yield mock
 
 
-def test_app_initialization_default(mock_settings, mock_client, mock_fastmcp):
+def test_app_initialization_default(mock_settings, mock_fastmcp):  # noqa: ARG001
     """Test that DCApp initializes with default instructions."""
     _ = DCApp()
 
@@ -56,7 +58,7 @@ def test_app_initialization_default(mock_settings, mock_client, mock_fastmcp):
 
 
 def test_app_initialization_override(
-    mock_settings, mock_client, mock_fastmcp, tmp_path, create_test_file
+    mock_settings, mock_fastmcp, tmp_path, create_test_file
 ):
     """Test that DCApp loads instructions from DC_INSTRUCTIONS_DIR."""
     # Create custom instructions
@@ -74,9 +76,7 @@ def test_app_initialization_override(
     assert instructions == "Custom Server Instructions"
 
 
-def test_load_instruction_tool_override(
-    mock_settings, mock_client, mock_fastmcp, tmp_path, create_test_file
-):
+def test_load_instruction_tool_override(mock_settings, tmp_path, create_test_file):
     """Test loading tool instructions with override."""
     # Create custom instructions
     custom_dir = tmp_path / "instructions"
@@ -90,7 +90,7 @@ def test_load_instruction_tool_override(
     assert content == "Custom Tool Instructions"
 
 
-def test_load_instruction_fallback(mock_settings, mock_client, mock_fastmcp, tmp_path):
+def test_load_instruction_fallback(mock_settings, tmp_path):
     """Test that override falls back to default if file likely doesn't exist."""
     # Create custom dir but empty
     custom_dir = tmp_path / "instructions"
@@ -100,15 +100,13 @@ def test_load_instruction_fallback(mock_settings, mock_client, mock_fastmcp, tmp
     mock_settings.return_value.instructions_dir = str(custom_dir)
 
     app = DCApp()
-    
+
     # Should fall back to default package resource (server.md exists in package)
     content = app._load_instruction("server.md")
     assert "Data Commons" in content
 
 
-def test_register_tool(
-    mock_settings, mock_client, mock_fastmcp, tmp_path, create_test_file
-):
+def test_register_tool(mock_settings, mock_fastmcp, tmp_path, create_test_file):
     """Test tool registration with instruction loading."""
     # Create custom instructions
     create_test_file("instructions/tools/sample.md", "Sample Tool Description")
@@ -124,7 +122,7 @@ def test_register_tool(
 
     # Verify add_tool was called
     mock_mcp_instance.add_tool.assert_called_once()
-    
+
     # Verify the description was loaded correctly
     tool_arg = mock_mcp_instance.add_tool.call_args[0][0]
     assert tool_arg.description == "Sample Tool Description"

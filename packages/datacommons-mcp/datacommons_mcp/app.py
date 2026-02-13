@@ -36,8 +36,6 @@ DEFAULT_INSTRUCTIONS_PACKAGE = "datacommons_mcp.instructions"
 SERVER_INSTRUCTION_FILE = "server.md"
 
 
-
-
 class DCApp:
     """Core application wrapper for Data Commons MCP."""
 
@@ -95,17 +93,20 @@ class DCApp:
         # Fallback to package resources
         return read_package_content(DEFAULT_INSTRUCTIONS_PACKAGE, filename)
 
-
     def register_tool(self, func: Callable[..., Any], instruction_file: str) -> None:
         """Register a tool with instructions loaded from a file.
-        
+
         Args:
             func: The tool function to register.
             instruction_file: Path to instruction file relative to instructions dir.
         """
         description = self._load_instruction(instruction_file)
         if not description:
-             logger.warning("No description found for tool %s from file %s", func.__name__, instruction_file)
+            logger.warning(
+                "No description found for tool %s from file %s",
+                func.__name__,
+                instruction_file,
+            )
 
         # Create tool from function and add description
         tool = Tool.from_function(func, description=description)

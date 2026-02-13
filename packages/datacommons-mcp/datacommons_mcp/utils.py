@@ -108,7 +108,7 @@ def read_external_content(base_path: str, filename: str) -> str | None:
     Example:
         >>> content = read_external_content("/path/to/instructions", "server.md")
     """
-    # TODO: Add support for GCS if needed. This is useful for Custom DCs deployed in the cloud.
+    # TODO(keyurs): Add support for GCS if needed. This is useful for Custom DCs deployed in the cloud.
     try:
         path = Path(base_path) / filename
         if path.exists() and path.is_file():
@@ -146,9 +146,8 @@ def read_package_content(package: str, filename: str) -> str:
 
         if resource.is_file():
             return resource.read_text(encoding="utf-8")
-        else:
-            logger.warning("Instruction resource %s not found in package", filename)
-            return ""
+        logger.warning("Instruction resource %s not found in package", filename)
+        return ""
 
     except Exception as e:
         logger.warning("Failed to load instruction %s: %s", filename, e)

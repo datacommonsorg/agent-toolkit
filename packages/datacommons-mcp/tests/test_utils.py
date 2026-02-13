@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import pytest
 import requests
-from unittest.mock import MagicMock, mock_open, patch
 from datacommons_client.models.observation import Observation
 from datacommons_mcp.data_models.observations import DateRange
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
@@ -97,7 +97,6 @@ class TestReadContent:
     def test_read_external_content_missing(self, tmp_path):
         assert read_external_content(str(tmp_path), "missing.md") is None
 
-
     def test_read_package_content_success(self):
         # Read actual content from the package
         content = read_package_content("datacommons_mcp.instructions", "server.md")
@@ -105,5 +104,7 @@ class TestReadContent:
 
     def test_read_package_content_missing(self):
         # Read a file that definitely doesn't exist in the package
-        content = read_package_content("datacommons_mcp.instructions", "non_existent_file.md")
+        content = read_package_content(
+            "datacommons_mcp.instructions", "non_existent_file.md"
+        )
         assert content == ""

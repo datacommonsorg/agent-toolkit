@@ -17,11 +17,9 @@ Server module for the DC MCP server.
 
 import logging
 
-from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-import datacommons_mcp.settings as settings
 import datacommons_mcp.tools as tools
 from datacommons_mcp.app import app
 from datacommons_mcp.version import __version__
