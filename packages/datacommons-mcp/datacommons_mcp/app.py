@@ -45,7 +45,7 @@ class DCApp:
         # Load settings
         try:
             self.settings = settings.get_dc_settings()
-            settings_dict = self.settings.model_dump()
+            settings_dict = self.settings.model_dump(mode="json")
             settings_dict["api_key"] = (
                 "<SET>" if settings_dict.get("api_key") else "<NOT_SET>"
             )

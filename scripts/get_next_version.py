@@ -55,7 +55,6 @@ PACKAGE_NAME = "datacommons-mcp"
 TEST_PYPI_JSON_URL = f"https://test.pypi.org/pypi/{PACKAGE_NAME}/json"
 
 
-
 def bump_version(current_version: str, bump_type: str) -> str:
     major, minor, patch = map(int, current_version.split("."))
     if bump_type == "major":
@@ -82,7 +81,9 @@ def prompt_for_bump_type() -> str:
     return "none"
 
 
-def get_next_version(base_version: str, bump_type: str = "none", release_type: str = "rc") -> None:
+def get_next_version(
+    base_version: str, bump_type: str = "none", release_type: str = "rc"
+) -> None:
     if bump_type and bump_type != "none":
         base_version = bump_version(base_version, bump_type)
 
