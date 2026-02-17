@@ -13,12 +13,16 @@
 # limitations under the License.
 """
 Unit tests for the DCApp class.
+
+NOTE: We import DCApp locally within each test function intentionally.
+Importing DCApp at the module level would trigger settings initialization
+(and potential .env loading) before the `clean_env` fixture in `conftest.py`
+has a chance to isolate the environment. This ensures hermetic tests.
 """
 
 from unittest.mock import MagicMock, patch
 
 import pytest
-from datacommons_mcp.app import DCApp
 
 
 @pytest.fixture
@@ -48,6 +52,8 @@ def mock_fastmcp():
 
 def test_app_initialization_default(mock_settings, mock_fastmcp):  # noqa: ARG001
     """Test that DCApp initializes with default instructions."""
+    from datacommons_mcp.app import DCApp
+
     _ = DCApp()
 
     # Verify FastMCP was initialized with default instructions
@@ -68,6 +74,8 @@ def test_app_initialization_override(
     # Configure settings to use custom dir
     mock_settings.return_value.instructions_dir = str(custom_dir)
 
+    from datacommons_mcp.app import DCApp
+
     _ = DCApp()
 
     # Verify FastMCP was initialized with custom instructions
@@ -85,6 +93,8 @@ def test_load_instruction_tool_override(mock_settings, tmp_path, create_test_fil
     # Configure settings to use custom dir
     mock_settings.return_value.instructions_dir = str(custom_dir)
 
+    from datacommons_mcp.app import DCApp
+
     app = DCApp()
     content = app._load_instruction("tools/test_tool.md")
     assert content == "Custom Tool Instructions"
@@ -99,6 +109,8 @@ def test_load_instruction_fallback(mock_settings, tmp_path):
     # Configure settings to use custom dir
     mock_settings.return_value.instructions_dir = str(custom_dir)
 
+    from datacommons_mcp.app import DCApp
+
     app = DCApp()
 
     # Should fall back to default package resource (server.md exists in package)
@@ -111,6 +123,8 @@ def test_register_tool(mock_settings, mock_fastmcp, tmp_path, create_test_file):
     # Create custom instructions
     create_test_file("instructions/tools/sample.md", "Sample Tool Description")
     mock_settings.return_value.instructions_dir = str(tmp_path / "instructions")
+
+    from datacommons_mcp.app import DCApp
 
     app = DCApp()
     mock_mcp_instance = mock_fastmcp.return_value
