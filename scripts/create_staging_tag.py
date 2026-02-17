@@ -73,7 +73,10 @@ def main() -> None:
         "--commit",
         help="Specific commit hash to tag (defaults to HEAD). If provided, version is read from this commit.",
     )
-    parser.add_argument("--bump-type", choices=["none", "major", "minor", "patch"], help="Bump type",
+    parser.add_argument(
+        "--bump-type",
+        choices=["none", "major", "minor", "patch"],
+        help="Bump type",
         default="none",
     )
     args = parser.parse_args()
@@ -91,7 +94,10 @@ def main() -> None:
         print("Using current HEAD.")
 
     if args.bump_type == "none":
-        print("\nDo you want to bump the base version before creating the RC? (y/N) [n]: ", end="")
+        print(
+            "\nDo you want to bump the base version before creating the RC? (y/N) [n]: ",
+            end="",
+        )
         bump_choice = input().strip().lower()
         if bump_choice == "y":
             args.bump_type = prompt_for_bump_type()

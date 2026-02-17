@@ -84,7 +84,9 @@ def main() -> None:
         description="Create a version bump PR via Cloud Build"
     )
     parser.add_argument("--project", default="datcom-ci", help="GCP Project ID")
-    parser.add_argument("--bump-type", choices=["major", "minor", "patch"], help="Bump type")
+    parser.add_argument(
+        "--bump-type", choices=["major", "minor", "patch"], help="Bump type"
+    )
 
     args = parser.parse_args()
 
