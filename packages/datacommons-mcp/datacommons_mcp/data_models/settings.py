@@ -123,7 +123,7 @@ class CustomDCSettings(DCSettings):
     api_base_url: str | None = Field(
         default=None,
         alias="DC_API_BASE_URL",
-        description="API base URL (computed from base_url if not provided)",
+        description="API base URL (computed from CUSTOM_DC_URL if not provided)",
     )
     search_scope: SearchScope = Field(
         default=SearchScope.BASE_AND_CUSTOM,
