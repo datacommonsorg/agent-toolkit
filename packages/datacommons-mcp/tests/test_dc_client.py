@@ -59,7 +59,7 @@ def mocked_datacommons_client():
 
 
 class TestDCClientConstructor:
-    """Tests for the DCClient constructor and search indices computation."""
+    """Tests for the DCClient constructor."""
 
     def test_dc_client_constructor_base_dc(self, mocked_datacommons_client):
         """
@@ -71,9 +71,6 @@ class TestDCClientConstructor:
         # Assert: Verify the client is configured correctly
         assert client_under_test.dc == mocked_datacommons_client
         assert client_under_test.search_scope == SearchScope.BASE_ONLY
-        assert client_under_test.base_index == "base_uae_mem"
-        assert client_under_test.custom_index is None
-        assert client_under_test.search_indices == ["base_uae_mem"]
 
     def test_dc_client_constructor_custom_dc(self, mocked_datacommons_client):
         """
@@ -83,16 +80,11 @@ class TestDCClientConstructor:
         client_under_test = DCClient(
             dc=mocked_datacommons_client,
             search_scope=SearchScope.CUSTOM_ONLY,
-            base_index="medium_ft",
-            custom_index="user_all_minilm_mem",
         )
 
         # Assert: Verify the client is configured correctly
         assert client_under_test.dc == mocked_datacommons_client
         assert client_under_test.search_scope == SearchScope.CUSTOM_ONLY
-        assert client_under_test.base_index == "medium_ft"
-        assert client_under_test.custom_index == "user_all_minilm_mem"
-        assert client_under_test.search_indices == ["user_all_minilm_mem"]
 
     def test_dc_client_constructor_base_and_custom(self, mocked_datacommons_client):
         """
@@ -102,47 +94,10 @@ class TestDCClientConstructor:
         client_under_test = DCClient(
             dc=mocked_datacommons_client,
             search_scope=SearchScope.BASE_AND_CUSTOM,
-            base_index="medium_ft",
-            custom_index="user_all_minilm_mem",
         )
 
         # Assert: Verify the client is configured correctly
         assert client_under_test.search_scope == SearchScope.BASE_AND_CUSTOM
-        assert client_under_test.search_indices == ["user_all_minilm_mem", "medium_ft"]
-
-    def test_compute_search_indices_validation_custom_only_without_index(
-        self, mocked_datacommons_client
-    ):
-        """
-        Test that CUSTOM_ONLY search scope without custom_index raises ValueError.
-        """
-        # Arrange & Act & Assert: Creating client with invalid configuration should raise ValueError
-        with pytest.raises(
-            ValueError,
-            match="Custom index not configured but CUSTOM_ONLY search scope requested",
-        ):
-            DCClient(
-                dc=mocked_datacommons_client,
-                search_scope=SearchScope.CUSTOM_ONLY,
-                custom_index=None,
-            )
-
-    def test_compute_search_indices_validation_custom_only_with_empty_index(
-        self, mocked_datacommons_client
-    ):
-        """
-        Test that CUSTOM_ONLY search scope with empty custom_index raises ValueError.
-        """
-        # Arrange & Act & Assert: Creating client with invalid configuration should raise ValueError
-        with pytest.raises(
-            ValueError,
-            match="Custom index not configured but CUSTOM_ONLY search scope requested",
-        ):
-            DCClient(
-                dc=mocked_datacommons_client,
-                search_scope=SearchScope.CUSTOM_ONLY,
-                custom_index="",
-            )
 
 
 @pytest.mark.asyncio
@@ -219,9 +174,8 @@ class TestDCClientFetchIndicators:
         """Test basic functionality without place filtering."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        client_under_test.use_search_indicators = True
 
-        # Mock search_svs to return topics and variables
+        # Mock search results to return topics and variables
         mock_search_results = {
             "test query": [
                 {"SV": "dc/topic/Health", "CosineScore": 0.9},
@@ -231,8 +185,8 @@ class TestDCClientFetchIndicators:
             ]
         }
 
-        # Mock the _call_search_indicators_temp method
-        client_under_test._call_search_indicators_temp = AsyncMock(
+        # Mock the _call_fetch_indicators method
+        client_under_test._call_fetch_indicators = Mock(
             return_value=mock_search_results
         )
 
@@ -289,9 +243,8 @@ class TestDCClientFetchIndicators:
         """Test basic functionality without place filtering."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        client_under_test.use_search_indicators = True
 
-        # Mock search_svs to return topics and variables
+        # Mock search results to return topics and variables
         mock_search_results = {
             "test query": [
                 {"SV": "dc/variable/Count_Person", "CosineScore": 0.7},
@@ -299,8 +252,8 @@ class TestDCClientFetchIndicators:
             ]
         }
 
-        # Mock the _call_search_indicators_temp method
-        client_under_test._call_search_indicators_temp = AsyncMock(
+        # Mock the _call_fetch_indicators method
+        client_under_test._call_fetch_indicators = Mock(
             return_value=mock_search_results
         )
 
@@ -353,9 +306,8 @@ class TestDCClientFetchIndicators:
         """Test functionality with place filtering."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        client_under_test.use_search_indicators = True
 
-        # Mock search_svs to return topics and variables
+        # Mock search results to return topics and variables
         mock_search_results = {
             "test query": [
                 {"SV": "dc/topic/Health", "CosineScore": 0.9},
@@ -363,8 +315,8 @@ class TestDCClientFetchIndicators:
             ]
         }
 
-        # Mock the _call_search_indicators_temp method
-        client_under_test._call_search_indicators_temp = AsyncMock(
+        # Mock the _call_fetch_indicators method
+        client_under_test._call_fetch_indicators = Mock(
             return_value=mock_search_results
         )
 
@@ -507,9 +459,8 @@ class TestDCClientFetchIndicators:
         """Test that _search_entities filters out topics that don't exist in the topic store."""
         # Arrange: Create client for the old path and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        client_under_test.use_search_indicators = True
 
-        # Mock search_svs to return topics (some valid, some invalid) and variables
+        # Mock search results to return topics (some valid, some invalid) and variables
         mock_search_results = {
             "test query": [
                 {"SV": "dc/topic/Health", "CosineScore": 0.9},  # Valid topic
@@ -522,8 +473,8 @@ class TestDCClientFetchIndicators:
             ]
         }
 
-        # Mock the _call_search_indicators_temp method
-        client_under_test._call_search_indicators_temp = AsyncMock(
+        # Mock the _call_fetch_indicators method
+        client_under_test._call_fetch_indicators = Mock(
             return_value=mock_search_results
         )
 
@@ -563,9 +514,8 @@ class TestDCClientFetchIndicators:
         """
         # Arrange: Create client and mock search results
         client_under_test = DCClient(dc=mocked_datacommons_client)
-        client_under_test.use_search_indicators = True
 
-        # Mock search_svs to return topics and variables
+        # Mock search results to return topics and variables
         mock_search_results = {
             "test query": [
                 {"SV": "dc/topic/Health", "CosineScore": 0.9},
@@ -573,8 +523,8 @@ class TestDCClientFetchIndicators:
             ]
         }
 
-        # Mock the _call_search_indicators_temp method
-        client_under_test._call_search_indicators_temp = AsyncMock(
+        # Mock the _call_fetch_indicators method
+        client_under_test._call_fetch_indicators = Mock(
             return_value=mock_search_results
         )
 
@@ -597,83 +547,7 @@ class TestDCClientFetchIndicators:
         assert len(result["variables"]) == 1
         assert "dc/variable/Count_Person" in result["variables"]
 
-    @pytest.mark.asyncio
-    async def test_fetch_indicators_checks_flag(self, mocked_datacommons_client: Mock):
-        """
-        Test that _search_vector calls the correct method based on use_search_indicators.
-        """
-        # Arrange
-        client_under_test = DCClient(dc=mocked_datacommons_client)
-        # Default is False
-        assert client_under_test.use_search_indicators is False
 
-        # Mock _call_fetch_indicators
-        mock_results = {"test query": []}
-        client_under_test._call_fetch_indicators = Mock(return_value=mock_results)
-        client_under_test._call_search_indicators_temp = AsyncMock()
-
-        # Act
-        await client_under_test._search_vector("test query")
-
-        # Assert
-        # Should call _call_fetch_indicators (in a thread, so we check the mock)
-        client_under_test._call_fetch_indicators.assert_called_once_with(
-            queries=["test query"]
-        )
-        # Should NOT call _call_search_indicators_temp
-        client_under_test._call_search_indicators_temp.assert_not_called()
-
-        # Step 2: Set flag to True
-        client_under_test.use_search_indicators = True
-        client_under_test._call_fetch_indicators.reset_mock()
-        client_under_test._call_search_indicators_temp.reset_mock()
-        client_under_test._call_search_indicators_temp.return_value = {}
-
-        # Act
-        await client_under_test._search_vector("test query")
-
-        # Assert
-        # Should call _call_search_indicators_temp
-        client_under_test._call_search_indicators_temp.assert_awaited_once()
-        # Should NOT call _call_fetch_indicators
-        client_under_test._call_fetch_indicators.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_search_entities_with_per_search_limit(
-        self, mocked_datacommons_client: Mock
-    ):
-        """
-        Test _search_vector with per_search_limit parameter.
-        """
-        client_under_test = DCClient(dc=mocked_datacommons_client)
-        client_under_test.use_search_indicators = True
-
-        # Mock search_svs to return results
-        mock_search_results = {
-            "test query": [
-                {"SV": "Count_Person", "CosineScore": 0.8},
-                {"SV": "Count_Household", "CosineScore": 0.7},
-            ]
-        }
-        client_under_test._call_search_indicators_temp = AsyncMock(
-            return_value=mock_search_results
-        )
-
-        result = await client_under_test._search_vector(  # Corrected method name
-            "test query", include_topics=True, max_results=2
-        )
-
-        # Verify that _call_search_indicators_temp was called with max_results=2
-        client_under_test._call_search_indicators_temp.assert_awaited_once_with(
-            queries=["test query"], max_results=2
-        )
-
-        # Should return variables (no topics since topic_store is None by default)
-        assert "topics" in result
-        assert "variables" in result
-        assert len(result["variables"]) == 2  # Both variables should be included
-        assert "Count_Person" in result["variables"]
-        assert "Count_Household" in result["variables"]
 
     def test_call_fetch_indicators_passes_target_default(
         self, mocked_datacommons_client
@@ -704,7 +578,6 @@ class TestDCClientFetchIndicators:
         client_under_test = DCClient(
             dc=mocked_datacommons_client,
             search_scope=SearchScope.CUSTOM_ONLY,
-            custom_index="test_index",
         )
 
         # Mock the resolve endpoint
@@ -745,8 +618,6 @@ class TestCreateDCClient:
             assert isinstance(result, DCClient)
             assert result.dc == mock_dc_instance
             assert result.search_scope == SearchScope.BASE_ONLY
-            assert result.base_index == "base_uae_mem"
-            assert result.custom_index is None
             mock_dc_client.assert_called_with(
                 api_key="test_api_key",
                 surface_header_value=SURFACE_HEADER_VALUE,
@@ -778,12 +649,6 @@ class TestCreateDCClient:
             assert isinstance(result, DCClient)
             assert result.dc == mock_dc_instance
             assert result.search_scope == SearchScope.BASE_AND_CUSTOM
-            assert result.base_index == "medium_ft"
-            assert result.custom_index == "user_all_minilm_mem"
-            assert (
-                result.sv_search_base_url
-                == "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app"
-            )
             # Should have called DataCommonsClient with computed api_base_url
             expected_api_url = "https://staging-datacommons-web-service-650536812276.northamerica-northeast1.run.app/core/api/v2/"
             mock_dc_client.assert_called_with(
