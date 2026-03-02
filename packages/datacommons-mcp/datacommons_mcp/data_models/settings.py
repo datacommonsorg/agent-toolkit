@@ -47,12 +47,6 @@ class DCSettings(BaseSettings):
         default="", alias="DC_API_KEY", description="API key for Data Commons"
     )
 
-    use_search_indicators: bool = Field(
-        default=False,
-        alias="DC_USE_SEARCH_INDICATORS",
-        description="Whether to use the legacy search-indicators endpoint (True) or the client library (False) for fetching indicators.",
-    )
-
     instructions_dir: str | None = Field(
         default=None,
         alias="DC_INSTRUCTIONS_DIR",
@@ -70,16 +64,6 @@ class BaseDCSettings(DCSettings):
         default="base",
         alias="DC_TYPE",
         description="Type of Data Commons (must be 'base')",
-    )
-    search_root: str = Field(
-        default="https://datacommons.org",
-        alias="DC_SEARCH_ROOT",
-        description="Search base URL for base DC",
-    )
-    base_index: str = Field(
-        default="base_uae_mem",
-        alias="DC_BASE_INDEX",
-        description="Search index for base DC",
     )
     topic_cache_paths: list[str] | None = Field(
         default=None,
@@ -129,16 +113,6 @@ class CustomDCSettings(DCSettings):
         default=SearchScope.BASE_AND_CUSTOM,
         alias="DC_SEARCH_SCOPE",
         description="Search scope for queries",
-    )
-    base_index: str = Field(
-        default="medium_ft",
-        alias="DC_BASE_INDEX",
-        description="Search index for base DC",
-    )
-    custom_index: str = Field(
-        default="user_all_minilm_mem",
-        alias="DC_CUSTOM_INDEX",
-        description="Search index for custom DC",
     )
     root_topic_dcids: list[str] | None = Field(
         default=None,
