@@ -239,10 +239,6 @@ class DCClient:
 
         return places_with_data
 
-    #
-    # New Search Indicators Endpoint (/api/nl/search-indicators)
-    #
-
     def _check_topic_exists_recursive(
         self, topic_dcid: str, place_dcids: list[str]
     ) -> bool:
