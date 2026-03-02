@@ -21,7 +21,6 @@ import logging
 import re
 from pathlib import Path
 
-import requests
 from datacommons_client.client import DataCommonsClient
 
 from datacommons_mcp._constrained_vars import place_statvar_constraint_mapping
@@ -490,10 +489,16 @@ class DCClient:
         }
 
     async def _search_vector(
-        self, query: str, max_results: int = 10, *, include_topics: bool = True
+        self,
+        query: str,
+        # TODO(keyurs): Use max_results once it's supported by the underlying client.
+        # The noqa: ARG002 is to suppress the unused argument error.
+        max_results: int = 10,  # noqa: ARG002
+        *,
+        include_topics: bool = True,
     ) -> dict:
         """
-        Search for topics and variables using the search-indicators or search-vector endpoint.
+        Search for topics and variables using the fetch_indicators library method.
         """
         # Always include topics since we need to expand topics to variables.
         logger.info("Calling client library fetch_indicators for: '%s'", query)

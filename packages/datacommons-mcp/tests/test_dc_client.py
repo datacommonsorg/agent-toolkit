@@ -22,7 +22,7 @@ without making actual network calls.
 """
 
 import os
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from datacommons_client.client import DataCommonsClient
@@ -546,8 +546,6 @@ class TestDCClientFetchIndicators:
         # Verify variables - should include all variables
         assert len(result["variables"]) == 1
         assert "dc/variable/Count_Person" in result["variables"]
-
-
 
     def test_call_fetch_indicators_passes_target_default(
         self, mocked_datacommons_client
