@@ -60,13 +60,8 @@ class DCClient:
         self,
         dc: DataCommonsClient,
         search_scope: SearchScope = SearchScope.BASE_ONLY,
-        base_index: str = "base_uae_mem",
-        custom_index: str | None = None,
-        sv_search_base_url: str = "https://datacommons.org",
         topic_store: TopicStore | None = None,
         _place_like_constraints: list[str] | None = None,
-        *,
-        use_search_indicators: bool = False,
     ) -> None:
         """
         Initialize the DCClient with a DataCommonsClient and search configuration.
@@ -74,9 +69,6 @@ class DCClient:
         Args:
             dc: DataCommonsClient instance
             search_scope: SearchScope enum controlling search behavior
-            base_index: Index to use for base DC searches
-            custom_index: Index to use for custom DC searches (None for base DC)
-            sv_search_base_url: Base URL for SV search endpoint
             topic_store: Optional TopicStore for caching
 
             # TODO(@jm-rivera): Remove this parameter once new endpoint is live.
@@ -84,11 +76,6 @@ class DCClient:
         """
         self.dc = dc
         self.search_scope = search_scope
-        self.base_index = base_index
-        self.custom_index = custom_index
-        # Precompute search indices to validate configuration at instantiation time
-        self.search_indices = self._compute_search_indices()
-        self.sv_search_base_url = sv_search_base_url
         self.variable_cache = LruCache(128)
 
         if topic_store is None:
@@ -100,31 +87,9 @@ class DCClient:
         else:
             self._place_like_statvar_store = {}
 
-        self.use_search_indicators = use_search_indicators
-
     #
     # Initialization & Configuration
     #
-    def _compute_search_indices(self) -> list[str]:
-        """Compute and validate search indices based on the configured search_scope.
-
-        Raises a ValueError immediately for invalid configurations (e.g., CUSTOM_ONLY
-        without a custom_index).
-        """
-        indices: list[str] = []
-
-        if self.search_scope in [SearchScope.CUSTOM_ONLY, SearchScope.BASE_AND_CUSTOM]:
-            if self.custom_index is not None and self.custom_index != "":
-                indices.append(self.custom_index)
-            elif self.search_scope == SearchScope.CUSTOM_ONLY:
-                raise ValueError(
-                    "Custom index not configured but CUSTOM_ONLY search scope requested"
-                )
-
-        if self.search_scope in [SearchScope.BASE_ONLY, SearchScope.BASE_AND_CUSTOM]:
-            indices.append(self.base_index)
-
-        return indices
 
     def _compute_place_like_statvar_store(self, constraints: list[str]) -> None:
         """Compute and cache place-like to statistical variable mappings.
@@ -359,60 +324,6 @@ class DCClient:
 
         return list(expanded_variables.values())
 
-    async def _call_search_indicators_temp(
-        self, queries: list[str], *, max_results: int = 10
-    ) -> dict:
-        """
-        Temporary method that mirrors search_svs but calls the new search-indicators endpoint.
-
-        This method takes the same arguments and returns the same structure as search_svs,
-        but uses the new /api/nl/search-indicators endpoint instead of /api/nl/search-vector.
-
-        This method is temporary to create a minimal delta between the two endpoints to minimize the impact of the change.
-        After the 1.0 release, this method should be removed in favor of a more complete implementation.
-
-        Returns:
-            Dictionary mapping query strings to lists of results with 'SV' and 'CosineScore' keys
-        """
-        results_map = {}
-        endpoint_url = f"{self.sv_search_base_url}/api/nl/search-indicators"
-        headers = {"Content-Type": "application/json", **SURFACE_HEADER}
-
-        # Use precomputed indices based on configured search scope
-        indices = self.search_indices
-
-        for query in queries:
-            # Prepare parameters for the new endpoint
-            params = {
-                "queries": [query],
-                "limit_per_index": max_results,
-                "index": indices,
-            }
-
-            try:
-                response = await asyncio.to_thread(
-                    requests.get,
-                    endpoint_url,
-                    params=params,
-                    headers=headers,  # noqa: S113
-                )
-                response.raise_for_status()
-                api_response = response.json()
-
-                # Transform the response to match search_svs format
-                transformed_results = self._transform_search_indicators_to_svs_format(
-                    api_response, max_results=max_results
-                )
-                results_map[query] = transformed_results
-
-            except Exception as e:  # noqa: BLE001
-                logger.error(
-                    "An unexpected error occurred for query '%s': %s", query, e
-                )
-                results_map[query] = []
-
-        return results_map
-
     def _call_fetch_indicators(self, queries: list[str]) -> dict:
         """
         Helper method to call the datacommons-client fetch_indicators and transform the response.
@@ -472,43 +383,6 @@ class DCClient:
             )
 
         return results_map
-
-    def _transform_search_indicators_to_svs_format(
-        self, api_response: dict, *, max_results: int = 10
-    ) -> list[dict]:
-        """
-        Transform search-indicators response to match search_svs format.
-
-        Returns:
-            List of dictionaries with 'SV' and 'CosineScore' keys
-        """
-        results = []
-        query_results = api_response.get("queryResults", [])
-
-        for query_result in query_results:
-            for index_result in query_result.get("indexResults", []):
-                for indicator in index_result.get("results", []):
-                    dcid = indicator.get("dcid")
-                    if not dcid:
-                        continue
-
-                    # Extract score (default to 0.0 if not present)
-                    score = indicator.get("score", 0.0)
-
-                    results.append(
-                        {
-                            "SV": dcid,
-                            "CosineScore": score,
-                            "description": indicator.get("description"),
-                            "alternate_descriptions": indicator.get(
-                                "search_descriptions"
-                            ),
-                        }
-                    )
-
-        # Sort by score descending, then limit results
-        results.sort(key=lambda x: x["CosineScore"], reverse=True)
-        return results[:max_results]
 
     async def fetch_indicators(
         self,
@@ -622,19 +496,12 @@ class DCClient:
         Search for topics and variables using the search-indicators or search-vector endpoint.
         """
         # Always include topics since we need to expand topics to variables.
-        if self.use_search_indicators:
-            logger.info("Calling legacy search-indicators endpoint for: '%s'", query)
-            search_results = await self._call_search_indicators_temp(
-                queries=[query],
-                max_results=max_results,
-            )
-        else:
-            logger.info("Calling client library fetch_indicators for: '%s'", query)
-            # Run the synchronous client method in a thread
-            search_results = await asyncio.to_thread(
-                self._call_fetch_indicators,
-                queries=[query],
-            )
+        logger.info("Calling client library fetch_indicators for: '%s'", query)
+        # Run the synchronous client method in a thread
+        search_results = await asyncio.to_thread(
+            self._call_fetch_indicators,
+            queries=[query],
+        )
 
         results = search_results.get(query, [])
 
@@ -839,7 +706,6 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     }
     if settings.api_root:
         logger.info("Using API root for base DC: %s", settings.api_root)
-        logger.info("Using search root for base DC: %s", settings.search_root)
         dc_client_args["url"] = settings.api_root
     dc = DataCommonsClient(**dc_client_args)
 
@@ -847,11 +713,7 @@ def _create_base_dc_client(settings: BaseDCSettings) -> DCClient:
     return DCClient(
         dc=dc,
         search_scope=SearchScope.BASE_ONLY,
-        base_index=settings.base_index,
-        custom_index=None,
-        sv_search_base_url=settings.search_root,
         topic_store=topic_store,
-        use_search_indicators=settings.use_search_indicators,
     )
 
 
@@ -884,11 +746,7 @@ def _create_custom_dc_client(settings: CustomDCSettings) -> DCClient:
     return DCClient(
         dc=dc,
         search_scope=search_scope,
-        base_index=settings.base_index,
-        custom_index=settings.custom_index,
-        sv_search_base_url=settings.custom_dc_url,  # Use custom_dc_url as sv_search_base_url
         topic_store=topic_store,
         # TODO (@jm-rivera): Remove place-like parameter new search endpoint is live.
         _place_like_constraints=settings.place_like_constraints,
-        use_search_indicators=settings.use_search_indicators,
     )
