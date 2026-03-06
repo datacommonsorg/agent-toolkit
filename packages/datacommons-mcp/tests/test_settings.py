@@ -35,8 +35,6 @@ class TestBaseSettings:
 
             assert isinstance(settings, BaseDCSettings)
             assert settings.api_key == "test_key"
-            assert settings.search_root == "https://datacommons.org"
-            assert settings.base_index == "base_uae_mem"
             assert settings.topic_cache_paths is None
 
     def test_loads_with_env_var_overrides(self):
@@ -44,16 +42,12 @@ class TestBaseSettings:
         env_vars = {
             "DC_API_KEY": "test_key",
             "DC_TYPE": "base",
-            "DC_SEARCH_ROOT": "https://custom.com",
-            "DC_BASE_INDEX": "custom_index",
             "DC_TOPIC_CACHE_PATHS": "/path/to/cache1.json, /path/to/cache2.json",
         }
         with patch.dict(os.environ, env_vars):
             settings = get_dc_settings()
 
             assert isinstance(settings, BaseDCSettings)
-            assert settings.search_root == "https://custom.com"
-            assert settings.base_index == "custom_index"
             assert settings.topic_cache_paths == [
                 "/path/to/cache1.json",
                 "/path/to/cache2.json",
@@ -86,8 +80,6 @@ class TestCustomSettings:
             assert settings.custom_dc_url == "https://test.com"
             assert settings.api_base_url == "https://test.com/core/api/v2/"
             assert settings.search_scope == SearchScope.BASE_AND_CUSTOM
-            assert settings.base_index == "medium_ft"
-            assert settings.custom_index == "user_all_minilm_mem"
             assert settings.root_topic_dcids is None
 
     def test_loads_with_env_var_overrides(self):
@@ -97,8 +89,6 @@ class TestCustomSettings:
             "DC_TYPE": "custom",
             "CUSTOM_DC_URL": "https://test.com",
             "DC_SEARCH_SCOPE": "custom_only",
-            "DC_BASE_INDEX": "custom_base",
-            "DC_CUSTOM_INDEX": "custom_custom",
             "DC_ROOT_TOPIC_DCIDS": "topic1, topic2",
         }
         with patch.dict(os.environ, env_vars):
@@ -106,8 +96,6 @@ class TestCustomSettings:
 
             assert isinstance(settings, CustomDCSettings)
             assert settings.search_scope == SearchScope.CUSTOM_ONLY
-            assert settings.base_index == "custom_base"
-            assert settings.custom_index == "custom_custom"
             assert settings.root_topic_dcids == ["topic1", "topic2"]
 
     def test_missing_custom_url_raises_error(self):
