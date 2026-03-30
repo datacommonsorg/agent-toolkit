@@ -82,4 +82,4 @@ availableSecrets:
 options:
   logging: CLOUD_LOGGING_ONLY
 
-tags: ['cloudrun::mcp-server-staging']
+tags: ['cloudrun--mcp-server-staging']

@@ -87,4 +87,4 @@ availableSecrets:
 options:
   logging: CLOUD_LOGGING_ONLY
 
-tags: ['cloudrun::mcp-server-autopush']
+tags: ['cloudrun--mcp-server-autopush']
