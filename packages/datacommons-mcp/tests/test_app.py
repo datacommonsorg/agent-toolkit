@@ -96,7 +96,7 @@ def test_load_instruction_tool_override(mock_settings, tmp_path, create_test_fil
     from datacommons_mcp.app import DCApp
 
     app = DCApp()
-    content = app._load_instruction("tools/test_tool.md")
+    content = app._load_instructions("tools/test_tool.md")
     assert content == "Custom Tool Instructions"
 
 
@@ -114,7 +114,7 @@ def test_load_instruction_fallback(mock_settings, tmp_path):
     app = DCApp()
 
     # Should fall back to default package resource (server.md exists in package)
-    content = app._load_instruction("server.md")
+    content = app._load_instructions("server.md")
     assert "Data Commons" in content
 
 

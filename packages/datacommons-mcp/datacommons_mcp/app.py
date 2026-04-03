@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 MCP_SERVER_NAME = "DC MCP Server"
 DEFAULT_INSTRUCTIONS_PACKAGE = "datacommons_mcp.instructions"
-SERVER_INSTRUCTION_FILE = "server.md"
+SERVER_INSTRUCTIONS_FILE = "server.md"
 
 
 class DCApp:
@@ -62,7 +62,7 @@ class DCApp:
             raise
 
         # Load Server Instructions
-        server_instructions = self._load_instruction(SERVER_INSTRUCTION_FILE)
+        server_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)
 
         self.mcp = FastMCP(
             MCP_SERVER_NAME,
@@ -70,7 +70,7 @@ class DCApp:
             instructions=server_instructions,
         )
 
-    def _load_instruction(self, filename: str) -> str:
+    def _load_instructions(self, filename: str) -> str:
         """
         Loads markdown content.
         Priority:
@@ -82,13 +82,13 @@ class DCApp:
             content = read_external_content(self.settings.instructions_dir, filename)
             if content is not None:
                 logger.info(
-                    "Loaded custom instruction for %s from %s",
+                    "Loaded custom instructions for %s from %s",
                     filename,
                     self.settings.instructions_dir,
                 )
                 return content
             logger.debug(
-                "Custom instruction file %s not found in %s, falling back to default.",
+                "Custom instructions file %s not found in %s, falling back to default.",
                 filename,
                 self.settings.instructions_dir,
             )
@@ -101,9 +101,9 @@ class DCApp:
 
         Args:
             func: The tool function to register.
-            instruction_file: Path to instruction file relative to instructions dir.
+            instruction_file: Path to instructions file relative to instructions dir.
         """
-        description = self._load_instruction(instruction_file)
+        description = self._load_instructions(instruction_file)
         if not description:
             logger.warning(
                 "No description found for tool %s from file %s",

@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
 from datacommons_client.models.observation import Observation
@@ -20,6 +22,7 @@ from datacommons_mcp.data_models.observations import DateRange
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 from datacommons_mcp.utils import (
     VALIDATION_API_PATH,
+    _get_gcs_client,
     filter_by_date,
     read_external_content,
     read_package_content,
@@ -85,6 +88,22 @@ class TestValidateAPIKey:
 
 
 class TestReadContent:
+    @pytest.fixture
+    def mock_gcs(self):
+        with (
+            patch("google.cloud.storage.Client") as mock_client_class,
+            patch("google.cloud.storage.Blob.from_string") as mock_from_string,
+        ):
+            _get_gcs_client.cache_clear()
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+
+            mock_blob = MagicMock()
+            mock_from_string.return_value = mock_blob
+            mock_blob.download_as_text.return_value = "gcs content"
+
+            yield mock_client, mock_from_string, mock_blob
+
     def test_read_external_content_success(self, tmp_path, create_test_file):
         create_test_file("test.md", "content")
         assert read_external_content(str(tmp_path), "test.md") == "content"
@@ -96,6 +115,52 @@ class TestReadContent:
 
     def test_read_external_content_missing(self, tmp_path):
         assert read_external_content(str(tmp_path), "missing.md") is None
+
+    def test_read_external_content_gcs_success(self, mock_gcs):
+        mock_client, mock_from_string, mock_blob = mock_gcs
+        mock_blob.download_as_text.return_value = "custom content 1"
+
+        content = read_external_content("gs://my-bucket/path", "test.md")
+
+        assert content == "custom content 1"
+        mock_from_string.assert_called_once_with(
+            "gs://my-bucket/path/test.md", client=mock_client
+        )
+
+    def test_read_external_content_gcs_success_no_prefix(self, mock_gcs):
+        mock_client, mock_from_string, mock_blob = mock_gcs
+        mock_blob.download_as_text.return_value = "custom content 2"
+
+        content = read_external_content("gs://my-bucket", "test.md")
+
+        assert content == "custom content 2"
+        mock_from_string.assert_called_once_with(
+            "gs://my-bucket/test.md", client=mock_client
+        )
+
+    def test_read_external_content_gcs_not_found(self, mock_gcs):
+        from google.cloud.exceptions import NotFound
+
+        mock_client, mock_from_string, mock_blob = mock_gcs
+        mock_blob.download_as_text.side_effect = NotFound("Blob not found")
+
+        content = read_external_content("gs://my-bucket", "test.md")
+
+        assert content is None
+        mock_from_string.assert_called_once_with(
+            "gs://my-bucket/test.md", client=mock_client
+        )
+
+    def test_read_external_content_gcs_failure(self, mock_gcs):
+        mock_client, mock_from_string, mock_blob = mock_gcs
+        mock_blob.download_as_text.side_effect = Exception("GCS error")
+
+        content = read_external_content("gs://my-bucket", "test.md")
+
+        assert content is None
+        mock_from_string.assert_called_once_with(
+            "gs://my-bucket/test.md", client=mock_client
+        )
 
     def test_read_package_content_success(self):
         # Read actual content from the package

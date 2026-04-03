@@ -14,6 +14,7 @@ dependencies = [
     "pydantic-settings",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.1",
+    "google-cloud-storage",
 ]
 urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
 license = {file = "LICENSE"}
