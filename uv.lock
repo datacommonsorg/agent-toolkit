@@ -474,12 +474,13 @@ wheels = [
 
 [[package]]
 name = "datacommons-mcp"
-version = "1.1.7"
+version = "1.2.0"
 source = { editable = "packages/datacommons-mcp" }
 dependencies = [
     { name = "datacommons-client" },
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "google-cloud-storage" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dateutil" },
@@ -500,6 +501,7 @@ requires-dist = [
     { name = "datacommons-client", specifier = ">=2.1.6" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "fastmcp" },
+    { name = "google-cloud-storage" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.4" },

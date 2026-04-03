@@ -14,9 +14,14 @@
 
 import importlib.resources
 import logging
+from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import requests
+
+if TYPE_CHECKING:
+    from google.cloud import storage
 from datacommons_client.models.observation import Observation
 
 from datacommons_mcp.data_models.observations import DateRange, ObservationDate
@@ -93,31 +98,79 @@ def filter_by_date(
     return filtered_list
 
 
-def read_external_content(base_path: str, filename: str) -> str | None:
-    """Reads content from an external location (currently only local paths).
+@cache
+def _get_gcs_client() -> "storage.Client":
+    """Returns a cached GCS client instance."""
+    # Local import to avoid loading the module unless GCS is required
+    from google.cloud import storage
 
-    Args:
-        base_path: The base directory to look in.
-        filename: The name of the file to read (relative to base_path). Can include
-            subdirectories (e.g. "tools/search_indicators.md").
+    return storage.Client()
 
-    Returns:
-        The content of the file as a string, or None if the file does not exist
-        or cannot be read.
 
-    Example:
-        >>> content = read_external_content("/path/to/instructions", "server.md")
-    """
-    # TODO(keyurs): Add support for GCS if needed. This is useful for Custom DCs deployed in the cloud.
+def _read_local_content(path: Path) -> str | None:
+    """Reads content from a local file path."""
     try:
-        path = Path(base_path) / filename
         if path.exists() and path.is_file():
             return path.read_text(encoding="utf-8")
     except Exception as e:
+        logger.warning("Failed to read local file %s: %s", path, e)
+    return None
+
+
+def _read_gcs_content(bucket_name: str, blob_path: str) -> str | None:
+    """Reads content from a GCS blob."""
+    from google.cloud.exceptions import NotFound
+
+    try:
+        client = _get_gcs_client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_path)
+        return blob.download_as_text(encoding="utf-8")
+    except NotFound:
         logger.warning(
-            "Failed to read external instruction %s from %s: %s", filename, base_path, e
+            "GCS blob %s not found in bucket %s. Falling back to default.",
+            blob_path,
+            bucket_name,
+        )
+        return None
+    except Exception as e:
+        logger.warning(
+            "Failed to read GCS blob %s from bucket %s: %s",
+            blob_path,
+            bucket_name,
+            e,
         )
     return None
+
+
+def _parse_gcs_path(base_path: str, filename: str) -> tuple[str, str] | None:
+    """Parses a GCS path and returns (bucket_name, blob_path) if valid."""
+    if not base_path.startswith("gs://"):
+        return None
+    parts = base_path[5:].split("/", 1)
+    bucket_name = parts[0]
+    prefix = parts[1] if len(parts) > 1 else ""
+    blob_path = f"{prefix}/{filename}" if prefix else filename
+    return bucket_name, blob_path
+
+
+def read_external_content(base_path: str, filename: str) -> str | None:
+    """Reads content from an external location (local or GCS).
+
+    Args:
+        base_path: The base directory or GCS path (gs://bucket/prefix) to look in.
+        filename: The name of the file to read (relative to base_path).
+
+    Returns:
+        The content of the file as a string, or None if the file does not exist.
+    """
+    gcs_info = _parse_gcs_path(base_path, filename)
+    if gcs_info:
+        bucket_name, blob_path = gcs_info
+        return _read_gcs_content(bucket_name, blob_path)
+
+    path = Path(base_path) / filename
+    return _read_local_content(path)
 
 
 def read_package_content(package: str, filename: str) -> str:
