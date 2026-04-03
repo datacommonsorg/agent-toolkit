@@ -117,43 +117,29 @@ def _read_local_content(path: Path) -> str | None:
     return None
 
 
-def _read_gcs_content(bucket_name: str, blob_path: str) -> str | None:
-    """Reads content from a GCS blob."""
+def _read_gcs_content(uri: str) -> str | None:
+    """Reads content from a GCS blob URI."""
+    from google.cloud import storage
     from google.cloud.exceptions import NotFound
 
     try:
         client = _get_gcs_client()
-        bucket = client.bucket(bucket_name)
-        blob = bucket.blob(blob_path)
+        # Create the blob object directly from the URI
+        blob = storage.Blob.from_string(uri, client=client)
         return blob.download_as_text(encoding="utf-8")
     except NotFound:
         logger.warning(
-            "GCS blob %s not found in bucket %s. Falling back to default.",
-            blob_path,
-            bucket_name,
+            "GCS blob %s not found. Falling back to default.",
+            uri,
         )
         return None
     except Exception as e:
         logger.warning(
-            "Failed to read GCS blob %s from bucket %s: %s",
-            blob_path,
-            bucket_name,
+            "Failed to read GCS blob %s: %s",
+            uri,
             e,
         )
     return None
-
-
-def _parse_gcs_path(base_path: str, filename: str) -> tuple[str, str] | None:
-    """Parses a GCS path and returns (bucket_name, blob_path) if valid."""
-    if not base_path.startswith("gs://"):
-        return None
-    parts = base_path[5:].split("/", 1)
-    bucket_name = parts[0]
-    if not bucket_name:
-        return None
-    prefix = parts[1].rstrip("/") if len(parts) > 1 else ""
-    blob_path = f"{prefix}/{filename}" if prefix else filename
-    return bucket_name, blob_path
 
 
 def read_external_content(base_path: str, filename: str) -> str | None:
@@ -166,10 +152,9 @@ def read_external_content(base_path: str, filename: str) -> str | None:
     Returns:
         The content of the file as a string, or None if the file does not exist.
     """
-    gcs_info = _parse_gcs_path(base_path, filename)
-    if gcs_info:
-        bucket_name, blob_path = gcs_info
-        return _read_gcs_content(bucket_name, blob_path)
+    if base_path.startswith("gs://"):
+        uri = f"{base_path.rstrip('/')}/{filename}"
+        return _read_gcs_content(uri)
 
     path = Path(base_path) / filename
     return _read_local_content(path)
