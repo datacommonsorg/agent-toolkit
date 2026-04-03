@@ -149,7 +149,9 @@ def _parse_gcs_path(base_path: str, filename: str) -> tuple[str, str] | None:
         return None
     parts = base_path[5:].split("/", 1)
     bucket_name = parts[0]
-    prefix = parts[1] if len(parts) > 1 else ""
+    if not bucket_name:
+        return None
+    prefix = parts[1].rstrip("/") if len(parts) > 1 else ""
     blob_path = f"{prefix}/{filename}" if prefix else filename
     return bucket_name, blob_path
 
