@@ -45,3 +45,12 @@ class APIKeyValidationError(_ErrorStrMixin, Exception):
 
 class InvalidAPIKeyError(APIKeyValidationError):
     """Raised when the API key is determined to be invalid."""
+
+
+class MixerAPIError(Exception):
+    """Raised when the Data Commons Mixer API returns an error."""
+
+    def __init__(self, message: str, status_code: int, body: str | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.body = body

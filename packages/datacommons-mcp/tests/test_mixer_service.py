@@ -17,11 +17,17 @@ Tests for MixerClient, mixer_service, and feature flag routing.
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
-
 from datacommons_mcp.app import app
 from datacommons_mcp.mixer_client import MixerClient
 from datacommons_mcp.mixer_service import get_observations, search_indicators
+from datacommons_mcp.mixer_tools import (
+    get_observations as mixer_tools_get_obs,
+)
+from datacommons_mcp.mixer_tools import (
+    search_indicators as mixer_tools_search_ind,
+)
 from datacommons_mcp.tools import (
     get_observations as tools_get_obs,
 )
@@ -111,52 +117,77 @@ async def test_mixer_service_search_indicators():
 
 
 @pytest.mark.asyncio
-async def test_tools_routing_mixer_enabled():
-    """Verify tool functions delegate to mixer_service when feature flag is enabled."""
-    with patch.object(app.settings, "use_mixer_agent_apis", True):
-        with patch("datacommons_mcp.tools.mixer_get_observations", new_callable=AsyncMock) as mock_mixer_get_obs:
-            mock_mixer_get_obs.return_value = {"mixer_obs": True}
-            result = await tools_get_obs(
-                variable_dcid="Count_Person",
-                place_dcid="geoId/06"
-            )
-            assert result == {"mixer_obs": True}
-            mock_mixer_get_obs.assert_called_once()
+async def test_mixer_tools_execution():
+    """Verify mixer_tools functions delegate to mixer_service."""
+    with patch("datacommons_mcp.mixer_tools.mixer_get_observations", new_callable=AsyncMock) as mock_mixer_get_obs:
+        mock_mixer_get_obs.return_value = {"mixer_obs": True}
+        result = await mixer_tools_get_obs(
+            variable_dcid="Count_Person",
+            place_dcid="geoId/06"
+        )
+        assert result == {"mixer_obs": True}
+        mock_mixer_get_obs.assert_called_once()
 
-        with patch("datacommons_mcp.tools.mixer_search_indicators", new_callable=AsyncMock) as mock_mixer_search_ind:
-            mock_mixer_search_ind.return_value = {"mixer_search": True}
-            result = await tools_search_ind(
-                query="unemployment",
-                places=["California"]
-            )
-            assert result == {"mixer_search": True}
-            mock_mixer_search_ind.assert_called_once()
+    with patch("datacommons_mcp.mixer_tools.mixer_search_indicators", new_callable=AsyncMock) as mock_mixer_search_ind:
+        mock_mixer_search_ind.return_value = {"mixer_search": True}
+        result = await mixer_tools_search_ind(
+            query="unemployment",
+            places=["California"]
+        )
+        assert result == {"mixer_search": True}
+        mock_mixer_search_ind.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_tools_routing_mixer_disabled():
-    """Verify tool functions delegate to old local services when feature flag is disabled."""
-    with patch.object(app.settings, "use_mixer_agent_apis", False):
-        with patch("datacommons_mcp.tools.get_observations_service", new_callable=AsyncMock) as mock_local_get_obs:
-            mock_response = MagicMock()
-            mock_response.model_dump.return_value = {"local_obs": True}
-            mock_local_get_obs.return_value = mock_response
+async def test_local_tools_execution():
+    """Verify tool functions delegate to old local services."""
+    with patch("datacommons_mcp.tools.get_observations_service", new_callable=AsyncMock) as mock_local_get_obs:
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {"local_obs": True}
+        mock_local_get_obs.return_value = mock_response
 
-            result = await tools_get_obs(
-                variable_dcid="Count_Person",
-                place_dcid="geoId/06"
-            )
-            assert result == {"local_obs": True}
-            mock_local_get_obs.assert_called_once()
+        result = await tools_get_obs(
+            variable_dcid="Count_Person",
+            place_dcid="geoId/06"
+        )
+        assert result == {"local_obs": True}
+        mock_local_get_obs.assert_called_once()
 
-        with patch("datacommons_mcp.tools.search_indicators_service", new_callable=AsyncMock) as mock_local_search_ind:
-            mock_response = MagicMock()
-            mock_response.model_dump.return_value = {"local_search": True}
-            mock_local_search_ind.return_value = mock_response
+    with patch("datacommons_mcp.tools.search_indicators_service", new_callable=AsyncMock) as mock_local_search_ind:
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {"local_search": True}
+        mock_local_search_ind.return_value = mock_response
 
-            result = await tools_search_ind(
-                query="unemployment",
-                places=["California"]
-            )
-            assert result == {"local_search": True}
-            mock_local_search_ind.assert_called_once()
+        result = await tools_search_ind(
+            query="unemployment",
+            places=["California"]
+        )
+        assert result == {"local_search": True}
+        mock_local_search_ind.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_mixer_client_post_error():
+    """Verify that MixerClient.post raises MixerAPIError and extracts details on failure."""
+    client = MixerClient(api_root="https://api.datacommons.org/v2")
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.text = '{"message": "Internal error"}'
+    mock_response.json.return_value = {"message": "Internal error"}
+
+    # Helper function to raise the error
+    def raise_status_error():
+        raise httpx.HTTPStatusError("Internal Server Error", request=MagicMock(), response=mock_response)
+    mock_response.raise_for_status = raise_status_error
+
+    with patch.object(client.client, "post", return_value=mock_response):
+        from datacommons_mcp.exceptions import MixerAPIError
+        with pytest.raises(MixerAPIError) as exc_info:
+            await client.post("agent/test", {})
+        assert exc_info.value.status_code == 500
+        err_msg = str(exc_info.value)
+        assert "agent/test" in err_msg
+        assert "500" in err_msg
+        assert exc_info.value.body == '{"message": "Internal error"}'
+
+    await client.close()

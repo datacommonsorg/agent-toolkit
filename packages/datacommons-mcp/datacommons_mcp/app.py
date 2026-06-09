@@ -17,7 +17,7 @@ Core application module for the DC MCP server.
 
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from fastmcp import FastMCP
@@ -77,7 +77,7 @@ class DCApp:
         from contextlib import asynccontextmanager
 
         @asynccontextmanager
-        async def lifespan(server: FastMCP):
+        async def lifespan(_server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             yield {}
             if self.mixer_client:
                 logger.info("Closing Mixer client...")

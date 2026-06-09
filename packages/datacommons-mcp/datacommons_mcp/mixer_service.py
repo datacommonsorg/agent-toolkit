@@ -18,6 +18,16 @@ Service layer for calling Mixer-side agent APIs.
 from typing import Any
 
 from datacommons_mcp.app import app
+from datacommons_mcp.mixer_client import MixerClient
+
+
+def _get_mixer_client() -> MixerClient:
+    """Helper to get the initialized MixerClient, raising RuntimeError if not set."""
+    if app.mixer_client is None:
+        raise RuntimeError(
+            "Mixer client is not initialized. Ensure USE_MIXER_AGENT_APIS is enabled."
+        )
+    return app.mixer_client
 
 
 async def get_observations(
@@ -30,6 +40,7 @@ async def get_observations(
     date_range_end: str | None = None,
 ) -> dict[str, Any]:
     """Fetches observations via the Mixer-side agent/get_observations endpoint."""
+    client = _get_mixer_client()
     payload = {
         "variable_dcid": variable_dcid,
         "place_dcid": place_dcid,
@@ -39,7 +50,7 @@ async def get_observations(
         "date_range_start": date_range_start,
         "date_range_end": date_range_end,
     }
-    return await app.mixer_client.post("agent/get_observations", payload)
+    return await client.post("agent/get_observations", payload)
 
 
 async def search_indicators(
@@ -47,9 +58,11 @@ async def search_indicators(
     places: list[str] | None = None,
     parent_place: str | None = None,
     per_search_limit: int = 10,
+    *,
     include_topics: bool = True,
 ) -> dict[str, Any]:
     """Searches for indicators via the Mixer-side agent/search_indicators endpoint."""
+    client = _get_mixer_client()
     payload = {
         "query": query,
         "places": places or [],
@@ -57,4 +70,4 @@ async def search_indicators(
         "per_search_limit": per_search_limit,
         "include_topics": include_topics,
     }
-    return await app.mixer_client.post("agent/search_indicators", payload)
+    return await client.post("agent/search_indicators", payload)
