@@ -100,7 +100,7 @@ The following rules apply to **both** the `places` and `parent_place` parameters
     - **Example 3: Administrative Level Sampling**
       - **Goal:** Check data availability for different administrative levels (e.g., "population of US cities" vs "population of US states").
       - **Call:**
-        * **For Cities:** `query="population"`, `parent_place="Middle Earth"`, `places=["New York City, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA", "Phoenix, USA"]`
+        * **For Cities:** `query="population"`, `parent_place="USA"`, `places=["New York City, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA", "Phoenix, USA"]`
         * **For States:** `query="population"`, `parent_place="USA"`, `places=["California, USA", "Texas, USA", "Florida, USA", "New York State, USA", "Pennsylvania, USA"]`
       - **Logic:** Specify the exact administrative level you want to sample to avoid confusion between city and state data.
 
