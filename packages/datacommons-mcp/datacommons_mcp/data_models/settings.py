@@ -35,8 +35,8 @@ class DCSettingsSelector(BaseSettings):
     )
 
 
-class DCSettings(BaseSettings):
-    """Settings for base Data Commons instance."""
+class DCSettingsBase(BaseSettings):
+    """Base settings class containing shared configurations."""
 
     model_config = _MODEL_CONFIG
 
@@ -53,8 +53,20 @@ class DCSettings(BaseSettings):
         description="Directory containing custom instruction files (markdown overrides)",
     )
 
+    use_mixer_agent_apis: bool = Field(
+        default=False,
+        alias="USE_MIXER_AGENT_APIS",
+        description="Use the new Mixer-side agent endpoints instead of local processing",
+    )
 
-class BaseDCSettings(DCSettings):
+    api_root: str | None = Field(
+        default=None,
+        alias="DC_API_ROOT",
+        description="API root for Data Commons",
+    )
+
+
+class BaseDCSettings(DCSettingsBase):
     """Settings for base Data Commons instance."""
 
     def __init__(self, **kwargs: dict[str, Any]) -> None:
@@ -76,11 +88,7 @@ class BaseDCSettings(DCSettings):
         alias="DC_BASE_ROOT_TOPIC_DCIDS",
         description="List of root topic DCIDs for base DC",
     )
-    api_root: str | None = Field(
-        default=None,
-        alias="DC_API_ROOT",
-        description="API root for local api instance",
-    )
+
 
     @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
     @classmethod
@@ -88,7 +96,7 @@ class BaseDCSettings(DCSettings):
         return _parse_list_like_parameter(v)
 
 
-class CustomDCSettings(DCSettings):
+class CustomDCSettings(DCSettingsBase):
     """Settings for custom Data Commons instance."""
 
     model_config = _MODEL_CONFIG

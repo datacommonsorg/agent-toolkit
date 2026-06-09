@@ -28,6 +28,10 @@ from datacommons_mcp.services import (
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
+from datacommons_mcp.mixer_service import (
+    get_observations as mixer_get_observations,
+    search_indicators as mixer_search_indicators,
+)
 
 if TYPE_CHECKING:
     from datacommons_mcp.data_models.search import (
@@ -50,6 +54,17 @@ async def get_observations(
     date_range_end: str | None = None,
 ) -> dict:
     """Fetches observations for a statistical variable from Data Commons."""
+    if app.settings.use_mixer_agent_apis:
+        return await mixer_get_observations(
+            variable_dcid=variable_dcid,
+            place_dcid=place_dcid,
+            child_place_type=child_place_type,
+            source_override=source_override,
+            date=date,
+            date_range_start=date_range_start,
+            date_range_end=date_range_end,
+        )
+
     response: ObservationToolResponse = await get_observations_service(
         client=app.client,
         variable_dcid=variable_dcid,
@@ -74,6 +89,15 @@ async def search_indicators(
     maybe_bilateral: bool = False,
 ) -> dict:
     """Searches for indicators (topics and variables) in Data Commons."""
+    if app.settings.use_mixer_agent_apis:
+        return await mixer_search_indicators(
+            query=query,
+            places=places,
+            parent_place=parent_place,
+            per_search_limit=per_search_limit,
+            include_topics=include_topics,
+        )
+
     response: SearchResponse = await search_indicators_service(
         client=app.client,
         query=query,

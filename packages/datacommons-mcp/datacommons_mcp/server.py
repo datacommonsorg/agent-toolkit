@@ -39,5 +39,9 @@ async def health_check(request: Request) -> JSONResponse:  # noqa: ARG001 reques
 
 
 # Register tools
-app.register_tool(tools.get_observations, tools.GET_OBSERVATIONS_INSTRUCTION_FILE)
-app.register_tool(tools.search_indicators, tools.SEARCH_INDICATORS_INSTRUCTION_FILE)
+if app.settings.use_mixer_agent_apis:
+    app.register_tool(tools.get_observations, "tools/mixer/get_observations.md")
+    app.register_tool(tools.search_indicators, "tools/mixer/search_indicators.md")
+else:
+    app.register_tool(tools.get_observations, tools.GET_OBSERVATIONS_INSTRUCTION_FILE)
+    app.register_tool(tools.search_indicators, tools.SEARCH_INDICATORS_INSTRUCTION_FILE)

@@ -26,6 +26,7 @@ from pydantic import ValidationError
 
 from datacommons_mcp import settings
 from datacommons_mcp.clients import create_dc_client
+from datacommons_mcp.mixer_client import MixerClient
 from datacommons_mcp.utils import read_external_content, read_package_content
 from datacommons_mcp.version import __version__
 
@@ -54,20 +55,39 @@ class DCApp:
             logger.error("Settings error: %s", e)
             raise
 
-        # Create client
-        try:
-            self.client = create_dc_client(self.settings)
-        except Exception as e:
-            logger.error("Failed to create DC client: %s", e)
-            raise
+        # Create client only if mixer APIs are NOT enabled (as fallback is not needed)
+        self.client = None
+        if not self.settings.use_mixer_agent_apis:
+            try:
+                self.client = create_dc_client(self.settings)
+            except Exception as e:
+                logger.error("Failed to create DC client: %s", e)
+                raise
+
+        # Create mixer client only if enabled
+        self.mixer_client = None
+        if self.settings.use_mixer_agent_apis:
+            api_root = self.settings.api_root or "https://api.datacommons.org/v2"
+            api_key = getattr(self.settings, "api_key", None)
+            self.mixer_client = MixerClient(api_root=api_root, api_key=api_key)
 
         # Load Server Instructions
         server_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def lifespan(server: FastMCP):
+            yield {}
+            if self.mixer_client:
+                logger.info("Closing Mixer client...")
+                await self.mixer_client.close()
 
         self.mcp = FastMCP(
             MCP_SERVER_NAME,
             version=__version__,
             instructions=server_instructions,
+            lifespan=lifespan,
         )
 
     def _load_instructions(self, filename: str) -> str:
