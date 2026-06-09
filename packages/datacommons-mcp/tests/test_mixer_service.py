@@ -39,7 +39,9 @@ from datacommons_mcp.tools import (
 @pytest.mark.asyncio
 async def test_mixer_client_post():
     """Verify MixerClient correctly sends payload and headers to the endpoint."""
-    client = MixerClient(api_root="https://api.datacommons.org/v2", api_key="test-api-key")
+    client = MixerClient(
+        api_root="https://api.datacommons.org/v2", api_key="test-api-key"
+    )
     assert client.headers["X-API-Key"] == "test-api-key"
 
     mock_response = MagicMock()
@@ -52,7 +54,7 @@ async def test_mixer_client_post():
         assert result == {"status": "SUCCESS", "data": "test"}
         mock_post.assert_called_once_with(
             "https://api.datacommons.org/v2/agent/test_endpoint",
-            json={"param": "value"}
+            json={"param": "value"},
         )
 
     await client.close()
@@ -72,7 +74,7 @@ async def test_mixer_service_get_observations():
             source_override="USCensus",
             date="latest",
             date_range_start="2020",
-            date_range_end="2022"
+            date_range_end="2022",
         )
         assert result == {"placeObservations": []}
         mock_client.post.assert_called_once_with(
@@ -85,7 +87,7 @@ async def test_mixer_service_get_observations():
                 "date": "latest",
                 "date_range_start": "2020",
                 "date_range_end": "2022",
-            }
+            },
         )
 
 
@@ -101,7 +103,7 @@ async def test_mixer_service_search_indicators():
             places=["California"],
             parent_place="USA",
             per_search_limit=5,
-            include_topics=False
+            include_topics=False,
         )
         assert result == {"variables": []}
         mock_client.post.assert_called_once_with(
@@ -112,27 +114,29 @@ async def test_mixer_service_search_indicators():
                 "parent_place": "USA",
                 "per_search_limit": 5,
                 "include_topics": False,
-            }
+            },
         )
 
 
 @pytest.mark.asyncio
 async def test_mixer_tools_execution():
     """Verify mixer_tools functions delegate to mixer_service."""
-    with patch("datacommons_mcp.mixer_tools.mixer_get_observations", new_callable=AsyncMock) as mock_mixer_get_obs:
+    with patch(
+        "datacommons_mcp.mixer_tools.mixer_get_observations", new_callable=AsyncMock
+    ) as mock_mixer_get_obs:
         mock_mixer_get_obs.return_value = {"mixer_obs": True}
         result = await mixer_tools_get_obs(
-            variable_dcid="Count_Person",
-            place_dcid="geoId/06"
+            variable_dcid="Count_Person", place_dcid="geoId/06"
         )
         assert result == {"mixer_obs": True}
         mock_mixer_get_obs.assert_called_once()
 
-    with patch("datacommons_mcp.mixer_tools.mixer_search_indicators", new_callable=AsyncMock) as mock_mixer_search_ind:
+    with patch(
+        "datacommons_mcp.mixer_tools.mixer_search_indicators", new_callable=AsyncMock
+    ) as mock_mixer_search_ind:
         mock_mixer_search_ind.return_value = {"mixer_search": True}
         result = await mixer_tools_search_ind(
-            query="unemployment",
-            places=["California"]
+            query="unemployment", places=["California"]
         )
         assert result == {"mixer_search": True}
         mock_mixer_search_ind.assert_called_once()
@@ -141,27 +145,27 @@ async def test_mixer_tools_execution():
 @pytest.mark.asyncio
 async def test_local_tools_execution():
     """Verify tool functions delegate to old local services."""
-    with patch("datacommons_mcp.tools.get_observations_service", new_callable=AsyncMock) as mock_local_get_obs:
+    with patch(
+        "datacommons_mcp.tools.get_observations_service", new_callable=AsyncMock
+    ) as mock_local_get_obs:
         mock_response = MagicMock()
         mock_response.model_dump.return_value = {"local_obs": True}
         mock_local_get_obs.return_value = mock_response
 
         result = await tools_get_obs(
-            variable_dcid="Count_Person",
-            place_dcid="geoId/06"
+            variable_dcid="Count_Person", place_dcid="geoId/06"
         )
         assert result == {"local_obs": True}
         mock_local_get_obs.assert_called_once()
 
-    with patch("datacommons_mcp.tools.search_indicators_service", new_callable=AsyncMock) as mock_local_search_ind:
+    with patch(
+        "datacommons_mcp.tools.search_indicators_service", new_callable=AsyncMock
+    ) as mock_local_search_ind:
         mock_response = MagicMock()
         mock_response.model_dump.return_value = {"local_search": True}
         mock_local_search_ind.return_value = mock_response
 
-        result = await tools_search_ind(
-            query="unemployment",
-            places=["California"]
-        )
+        result = await tools_search_ind(query="unemployment", places=["California"])
         assert result == {"local_search": True}
         mock_local_search_ind.assert_called_once()
 
@@ -177,11 +181,15 @@ async def test_mixer_client_post_error():
 
     # Helper function to raise the error
     def raise_status_error():
-        raise httpx.HTTPStatusError("Internal Server Error", request=MagicMock(), response=mock_response)
+        raise httpx.HTTPStatusError(
+            "Internal Server Error", request=MagicMock(), response=mock_response
+        )
+
     mock_response.raise_for_status = raise_status_error
 
     with patch.object(client.client, "post", return_value=mock_response):
         from datacommons_mcp.exceptions import MixerAPIError
+
         with pytest.raises(MixerAPIError) as exc_info:
             await client.post("agent/test", {})
         assert exc_info.value.status_code == 500

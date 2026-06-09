@@ -89,7 +89,6 @@ class BaseDCSettings(DCSettingsBase):
         description="List of root topic DCIDs for base DC",
     )
 
-
     @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
     @classmethod
     def parse_list_like_parameter(cls, v: str) -> list[str] | None:

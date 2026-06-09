@@ -31,20 +31,37 @@ logger = logging.getLogger(__name__)
 
 def log_api_call(func: Callable[..., Any]) -> Callable[..., Any]:  # noqa: ANN401
     """Decorator to log URL, request payload, execution time, and errors for Mixer API calls."""
+
     @wraps(func)
-    async def wrapper(self: Any, endpoint: str, payload: dict, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+    async def wrapper(
+        self: "MixerClient",
+        endpoint: str,
+        payload: dict,
+        *args: object,
+        **kwargs: object,
+    ) -> Any:  # noqa: ANN401
         url = f"{self.api_root}/{endpoint}"
         logger.info("MixerClient POST request URL: %s, payload: %s", url, payload)
         start_time = time.perf_counter()
         try:
             result = await func(self, endpoint, payload, *args, **kwargs)
             elapsed_time = time.perf_counter() - start_time
-            logger.info("MixerClient POST request to %s completed in %.3f seconds", url, elapsed_time)
+            logger.info(
+                "MixerClient POST request to %s completed in %.3f seconds",
+                url,
+                elapsed_time,
+            )
             return result
         except Exception as e:
             elapsed_time = time.perf_counter() - start_time
-            logger.error("MixerClient POST request to %s failed after %.3f seconds with error: %s", url, elapsed_time, e)
+            logger.error(
+                "MixerClient POST request to %s failed after %.3f seconds with error: %s",
+                url,
+                elapsed_time,
+                e,
+            )
             raise
+
     return wrapper
 
 
@@ -94,7 +111,9 @@ class MixerClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             error_msg = f"Mixer API call to {endpoint} failed with status {e.response.status_code}"
-            raise MixerAPIError(error_msg, e.response.status_code, e.response.text) from e
+            raise MixerAPIError(
+                error_msg, e.response.status_code, e.response.text
+            ) from e
 
     async def close(self) -> None:
         """Close the underlying HTTP client if it was initialized."""
