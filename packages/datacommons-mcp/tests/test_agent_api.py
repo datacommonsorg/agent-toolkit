@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Tests for MixerClient, mixer_service, and feature flag routing.
+Tests for AgentAPIClient, agent_api_service, and routing.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from datacommons_mcp.agent_api_client import AgentAPIClient
+from datacommons_mcp.agent_api_service import get_observations, search_indicators
+from datacommons_mcp.agent_api_tools import (
+    get_observations as agent_api_tools_get_obs,
+)
+from datacommons_mcp.agent_api_tools import (
+    search_indicators as agent_api_tools_search_ind,
+)
 from datacommons_mcp.app import app
-from datacommons_mcp.mixer_client import MixerClient
-from datacommons_mcp.mixer_service import get_observations, search_indicators
-from datacommons_mcp.mixer_tools import (
-    get_observations as mixer_tools_get_obs,
-)
-from datacommons_mcp.mixer_tools import (
-    search_indicators as mixer_tools_search_ind,
-)
 from datacommons_mcp.tools import (
     get_observations as tools_get_obs,
 )
@@ -37,9 +37,9 @@ from datacommons_mcp.tools import (
 
 
 @pytest.mark.asyncio
-async def test_mixer_client_post():
-    """Verify MixerClient correctly sends payload and headers to the endpoint."""
-    client = MixerClient(
+async def test_agent_api_client_post():
+    """Verify AgentAPIClient correctly sends payload and headers to the endpoint."""
+    client = AgentAPIClient(
         api_root="https://api.datacommons.org/v2", api_key="test-api-key"
     )
     assert client.headers["X-API-Key"] == "test-api-key"
@@ -61,12 +61,12 @@ async def test_mixer_client_post():
 
 
 @pytest.mark.asyncio
-async def test_mixer_service_get_observations():
-    """Verify get_observations builds correct payload and invokes mixer_client."""
+async def test_agent_api_service_get_observations():
+    """Verify get_observations builds correct payload and invokes agent_api_client."""
     mock_client = AsyncMock()
     mock_client.post.return_value = {"placeObservations": []}
 
-    with patch.object(app, "mixer_client", mock_client):
+    with patch.object(app, "agent_api_client", mock_client):
         result = await get_observations(
             variable_dcid="Count_Person",
             place_dcid="geoId/06",
@@ -92,12 +92,12 @@ async def test_mixer_service_get_observations():
 
 
 @pytest.mark.asyncio
-async def test_mixer_service_search_indicators():
-    """Verify search_indicators builds correct payload and invokes mixer_client."""
+async def test_agent_api_service_search_indicators():
+    """Verify search_indicators builds correct payload and invokes agent_api_client."""
     mock_client = AsyncMock()
     mock_client.post.return_value = {"variables": []}
 
-    with patch.object(app, "mixer_client", mock_client):
+    with patch.object(app, "agent_api_client", mock_client):
         result = await search_indicators(
             query="unemployment",
             places=["California"],
@@ -119,27 +119,29 @@ async def test_mixer_service_search_indicators():
 
 
 @pytest.mark.asyncio
-async def test_mixer_tools_execution():
-    """Verify mixer_tools functions delegate to mixer_service."""
+async def test_agent_api_tools_execution():
+    """Verify agent_api_tools functions delegate to agent_api_service."""
     with patch(
-        "datacommons_mcp.mixer_tools.mixer_get_observations", new_callable=AsyncMock
-    ) as mock_mixer_get_obs:
-        mock_mixer_get_obs.return_value = {"mixer_obs": True}
-        result = await mixer_tools_get_obs(
+        "datacommons_mcp.agent_api_tools.agent_api_get_observations",
+        new_callable=AsyncMock,
+    ) as mock_agent_api_get_obs:
+        mock_agent_api_get_obs.return_value = {"agent_api_obs": True}
+        result = await agent_api_tools_get_obs(
             variable_dcid="Count_Person", place_dcid="geoId/06"
         )
-        assert result == {"mixer_obs": True}
-        mock_mixer_get_obs.assert_called_once()
+        assert result == {"agent_api_obs": True}
+        mock_agent_api_get_obs.assert_called_once()
 
     with patch(
-        "datacommons_mcp.mixer_tools.mixer_search_indicators", new_callable=AsyncMock
-    ) as mock_mixer_search_ind:
-        mock_mixer_search_ind.return_value = {"mixer_search": True}
-        result = await mixer_tools_search_ind(
+        "datacommons_mcp.agent_api_tools.agent_api_search_indicators",
+        new_callable=AsyncMock,
+    ) as mock_agent_api_search_ind:
+        mock_agent_api_search_ind.return_value = {"agent_api_search": True}
+        result = await agent_api_tools_search_ind(
             query="unemployment", places=["California"]
         )
-        assert result == {"mixer_search": True}
-        mock_mixer_search_ind.assert_called_once()
+        assert result == {"agent_api_search": True}
+        mock_agent_api_search_ind.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -171,9 +173,9 @@ async def test_local_tools_execution():
 
 
 @pytest.mark.asyncio
-async def test_mixer_client_post_error():
-    """Verify that MixerClient.post raises MixerAPIError and extracts details on failure."""
-    client = MixerClient(api_root="https://api.datacommons.org/v2")
+async def test_agent_api_client_post_error():
+    """Verify that AgentAPIClient.post raises AgentAPIError and extracts details on failure."""
+    client = AgentAPIClient(api_root="https://api.datacommons.org/v2")
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_response.text = '{"message": "Internal error"}'
@@ -188,9 +190,9 @@ async def test_mixer_client_post_error():
     mock_response.raise_for_status = raise_status_error
 
     with patch.object(client.client, "post", return_value=mock_response):
-        from datacommons_mcp.exceptions import MixerAPIError
+        from datacommons_mcp.exceptions import AgentAPIError
 
-        with pytest.raises(MixerAPIError) as exc_info:
+        with pytest.raises(AgentAPIError) as exc_info:
             await client.post("agent/test", {})
         assert exc_info.value.status_code == 500
         err_msg = str(exc_info.value)

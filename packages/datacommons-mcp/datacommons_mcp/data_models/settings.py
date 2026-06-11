@@ -53,10 +53,10 @@ class DCSettingsBase(BaseSettings):
         description="Directory containing custom instruction files (markdown overrides)",
     )
 
-    use_mixer_agent_apis: bool = Field(
+    use_agent_api: bool = Field(
         default=False,
-        alias="USE_MIXER_AGENT_APIS",
-        description="Use the new Mixer-side agent endpoints instead of local processing",
+        alias="DC_USE_AGENT_API",
+        description="Use the new Agent-optimized APIs instead of local processing",
     )
 
     api_root: str | None = Field(

@@ -20,7 +20,7 @@ import logging
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-import datacommons_mcp.mixer_tools as mixer_tools
+import datacommons_mcp.agent_api_tools as agent_api_tools
 import datacommons_mcp.tools as tools
 from datacommons_mcp.app import app
 from datacommons_mcp.version import __version__
@@ -40,9 +40,13 @@ async def health_check(request: Request) -> JSONResponse:  # noqa: ARG001 reques
 
 
 # Register tools
-if app.settings.use_mixer_agent_apis:
-    app.register_tool(mixer_tools.get_observations, "tools/mixer/get_observations.md")
-    app.register_tool(mixer_tools.search_indicators, "tools/mixer/search_indicators.md")
+if app.settings.use_agent_api:
+    app.register_tool(
+        agent_api_tools.get_observations, "tools/agent_api/get_observations.md"
+    )
+    app.register_tool(
+        agent_api_tools.search_indicators, "tools/agent_api/search_indicators.md"
+    )
 else:
     app.register_tool(tools.get_observations, tools.GET_OBSERVATIONS_INSTRUCTION_FILE)
     app.register_tool(tools.search_indicators, tools.SEARCH_INDICATORS_INSTRUCTION_FILE)

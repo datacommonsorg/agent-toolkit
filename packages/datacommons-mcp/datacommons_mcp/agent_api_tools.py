@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Tool implementations for the Mixer-based Data Commons MCP server.
+Tool implementations for the Agent API-based Data Commons MCP server.
 """
 
+from datacommons_mcp.agent_api_service import (
+    get_observations as agent_api_get_observations,
+)
+from datacommons_mcp.agent_api_service import (
+    search_indicators as agent_api_search_indicators,
+)
 from datacommons_mcp.data_models.observations import ObservationDateType
-from datacommons_mcp.mixer_service import (
-    get_observations as mixer_get_observations,
-)
-from datacommons_mcp.mixer_service import (
-    search_indicators as mixer_search_indicators,
-)
 
 
 async def get_observations(
@@ -34,7 +34,7 @@ async def get_observations(
     date_range_end: str | None = None,
 ) -> dict:
     """Fetches observations for a statistical variable from Data Commons."""
-    return await mixer_get_observations(
+    return await agent_api_get_observations(
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
         child_place_type=child_place_type,
@@ -54,7 +54,7 @@ async def search_indicators(
     include_topics: bool = True,
 ) -> dict:
     """Searches for indicators (topics and variables) in Data Commons."""
-    return await mixer_search_indicators(
+    return await agent_api_search_indicators(
         query=query,
         places=places,
         parent_place=parent_place,

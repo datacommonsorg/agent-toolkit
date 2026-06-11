@@ -146,7 +146,7 @@ The following rules apply to **both** the `places` and `parent_place` parameters
 
 ### Response Structure
 
-Returns a dictionary containing candidate indicators directly from the Data Commons Mixer.
+Returns a dictionary containing candidate indicators directly from Data Commons.
 ```json
 {
   "status": "SUCCESS",

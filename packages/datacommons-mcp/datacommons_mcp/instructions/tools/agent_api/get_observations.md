@@ -52,7 +52,7 @@ Args:
   date_range_end (str, optional): The end date for a range (inclusive). **Used only if `date` is set to'range'.**
 
 Returns:
-    The fetched observation data directly from Data Commons Mixer.
+    The fetched observation data directly from Data Commons.
     The response format contains:
     - `variable`: Details about the statistical variable requested (dcid, name, typeOf).
     - `resolvedParentPlace`: The resolved node information for the parent place, if one was provided.
