@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 MCP_SERVER_NAME = "DC MCP Server"
 DEFAULT_INSTRUCTIONS_PACKAGE = "datacommons_mcp.instructions"
 SERVER_INSTRUCTIONS_FILE = "server.md"
+MODE_AGENT_API = "agent_api"
+MODE_LOCAL = "local"
 
 
 class DCApp:
@@ -54,6 +56,9 @@ class DCApp:
         except ValidationError as e:
             logger.error("Settings error: %s", e)
             raise
+
+        # Establish active mode directory
+        self.mode_dir = MODE_AGENT_API if self.settings.use_agent_api else MODE_LOCAL
 
         # Create client only if agent APIs are NOT enabled (as fallback is not needed)
         self.client = None
@@ -91,30 +96,34 @@ class DCApp:
         )
 
     def _load_instructions(self, filename: str) -> str:
-        """
-        Loads markdown content.
+        """Loads markdown content relative to the active mode subfolder.
+
         Priority:
-        1. DC_INSTRUCTIONS_DIR/{filename} (if set and exists)
-        2. Package default: datacommons_mcp/instructions/{filename}
+        1. DC_INSTRUCTIONS_DIR/{self.mode_dir}/{filename} (if set and exists)
+        2. Package default: datacommons_mcp/instructions/{self.mode_dir}/{filename}
         """
+        path_in_mode = f"{self.mode_dir}/{filename}"
+
         # Check specific override
         if self.settings.instructions_dir:
-            content = read_external_content(self.settings.instructions_dir, filename)
+            content = read_external_content(
+                self.settings.instructions_dir, path_in_mode
+            )
             if content is not None:
                 logger.info(
                     "Loaded custom instructions for %s from %s",
-                    filename,
+                    path_in_mode,
                     self.settings.instructions_dir,
                 )
                 return content
             logger.debug(
                 "Custom instructions file %s not found in %s, falling back to default.",
-                filename,
+                path_in_mode,
                 self.settings.instructions_dir,
             )
 
         # Fallback to package resources
-        return read_package_content(DEFAULT_INSTRUCTIONS_PACKAGE, filename)
+        return read_package_content(DEFAULT_INSTRUCTIONS_PACKAGE, path_in_mode)
 
     def register_tool(self, func: Callable[..., Any], instruction_file: str) -> None:
         """Register a tool with instructions loaded from a file.

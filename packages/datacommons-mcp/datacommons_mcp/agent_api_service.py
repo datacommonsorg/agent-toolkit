@@ -71,3 +71,16 @@ async def search_indicators(
         "include_topics": include_topics,
     }
     return await client.post("agent/search_indicators", payload)
+
+
+async def get_variable_metadata(
+    variable_dcids: list[str],
+    entity_dcids: list[str],
+) -> dict[str, Any]:
+    """Retrieves rich structural metadata (definitions, coverage, and provenances) for variables."""
+    client = _get_agent_api_client()
+    payload = {
+        "variable_dcids": variable_dcids,
+        "entity_dcids": entity_dcids,
+    }
+    return await client.post("agent/get_variable_metadata", payload)

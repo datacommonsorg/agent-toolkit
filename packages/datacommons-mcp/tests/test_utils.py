@@ -164,7 +164,9 @@ class TestReadContent:
 
     def test_read_package_content_success(self):
         # Read actual content from the package
-        content = read_package_content("datacommons_mcp.instructions", "server.md")
+        content = read_package_content(
+            "datacommons_mcp.instructions", "local/server.md"
+        )
         assert "Data Commons" in content
 
     def test_read_package_content_missing(self):

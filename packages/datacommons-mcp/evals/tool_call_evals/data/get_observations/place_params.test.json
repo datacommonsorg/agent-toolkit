@@ -17,10 +17,10 @@
         "query": "What about for states in India?",
         "expected_tool_use": [
             {
-                "tool_name": "get_observations",
+                "tool_name": "get_child_observations",
                 "tool_input": {
                     "date": "latest",
-                    "place_dcid": "country/IND",
+                    "parent_place_dcid": "country/IND",
                     "variable_dcid": "Count_Person",
                     "child_place_type": "AdministrativeArea1"
                 }

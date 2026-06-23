@@ -69,7 +69,7 @@ def test_app_initialization_override(
     """Test that DCApp loads instructions from DC_INSTRUCTIONS_DIR."""
     # Create custom instructions
     custom_dir = tmp_path / "instructions"
-    create_test_file("instructions/server.md", "Custom Server Instructions")
+    create_test_file("instructions/local/server.md", "Custom Server Instructions")
 
     # Configure settings to use custom dir
     mock_settings.return_value.instructions_dir = str(custom_dir)
@@ -88,7 +88,9 @@ def test_load_instruction_tool_override(mock_settings, tmp_path, create_test_fil
     """Test loading tool instructions with override."""
     # Create custom instructions
     custom_dir = tmp_path / "instructions"
-    create_test_file("instructions/tools/test_tool.md", "Custom Tool Instructions")
+    create_test_file(
+        "instructions/local/tools/test_tool.md", "Custom Tool Instructions"
+    )
 
     # Configure settings to use custom dir
     mock_settings.return_value.instructions_dir = str(custom_dir)
@@ -121,7 +123,7 @@ def test_load_instruction_fallback(mock_settings, tmp_path):
 def test_register_tool(mock_settings, mock_fastmcp, tmp_path, create_test_file):
     """Test tool registration with instruction loading."""
     # Create custom instructions
-    create_test_file("instructions/tools/sample.md", "Sample Tool Description")
+    create_test_file("instructions/local/tools/sample.md", "Sample Tool Description")
     mock_settings.return_value.instructions_dir = str(tmp_path / "instructions")
 
     from datacommons_mcp.app import DCApp

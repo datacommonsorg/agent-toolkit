@@ -1,0 +1,1 @@
+Search the Data Commons Knowledge Graph for topics and statistical variables (indicators) matching a natural language query. Returns candidate indicator DCIDs, names, and data availability mappings. Can be optionally scoped to a list of target places to verify data presence.
