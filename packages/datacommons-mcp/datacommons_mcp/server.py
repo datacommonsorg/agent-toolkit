@@ -79,13 +79,21 @@ def _register_skills(mcp_server: FastMCP, app_instance: DCApp) -> None:
     """Configures and registers the native FastMCP SkillsDirectoryProvider."""
     skills_roots = []
     if app_instance.settings.instructions_dir:
-        custom_skills = (
-            Path(app_instance.settings.instructions_dir)
-            / app_instance.mode_dir
-            / "skills"
-        )
-        if custom_skills.exists():
-            skills_roots.append(custom_skills)
+        if app_instance.settings.instructions_dir.startswith("gs://"):
+            # TODO(keyurs): Support GCS-hosted custom skills by syncing the GCS
+            # instructions directory to a local temporary directory at startup (bootstrap cache).
+            logger.warning(
+                "GCS paths are not supported for loading custom skills: %s. Skipping.",
+                app_instance.settings.instructions_dir,
+            )
+        else:
+            custom_skills = (
+                Path(app_instance.settings.instructions_dir)
+                / app_instance.mode_dir
+                / "skills"
+            )
+            if custom_skills.exists():
+                skills_roots.append(custom_skills)
 
     default_skills = (
         Path(__file__).parent / "instructions" / app_instance.mode_dir / "skills"

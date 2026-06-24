@@ -31,7 +31,6 @@ from datacommons_mcp.agent_api_tools import (
 from datacommons_mcp.agent_api_tools import (
     search_indicators as agent_api_tools_search_ind,
 )
-from datacommons_mcp.app import app
 from datacommons_mcp.tools import (
     get_observations as tools_get_obs,
 )
@@ -67,6 +66,8 @@ async def test_agent_api_client_post():
 @pytest.mark.asyncio
 async def test_agent_api_service_get_observations():
     """Verify get_observations builds correct payload and invokes agent_api_client."""
+    from datacommons_mcp.app import app
+
     mock_client = AsyncMock()
     mock_client.post.return_value = {"placeObservations": []}
 
@@ -98,6 +99,8 @@ async def test_agent_api_service_get_observations():
 @pytest.mark.asyncio
 async def test_agent_api_service_search_indicators():
     """Verify search_indicators builds correct payload and invokes agent_api_client."""
+    from datacommons_mcp.app import app
+
     mock_client = AsyncMock()
     mock_client.post.return_value = {"variables": []}
 
@@ -210,6 +213,8 @@ async def test_agent_api_client_post_error():
 @pytest.mark.asyncio
 async def test_agent_api_service_get_variable_metadata():
     """Verify get_variable_metadata builds correct payload and invokes client."""
+    from datacommons_mcp.app import app
+
     mock_client = AsyncMock()
     mock_client.post.return_value = {"metadata": {}, "provenance": {}}
 
