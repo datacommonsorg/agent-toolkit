@@ -15,7 +15,7 @@ from google.adk.tools.mcp_tool.mcp_toolset import (
 )
 
 # Model for the agent
-AGENT_MODEL = os.environ.get("EVAL_AGENT_MODEL", "gemini-flash-latest")
+AGENT_MODEL = "gemini-2.5-flash"
 
 
 def create_agent(instruction: str, name: str = "tool_usage_agent") -> LlmAgent:
