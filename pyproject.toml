@@ -20,7 +20,7 @@ dependencies = [
   "pytest>=8.4.1",
   "pytest-asyncio>=1.1.0",
   "pre-commit>=4.3.0",
-  "fastmcp>=2.13.1",
+  "fastmcp==3.4.2",
 ]
 
 [project.optional-dependencies]

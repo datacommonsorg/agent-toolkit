@@ -7,7 +7,7 @@ requires-python = ">=3.11, <3.14"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn",
-    "fastmcp>=3.0.0",
+    "fastmcp==3.4.2",
     "requests",
     "datacommons-client>=2.1.6",
     "pydantic>=2.11.7",
