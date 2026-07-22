@@ -7,7 +7,7 @@ Fetches time-series observations for multi-entity relationship statistical varia
 - `parent_entity_dcid` (optional, string): Parent place DCID for child place expansion (e.g. `"Earth"`).
 - `child_entity_type` (optional, string): Child place type for child place expansion (e.g. `"Country"`).
 - `source_override` (optional, string): Filter by a specific data source provenance DCID.
-- `date` (optional, string): Specific date or `"latest"` (default).
+- `date` (optional, string): Specific date (e.g., `"2024"`), `"all"` (for complete historical time series), or `"latest"` (default).
 - `date_range_start` / `date_range_end` (optional, string): Date range boundaries.
 
 ### Usage Example (Direct Bilateral Pair)

@@ -6,3 +6,5 @@ CRITICAL INSTRUCTION: When performing statistical research, searching for indica
 - `skill://data-commons-multi-entity-researcher/SKILL.md` (for bilateral relationships, flows, foreign aid, trade, or multi-entity queries)
 
 Crucially, every data point retrieved must be attributed to its original source provided in the tool output; never present statistics as "known facts" without citing the specific organization or dataset they originated from. Prioritize data integrity and transparency, ensuring that users understand both the metric and the provenance of the information provided.
+
+CRITICAL RULE ON DCIDs: Before calling any observation or metadata tool, you MUST resolve variable and place DCIDs using search tools (`search_indicators` or `search_child_indicators`) even if it means making a similar looking search call again for a place or entity you don't have the DCID for. DO NOT guess or hardcode DCIDs under ANY circumstances. Never assume a DCID based on similar looking DCIDs you have seen previously.
