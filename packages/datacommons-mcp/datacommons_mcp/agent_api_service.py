@@ -19,6 +19,7 @@ from typing import Any
 
 from datacommons_mcp.agent_api_client import AgentAPIClient
 from datacommons_mcp.app import app
+from datacommons_mcp.data_models.observations import ObservationDateType
 
 
 def _get_agent_api_client() -> AgentAPIClient:
@@ -69,7 +70,7 @@ async def get_multi_entity_observations(
     parent_entity_dcid: str | None = None,
     child_entity_type: str | None = None,
     source_override: str | None = None,
-    date: str | None = None,
+    date: str | None = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> dict[str, Any]:
@@ -77,8 +78,18 @@ async def get_multi_entity_observations(
     client = _get_agent_api_client()
     entities_payload: dict[str, Any] = dict(entities)
 
-    if parent_entity_property and parent_entity_dcid and child_entity_type:
-        entities_payload[parent_entity_property] = {
+    child_expansion_params = [
+        parent_entity_property,
+        parent_entity_dcid,
+        child_entity_type,
+    ]
+    if any(child_expansion_params):
+        if not all(child_expansion_params):
+            raise ValueError(
+                "To use child entity expansion, all of 'parent_entity_property', "
+                "'parent_entity_dcid', and 'child_entity_type' must be provided."
+            )
+        entities_payload[parent_entity_property] = {  # type: ignore[index]
             "parent_dcid": parent_entity_dcid,
             "child_type": child_entity_type,
         }

@@ -121,7 +121,7 @@ async def test_agent_api_service_get_multi_entity_observations():
                 "variable_dcid": "Amount_EconomicActivity_GrossODA",
                 "entities": {"donor": ["country/ARE"], "recipient": ["country/AFG"]},
                 "source_override": None,
-                "date": None,
+                "date": "latest",
                 "date_range_start": None,
                 "date_range_end": None,
             },
@@ -144,11 +144,19 @@ async def test_agent_api_service_get_multi_entity_observations():
                     "recipient": {"parent_dcid": "Earth", "child_type": "Country"},
                 },
                 "source_override": None,
-                "date": None,
+                "date": "latest",
                 "date_range_start": None,
                 "date_range_end": None,
             },
         )
+
+        # Partial child expansion parameters should raise ValueError
+        with pytest.raises(ValueError, match="To use child entity expansion"):
+            await get_multi_entity_observations(
+                variable_dcid="Amount_EconomicActivity_GrossODA",
+                entities={"donor": ["country/ARE"]},
+                parent_entity_property="recipient",
+            )
 
 
 @pytest.mark.asyncio
