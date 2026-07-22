@@ -86,12 +86,67 @@ async def test_agent_api_service_get_observations():
             "agent/get_observations",
             {
                 "variable_dcid": "Count_Person",
-                "place_dcid": "geoId/06",
-                "child_place_type": "County",
+                "entities": {
+                    "observationAbout": {
+                        "parent_dcid": "geoId/06",
+                        "child_type": "County",
+                    }
+                },
                 "source_override": "USCensus",
                 "date": "latest",
                 "date_range_start": "2020",
                 "date_range_end": "2022",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_agent_api_service_get_multi_entity_observations():
+    """Verify get_multi_entity_observations builds correct payload for direct and child expansion."""
+    from datacommons_mcp.agent_api_service import get_multi_entity_observations
+    from datacommons_mcp.app import app
+
+    mock_client = AsyncMock()
+    mock_client.post.return_value = {"placeObservations": []}
+
+    with patch.object(app, "agent_api_client", mock_client):
+        # Direct DCID map
+        await get_multi_entity_observations(
+            variable_dcid="Amount_EconomicActivity_GrossODA",
+            entities={"donor": ["country/ARE"], "recipient": ["country/AFG"]},
+        )
+        mock_client.post.assert_called_with(
+            "agent/get_observations",
+            {
+                "variable_dcid": "Amount_EconomicActivity_GrossODA",
+                "entities": {"donor": ["country/ARE"], "recipient": ["country/AFG"]},
+                "source_override": None,
+                "date": None,
+                "date_range_start": None,
+                "date_range_end": None,
+            },
+        )
+
+        # Child entity expansion
+        await get_multi_entity_observations(
+            variable_dcid="Amount_EconomicActivity_GrossODA",
+            entities={"donor": ["country/ARE"]},
+            parent_entity_property="recipient",
+            parent_entity_dcid="Earth",
+            child_entity_type="Country",
+        )
+        mock_client.post.assert_called_with(
+            "agent/get_observations",
+            {
+                "variable_dcid": "Amount_EconomicActivity_GrossODA",
+                "entities": {
+                    "donor": ["country/ARE"],
+                    "recipient": {"parent_dcid": "Earth", "child_type": "Country"},
+                },
+                "source_override": None,
+                "date": None,
+                "date_range_start": None,
+                "date_range_end": None,
             },
         )
 

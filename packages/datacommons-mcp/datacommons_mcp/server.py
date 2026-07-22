@@ -64,6 +64,10 @@ if app.settings.use_agent_api:
         agent_api_tools.get_child_observations,
         agent_api_tools.GET_CHILD_OBSERVATIONS_INSTRUCTION_FILE,
     )
+    app.register_tool(
+        agent_api_tools.get_multi_entity_observations,
+        agent_api_tools.GET_MULTI_ENTITY_OBSERVATIONS_INSTRUCTION_FILE,
+    )
 else:
     app.register_tool(
         tools.get_observations,

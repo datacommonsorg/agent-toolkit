@@ -18,6 +18,9 @@ Tool implementations for the Agent API-based Data Commons MCP server.
 from typing import Any
 
 from datacommons_mcp.agent_api_service import (
+    get_multi_entity_observations as agent_api_get_multi_entity_observations,
+)
+from datacommons_mcp.agent_api_service import (
     get_observations as agent_api_get_observations,
 )
 from datacommons_mcp.agent_api_service import (
@@ -34,6 +37,9 @@ SEARCH_CHILD_INDICATORS_INSTRUCTION_FILE = "tools/search_child_indicators.md"
 GET_VARIABLE_METADATA_INSTRUCTION_FILE = "tools/get_variable_metadata.md"
 GET_OBSERVATIONS_INSTRUCTION_FILE = "tools/get_observations.md"
 GET_CHILD_OBSERVATIONS_INSTRUCTION_FILE = "tools/get_child_observations.md"
+GET_MULTI_ENTITY_OBSERVATIONS_INSTRUCTION_FILE = (
+    "tools/get_multi_entity_observations.md"
+)
 
 
 async def search_indicators(
@@ -116,6 +122,31 @@ async def get_child_observations(
         variable_dcid=variable_dcid,
         place_dcid=parent_place_dcid,
         child_place_type=child_place_type,
+        source_override=source_override,
+        date=date,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
+    )
+
+
+async def get_multi_entity_observations(
+    variable_dcid: str,
+    entities: dict[str, list[str]],
+    parent_entity_property: str | None = None,
+    parent_entity_dcid: str | None = None,
+    child_entity_type: str | None = None,
+    source_override: str | None = None,
+    date: str = ObservationDateType.LATEST.value,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
+) -> dict[str, Any]:
+    """Fetches observations for multi-entity relationship statistical variables."""
+    return await agent_api_get_multi_entity_observations(
+        variable_dcid=variable_dcid,
+        entities=entities,
+        parent_entity_property=parent_entity_property,
+        parent_entity_dcid=parent_entity_dcid,
+        child_entity_type=child_entity_type,
         source_override=source_override,
         date=date,
         date_range_start=date_range_start,

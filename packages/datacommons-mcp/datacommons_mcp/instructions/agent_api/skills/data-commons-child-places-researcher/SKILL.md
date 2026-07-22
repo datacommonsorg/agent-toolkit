@@ -31,6 +31,10 @@ When researching statistics across child places within a parent entity, always s
 * Only use DCIDs returned by `search_child_indicators` - never guess or assume variable-place combinations.
 * This ensures data availability and prevents errors from invalid combinations.
 
+### Multi-Entity Discovery Routing Hook
+After calling `search_child_indicators` or `get_variable_metadata`, inspect the `observation_properties` list on candidate variables:
+* If `observation_properties` contains multiple entity properties (e.g. `["donor", "recipient"]` or `["exportingEntity", "importingEntity"]`), this indicator is a **Multi-Entity Statistical Variable**. You MUST switch to reading `skill://data-commons-multi-entity-researcher/SKILL.md` and call `get_multi_entity_observations`.
+
 ---
 
 ## 2. Discovery Heuristics: Concept Splitting & Parameter Tuning
