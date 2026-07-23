@@ -160,7 +160,8 @@ async def test_agent_api_service_get_multi_entity_observations():
 
         # Conflicting parent_entity_property in entities should raise ValueError
         with pytest.raises(
-            ValueError, match="cannot be specified in both 'entities' and child expansion"
+            ValueError,
+            match="cannot be specified in both 'entities' and child expansion",
         ):
             await get_multi_entity_observations(
                 variable_dcid="Amount_EconomicActivity_GrossODA",
