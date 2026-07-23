@@ -10,6 +10,8 @@ Fetches time-series observations for multi-entity relationship statistical varia
 - `date` (optional, string): Specific date (e.g., `"2024"`), `"all"` (for complete historical time series), or `"latest"` (default).
 - `date_range_start` / `date_range_end` (optional, string): Date range boundaries.
 
+*Important: `parent_entity_property`, `parent_entity_dcid`, and `child_entity_type` are co-dependent. If requesting child expansion, all three must be specified together.*
+
 ### Usage Example (Direct Bilateral Pair)
 ```json
 {

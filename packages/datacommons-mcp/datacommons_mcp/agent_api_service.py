@@ -89,6 +89,11 @@ async def get_multi_entity_observations(
                 "To use child entity expansion, all of 'parent_entity_property', "
                 "'parent_entity_dcid', and 'child_entity_type' must be provided."
             )
+        if parent_entity_property in entities_payload:
+            raise ValueError(
+                f"Property '{parent_entity_property}' cannot be specified in both 'entities' "
+                "and child expansion parameters."
+            )
         entities_payload[parent_entity_property] = {  # type: ignore[index]
             "parent_dcid": parent_entity_dcid,
             "child_type": child_entity_type,

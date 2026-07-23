@@ -158,6 +158,18 @@ async def test_agent_api_service_get_multi_entity_observations():
                 parent_entity_property="recipient",
             )
 
+        # Conflicting parent_entity_property in entities should raise ValueError
+        with pytest.raises(
+            ValueError, match="cannot be specified in both 'entities' and child expansion"
+        ):
+            await get_multi_entity_observations(
+                variable_dcid="Amount_EconomicActivity_GrossODA",
+                entities={"donor": ["country/ARE"], "recipient": ["country/AFG"]},
+                parent_entity_property="recipient",
+                parent_entity_dcid="Earth",
+                child_entity_type="Country",
+            )
+
 
 @pytest.mark.asyncio
 async def test_agent_api_service_search_indicators():
