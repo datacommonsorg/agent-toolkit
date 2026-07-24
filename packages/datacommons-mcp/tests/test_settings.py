@@ -65,8 +65,7 @@ class TestBaseSettings:
             settings = get_dc_settings()
             assert isinstance(settings, BaseDCSettings)
             assert (
-                settings.agent_api_root
-                == "https://custom-agent-api.datacommons.org/v2"
+                settings.agent_api_root == "https://custom-agent-api.datacommons.org/v2"
             )
             assert settings.search_scope == SearchScope.CUSTOM_ONLY
 
@@ -79,7 +78,6 @@ class TestBaseSettings:
             assert settings.dc_type == "base"
             assert settings.agent_api_root is None
             assert settings.search_scope is None
-
 
 
 class TestCustomSettings:

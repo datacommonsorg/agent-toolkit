@@ -60,4 +60,3 @@ class AgentAPIError(Exception):
         if self.body:
             return f"{base} - Body: {self.body}"
         return base
-

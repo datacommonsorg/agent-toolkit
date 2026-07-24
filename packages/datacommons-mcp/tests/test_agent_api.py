@@ -75,7 +75,6 @@ async def test_agent_api_client_search_scope():
     await client.close()
 
 
-
 @pytest.mark.asyncio
 async def test_agent_api_service_get_observations():
     """Verify get_observations builds correct payload and invokes agent_api_client."""
@@ -214,7 +213,6 @@ async def test_agent_api_service_search_indicators():
                 "target": "custom_only",
             },
         )
-
 
 
 @pytest.mark.asyncio

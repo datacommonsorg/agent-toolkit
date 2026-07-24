@@ -80,16 +80,13 @@ class DCApp:
             api_key = getattr(self.settings, "api_key", None)
             search_scope = getattr(self.settings, "search_scope", None)
             search_scope_str = (
-                search_scope.value
-                if hasattr(search_scope, "value")
-                else search_scope
+                search_scope.value if hasattr(search_scope, "value") else search_scope
             )
             self.agent_api_client = AgentAPIClient(
                 api_root=api_root,
                 api_key=api_key,
                 search_scope=search_scope_str,
             )
-
 
         # Load Server Instructions
         server_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)

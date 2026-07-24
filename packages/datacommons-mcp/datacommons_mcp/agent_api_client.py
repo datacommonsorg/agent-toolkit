@@ -93,7 +93,6 @@ class AgentAPIClient:
         self.timeout = 30.0  # 30 seconds default timeout
         self._client = None
 
-
     @property
     def client(self) -> httpx.AsyncClient:
         """Lazily initialize the AsyncClient under the active event loop."""
@@ -125,7 +124,6 @@ class AgentAPIClient:
         except httpx.RequestError as e:
             error_msg = f"Agent API request to {endpoint} failed: {e}"
             raise AgentAPIError(error_msg, 503, None) from e
-
 
     async def close(self) -> None:
         """Close the underlying HTTP client if it was initialized."""
