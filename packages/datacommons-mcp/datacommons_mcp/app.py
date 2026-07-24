@@ -72,9 +72,24 @@ class DCApp:
         # Create agent API client only if enabled
         self.agent_api_client = None
         if self.settings.use_agent_api:
-            api_root = self.settings.api_root or "https://api.datacommons.org/v2"
+            api_root = (
+                self.settings.agent_api_root
+                or self.settings.api_root
+                or "https://api.datacommons.org/v2"
+            )
             api_key = getattr(self.settings, "api_key", None)
-            self.agent_api_client = AgentAPIClient(api_root=api_root, api_key=api_key)
+            search_scope = getattr(self.settings, "search_scope", None)
+            search_scope_str = (
+                search_scope.value
+                if hasattr(search_scope, "value")
+                else search_scope
+            )
+            self.agent_api_client = AgentAPIClient(
+                api_root=api_root,
+                api_key=api_key,
+                search_scope=search_scope_str,
+            )
+
 
         # Load Server Instructions
         server_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)

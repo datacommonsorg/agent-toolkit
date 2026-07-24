@@ -65,6 +65,19 @@ class DCSettingsBase(BaseSettings):
         description="API root for Data Commons",
     )
 
+    agent_api_root: str | None = Field(
+        default=None,
+        alias="DC_AGENT_API_ROOT",
+        description="API root specifically for Data Commons Agent API endpoints",
+    )
+
+    search_scope: SearchScope | None = Field(
+        default=None,
+        alias="DC_SEARCH_SCOPE",
+        description="Search scope for queries",
+    )
+
+
 
 class BaseDCSettings(DCSettingsBase):
     """Settings for base Data Commons instance."""

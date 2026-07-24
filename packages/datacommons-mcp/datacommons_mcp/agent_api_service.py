@@ -126,7 +126,9 @@ async def search_indicators(
         "parent_place": parent_place,
         "per_search_limit": per_search_limit,
         "include_topics": include_topics,
+        "target": client.search_scope,
     }
+
     return await client.post("agent/search_indicators", payload)
 
 

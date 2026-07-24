@@ -64,6 +64,19 @@ async def test_agent_api_client_post():
 
 
 @pytest.mark.asyncio
+async def test_agent_api_client_search_scope():
+    """Verify AgentAPIClient stores search_scope attribute."""
+    client = AgentAPIClient(
+        api_root="https://api.datacommons.org/v2",
+        api_key="test-key",
+        search_scope="custom_only",
+    )
+    assert client.search_scope == "custom_only"
+    await client.close()
+
+
+
+@pytest.mark.asyncio
 async def test_agent_api_service_get_observations():
     """Verify get_observations builds correct payload and invokes agent_api_client."""
     from datacommons_mcp.app import app
@@ -178,6 +191,7 @@ async def test_agent_api_service_search_indicators():
     from datacommons_mcp.app import app
 
     mock_client = AsyncMock()
+    mock_client.search_scope = "custom_only"
     mock_client.post.return_value = {"variables": []}
 
     with patch.object(app, "agent_api_client", mock_client):
@@ -197,8 +211,10 @@ async def test_agent_api_service_search_indicators():
                 "parent_place": "USA",
                 "per_search_limit": 5,
                 "include_topics": False,
+                "target": "custom_only",
             },
         )
+
 
 
 @pytest.mark.asyncio

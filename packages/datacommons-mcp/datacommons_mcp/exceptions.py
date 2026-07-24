@@ -54,3 +54,10 @@ class AgentAPIError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.body = body
+
+    def __str__(self) -> str:
+        base = super().__str__()
+        if self.body:
+            return f"{base} - Body: {self.body}"
+        return base
+

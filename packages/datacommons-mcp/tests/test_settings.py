@@ -53,6 +53,23 @@ class TestBaseSettings:
                 "/path/to/cache2.json",
             ]
 
+    def test_loads_with_agent_api_root_and_search_scope(self):
+        """Tests loading agent_api_root and search_scope from environment variables in BaseDCSettings."""
+        env_vars = {
+            "DC_API_KEY": "test_key",
+            "DC_TYPE": "base",
+            "DC_AGENT_API_ROOT": "https://custom-agent-api.datacommons.org/v2",
+            "DC_SEARCH_SCOPE": "custom_only",
+        }
+        with patch.dict(os.environ, env_vars):
+            settings = get_dc_settings()
+            assert isinstance(settings, BaseDCSettings)
+            assert (
+                settings.agent_api_root
+                == "https://custom-agent-api.datacommons.org/v2"
+            )
+            assert settings.search_scope == SearchScope.CUSTOM_ONLY
+
     def test_default_dc_type_is_base(self):
         """Tests that DC_TYPE defaults to 'base' when not provided."""
         env_vars = {"DC_API_KEY": "test_key"}
@@ -60,6 +77,9 @@ class TestBaseSettings:
             settings = get_dc_settings()
             assert isinstance(settings, BaseDCSettings)
             assert settings.dc_type == "base"
+            assert settings.agent_api_root is None
+            assert settings.search_scope is None
+
 
 
 class TestCustomSettings:

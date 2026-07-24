@@ -68,15 +68,22 @@ def log_api_call(func: Callable[..., Any]) -> Callable[..., Any]:  # noqa: ANN40
 class AgentAPIClient:
     """Async client for interacting with Data Commons agent endpoints."""
 
-    def __init__(self, api_root: str, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        api_root: str,
+        api_key: str | None = None,
+        search_scope: str | None = None,
+    ) -> None:
         """Initialize the AgentAPIClient.
 
         Args:
             api_root: The base API root URL (e.g. 'https://api.datacommons.org/v2').
             api_key: Optional API key for authentication.
+            search_scope: Optional search scope / target (e.g. 'custom_only', 'base_and_custom').
         """
         self.api_root = api_root.rstrip("/")
         self.api_key = api_key
+        self.search_scope = search_scope
         self.headers = {
             "Content-Type": "application/json",
             "x-surface": f"mcp-{__version__}",
@@ -85,6 +92,7 @@ class AgentAPIClient:
             self.headers["X-API-Key"] = api_key
         self.timeout = 30.0  # 30 seconds default timeout
         self._client = None
+
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -114,6 +122,10 @@ class AgentAPIClient:
             raise AgentAPIError(
                 error_msg, e.response.status_code, e.response.text
             ) from e
+        except httpx.RequestError as e:
+            error_msg = f"Agent API request to {endpoint} failed: {e}"
+            raise AgentAPIError(error_msg, 503, None) from e
+
 
     async def close(self) -> None:
         """Close the underlying HTTP client if it was initialized."""
