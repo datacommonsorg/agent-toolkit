@@ -77,8 +77,8 @@ class DCApp:
                 or self.settings.api_root
                 or "https://api.datacommons.org/v2"
             )
-            api_key = getattr(self.settings, "api_key", None)
-            search_scope = getattr(self.settings, "search_scope", None)
+            api_key = self.settings.api_key
+            search_scope = self.settings.search_scope
             search_scope_str = (
                 search_scope.value if hasattr(search_scope, "value") else search_scope
             )

@@ -58,5 +58,10 @@ class AgentAPIError(Exception):
     def __str__(self) -> str:
         base = super().__str__()
         if self.body:
-            return f"{base} - Body: {self.body}"
+            truncated_body = (
+                self.body
+                if len(self.body) <= 500
+                else f"{self.body[:500]}... [truncated]"
+            )
+            return f"{base} - Body: {truncated_body}"
         return base
