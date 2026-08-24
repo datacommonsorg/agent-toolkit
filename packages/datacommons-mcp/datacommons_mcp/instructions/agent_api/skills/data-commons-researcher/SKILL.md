@@ -215,7 +215,7 @@ All observation responses return a uniform dual-table structure:
     "typeOf": ["StatisticalVariable"]
   },
   "sourceMetadata": {
-    "sourceId": "2911625765",
+    "source_id": "2911625765",
     "observationPeriod": "P1Y",
     "provenanceUrl": "https://www.insee.fr",
     "unit": "Person"
