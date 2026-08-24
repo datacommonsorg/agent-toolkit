@@ -243,7 +243,7 @@ All child observation responses return a uniform dual-table structure:
     "typeOf": ["StatisticalVariable"]
   },
   "sourceMetadata": {
-    "sourceId": "2176550201",
+    "source_id": "2176550201",
     "observationPeriod": "P1Y",
     "provenanceUrl": "https://www.bls.gov",
     "unit": "Percent"
