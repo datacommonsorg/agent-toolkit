@@ -203,7 +203,7 @@ When `date="range"` is used in `get_observations`, the date ranges are evaluated
 ## 8. Processing `get_observations` Responses
 
 All observation responses return a uniform dual-table structure:
-1. **`entityMetadata`**: Maps entity DCIDs to human-readable names and types (e.g., `["country/FRA", "France", ["Country"]]`).
+1. **`entityMetadata`**: Maps entity DCIDs to human-readable names and types using tabular `columns` and `rows`.
 2. **`data` Table**: Matrix of observations containing columns `["observationAbout", "date", "value"]` and tabular `rows`.
 
 ### A. Response Structure Reference
@@ -215,15 +215,18 @@ All observation responses return a uniform dual-table structure:
     "typeOf": ["StatisticalVariable"]
   },
   "sourceMetadata": {
-    "source_id": "2911625765",
+    "sourceId": "2911625765",
     "observationPeriod": "P1Y",
     "provenanceUrl": "https://www.insee.fr",
     "unit": "Person"
   },
   "alternativeSources": [],
-  "entityMetadata": [
-    ["country/FRA", "France", ["Country"]]
-  ],
+  "entityMetadata": {
+    "columns": ["dcid", "name", "typeOf"],
+    "rows": [
+      ["country/FRA", "France", ["Country"]]
+    ]
+  },
   "data": {
     "columns": ["observationAbout", "date", "value"],
     "rows": [
@@ -235,10 +238,13 @@ All observation responses return a uniform dual-table structure:
 
 ### B. Field Mapping Rules
 * **`variable`**: Details about the statistical variable requested.
-* **`entityMetadata`**: Maps entity DCIDs to human-readable names and place types.
+* **`entityMetadata`**: Matrix of entity metadata:
+  * `columns`: Array of column names (`dcid`, `name`, `typeOf`).
+  * `rows`: Tabular arrays of `[entity_dcid, entity_name, entity_types]`.
 * **`data`**: Matrix of observations:
   * `columns`: Array of column names (`observationAbout`, `date`, `value`).
   * `rows`: Tabular arrays of `[entity_dcid, date, value]`.
 * **`sourceMetadata`**: Primary authoritative data source information.
 * **`alternativeSources`**: Secondary available sources for validation or cross-referencing.
+
 

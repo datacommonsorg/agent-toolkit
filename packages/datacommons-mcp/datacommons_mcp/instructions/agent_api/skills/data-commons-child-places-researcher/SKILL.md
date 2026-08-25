@@ -231,7 +231,7 @@ When `date="range"` is used, the date ranges are evaluated as follows:
 ## 9. Processing `get_child_observations` Responses
 
 All child observation responses return a uniform dual-table structure:
-1. **`entityMetadata`**: Maps child entity DCIDs to human-readable names and types (e.g., `["geoId/06037", "Los Angeles County", ["County"]]`).
+1. **`entityMetadata`**: Maps child entity DCIDs to human-readable names and types using tabular `columns` and `rows`.
 2. **`data` Table**: Matrix of observations containing columns `["observationAbout", "date", "value"]` and tabular `rows`.
 
 ### A. Response Structure Reference
@@ -243,16 +243,19 @@ All child observation responses return a uniform dual-table structure:
     "typeOf": ["StatisticalVariable"]
   },
   "sourceMetadata": {
-    "source_id": "2176550201",
+    "sourceId": "2176550201",
     "observationPeriod": "P1Y",
     "provenanceUrl": "https://www.bls.gov",
     "unit": "Percent"
   },
   "alternativeSources": [],
-  "entityMetadata": [
-    ["geoId/06037", "Los Angeles County", ["County"]],
-    ["geoId/06075", "San Francisco County", ["County"]]
-  ],
+  "entityMetadata": {
+    "columns": ["dcid", "name", "typeOf"],
+    "rows": [
+      ["geoId/06037", "Los Angeles County", ["AdministrativeArea2", "County", "Place"]],
+      ["geoId/06075", "San Francisco County", ["AdministrativeArea2", "County", "Place"]]
+    ]
+  },
   "data": {
     "columns": ["observationAbout", "date", "value"],
     "rows": [
@@ -265,10 +268,13 @@ All child observation responses return a uniform dual-table structure:
 
 ### B. Field Mapping Rules
 * **`variable`**: Details about the statistical variable requested.
-* **`entityMetadata`**: Maps child entity DCIDs to human-readable names and place types.
+* **`entityMetadata`**: Matrix of child entity metadata:
+  * `columns`: Array of column names (`dcid`, `name`, `typeOf`).
+  * `rows`: Tabular arrays of `[child_dcid, entity_name, entity_types]`.
 * **`data`**: Matrix of child observations:
   * `columns`: Array of column names (`observationAbout`, `date`, `value`).
   * `rows`: Tabular arrays of `[child_dcid, date, value]`.
 * **`sourceMetadata`**: Primary authoritative data source information.
 * **`alternativeSources`**: Secondary available sources.
+
 
