@@ -25,8 +25,8 @@ from fastmcp import FastMCP
 from fastmcp.tools.tool import Tool
 from pydantic import ValidationError
 
-from datacommons_mcp import settings
 from datacommons_mcp.client import AgentAPIClient
+from datacommons_mcp.data_models.settings import DCSettings
 from datacommons_mcp.utils import read_external_content, read_package_content
 from datacommons_mcp.version import __version__
 
@@ -45,7 +45,7 @@ class DCApp:
         """Initialize the application."""
         # Load settings
         try:
-            self.settings = settings.get_dc_settings()
+            self.settings = DCSettings()
             settings_dict = self.settings.model_dump(mode="json")
             settings_dict["api_key"] = (
                 "<SET>" if settings_dict.get("api_key") else "<NOT_SET>"
@@ -65,7 +65,6 @@ class DCApp:
             api_key=self.settings.api_key,
             search_scope=search_scope_str,
         )
-        self.agent_api_client = self.client
 
         # Load Server Instructions
         server_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)

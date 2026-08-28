@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Tests for settings module.
+Tests for settings data model.
 """
 
 import os
@@ -20,7 +20,6 @@ from unittest.mock import patch
 
 from datacommons_mcp.data_models.enums import SearchScope
 from datacommons_mcp.data_models.settings import DCSettings
-from datacommons_mcp.settings import get_dc_settings
 
 
 class TestDCSettings:
@@ -30,7 +29,7 @@ class TestDCSettings:
         """Tests that DCSettings loads with minimal config and correct defaults."""
         env_vars = {"DC_API_KEY": "test_key"}
         with patch.dict(os.environ, env_vars):
-            settings = get_dc_settings()
+            settings = DCSettings()
 
             assert isinstance(settings, DCSettings)
             assert settings.api_key == "test_key"
@@ -47,7 +46,7 @@ class TestDCSettings:
             "DC_INSTRUCTIONS_DIR": "/path/to/instructions",
         }
         with patch.dict(os.environ, env_vars):
-            settings = get_dc_settings()
+            settings = DCSettings()
 
             assert isinstance(settings, DCSettings)
             assert settings.api_key == "custom_key"

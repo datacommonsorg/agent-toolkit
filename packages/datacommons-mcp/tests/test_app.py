@@ -24,7 +24,7 @@ import pytest
 def mock_settings():
     from datacommons_mcp.data_models.settings import DCSettings
 
-    with patch("datacommons_mcp.app.settings.get_dc_settings") as mock:
+    with patch("datacommons_mcp.app.DCSettings") as mock:
         mock.return_value = DCSettings(api_key="test-key")
         yield mock
 
