@@ -72,7 +72,6 @@ steps:
         --platform=managed \
         --no-allow-unauthenticated \
         --set-env-vars=MCP_VERSION=$(cat _version.txt) \
-        --set-env-vars=DC_USE_AGENT_API=true \
         --set-env-vars=DC_AGENT_API_ROOT=https://api.datacommons.org/v2 \
         --set-secrets=DC_API_KEY=dc-api-key-for-mcp:latest \
         --service-account=datacommons-mcp-server@datcom-mixer.iam.gserviceaccount.com \

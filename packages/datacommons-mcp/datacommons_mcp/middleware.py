@@ -1,17 +1,17 @@
 import logging
 from collections.abc import Awaitable, Callable
 
-from datacommons_client import use_api_key
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+
+from datacommons_mcp.client import use_api_key
 
 logger = logging.getLogger(__name__)
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to extract X-API-Key header and set it as the override API key
+    """Middleware to extract X-API-Key header and set it as the override API key
     for the Data Commons client context.
     """
 

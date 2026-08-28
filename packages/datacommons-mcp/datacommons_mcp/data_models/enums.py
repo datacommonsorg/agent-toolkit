@@ -19,7 +19,15 @@ Contains enums used for modeling data constraints and types.
 from enum import Enum
 
 
-class SearchScope(Enum):
+class ObservationDateType(str, Enum):
+    """Enumeration for special date strings in observation queries."""
+
+    ALL = "all"
+    LATEST = "latest"
+    RANGE = "range"
+
+
+class SearchScope(str, Enum):
     """Enum for controlling search scope in Data Commons queries."""
 
     CUSTOM_ONLY = "custom_only"

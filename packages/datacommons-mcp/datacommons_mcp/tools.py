@@ -15,72 +15,140 @@
 Tool implementations for the Data Commons MCP server.
 """
 
-from typing import TYPE_CHECKING
+from typing import Any
 
-from datacommons_mcp.app import app
-from datacommons_mcp.data_models.observations import (
-    ObservationDateType,
-    ObservationToolResponse,
+from datacommons_mcp.data_models.enums import ObservationDateType
+from datacommons_mcp.services import (
+    get_multi_entity_observations as services_get_multi_entity_observations,
 )
 from datacommons_mcp.services import (
-    get_observations as get_observations_service,
+    get_observations as services_get_observations,
 )
 from datacommons_mcp.services import (
-    search_indicators as search_indicators_service,
+    get_variable_metadata as services_get_variable_metadata,
+)
+from datacommons_mcp.services import (
+    search_indicators as services_search_indicators,
 )
 
-if TYPE_CHECKING:
-    from datacommons_mcp.data_models.search import (
-        SearchResponse,
+# Instruction file constants
+SEARCH_INDICATORS_INSTRUCTION_FILE = "tools/search_indicators.md"
+SEARCH_CHILD_INDICATORS_INSTRUCTION_FILE = "tools/search_child_indicators.md"
+GET_VARIABLE_METADATA_INSTRUCTION_FILE = "tools/get_variable_metadata.md"
+GET_OBSERVATIONS_INSTRUCTION_FILE = "tools/get_observations.md"
+GET_CHILD_OBSERVATIONS_INSTRUCTION_FILE = "tools/get_child_observations.md"
+GET_MULTI_ENTITY_OBSERVATIONS_INSTRUCTION_FILE = (
+    "tools/get_multi_entity_observations.md"
+)
+
+
+async def search_indicators(
+    query: str,
+    places: list[str] | None = None,
+    per_search_limit: int = 10,
+    *,
+    include_topics: bool = True,
+) -> dict[str, Any]:
+    """Searches for statistical indicators matching a natural language query."""
+    return await services_search_indicators(
+        query=query,
+        places=places,
+        parent_place=None,
+        per_search_limit=per_search_limit,
+        include_topics=include_topics,
     )
 
 
-# Instruction file paths
-GET_OBSERVATIONS_INSTRUCTION_FILE = "tools/get_observations.md"
-SEARCH_INDICATORS_INSTRUCTION_FILE = "tools/search_indicators.md"
+async def search_child_indicators(
+    query: str,
+    parent_place: str,
+    sample_child_places: list[str],
+    per_search_limit: int = 10,
+    *,
+    include_topics: bool = True,
+) -> dict[str, Any]:
+    """Searches for statistical indicators available at the child-place level."""
+    return await services_search_indicators(
+        query=query,
+        places=sample_child_places,
+        parent_place=parent_place,
+        per_search_limit=per_search_limit,
+        include_topics=include_topics,
+    )
+
+
+async def get_variable_metadata(
+    variable_dcids: list[str],
+    entity_dcids: list[str],
+) -> dict[str, Any]:
+    """Retrieves definitions, coverage, and provenances for a list of variables."""
+    return await services_get_variable_metadata(
+        variable_dcids=variable_dcids,
+        entity_dcids=entity_dcids,
+    )
 
 
 async def get_observations(
     variable_dcid: str,
     place_dcid: str,
-    child_place_type: str | None = None,
     source_override: str | None = None,
     date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
-) -> dict:
-    """Fetches observations for a statistical variable from Data Commons."""
-    response: ObservationToolResponse = await get_observations_service(
-        client=app.client,
+) -> dict[str, Any]:
+    """Fetches time-series observations for a statistical variable at a specific place."""
+    return await services_get_observations(
         variable_dcid=variable_dcid,
         place_dcid=place_dcid,
-        place_name=None,
+        child_place_type=None,
+        source_override=source_override,
+        date=date,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
+    )
+
+
+async def get_child_observations(
+    variable_dcid: str,
+    parent_place_dcid: str,
+    child_place_type: str,
+    source_override: str | None = None,
+    date: str = ObservationDateType.LATEST.value,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
+) -> dict[str, Any]:
+    """Fetches time-series observations for a statistical variable across child places."""
+    return await services_get_observations(
+        variable_dcid=variable_dcid,
+        place_dcid=parent_place_dcid,
         child_place_type=child_place_type,
         source_override=source_override,
         date=date,
         date_range_start=date_range_start,
         date_range_end=date_range_end,
     )
-    return response.model_dump(exclude_none=True)
 
 
-async def search_indicators(
-    query: str,
-    places: list[str] | None = None,
-    parent_place: str | None = None,
-    per_search_limit: int = 10,
-    *,
-    include_topics: bool = True,
-    maybe_bilateral: bool = False,
-) -> dict:
-    """Searches for indicators (topics and variables) in Data Commons."""
-    response: SearchResponse = await search_indicators_service(
-        client=app.client,
-        query=query,
-        places=places,
-        parent_place=parent_place,
-        per_search_limit=per_search_limit,
-        include_topics=include_topics,
-        maybe_bilateral=maybe_bilateral,
+async def get_multi_entity_observations(
+    variable_dcid: str,
+    entities: dict[str, list[str]],
+    parent_entity_property: str | None = None,
+    parent_entity_dcid: str | None = None,
+    child_entity_type: str | None = None,
+    source_override: str | None = None,
+    date: str = ObservationDateType.LATEST.value,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
+) -> dict[str, Any]:
+    """Fetches observations for multi-entity relationship statistical variables."""
+    return await services_get_multi_entity_observations(
+        variable_dcid=variable_dcid,
+        entities=entities,
+        parent_entity_property=parent_entity_property,
+        parent_entity_dcid=parent_entity_dcid,
+        child_entity_type=child_entity_type,
+        source_override=source_override,
+        date=date,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
     )
-    return response.model_dump(exclude_none=True)

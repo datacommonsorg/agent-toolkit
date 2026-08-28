@@ -9,10 +9,8 @@ dependencies = [
     "uvicorn",
     "fastmcp==3.4.2",
     "requests",
-    "datacommons-client>=2.1.6",
     "pydantic>=2.11.7",
     "pydantic-settings",
-    "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.1",
     "google-cloud-storage",
 ]
@@ -52,4 +50,4 @@ where = ["."]
 include = ["datacommons_mcp*"]
 
 [tool.setuptools.package-data]
-datacommons_mcp = ["**/*.json", "instructions/**/*.md"]
+datacommons_mcp = ["instructions/**/*.md"]

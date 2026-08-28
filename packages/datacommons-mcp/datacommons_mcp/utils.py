@@ -22,9 +22,7 @@ import requests
 
 if TYPE_CHECKING:
     from google.cloud import storage
-from datacommons_client.models.observation import Observation
 
-from datacommons_mcp.data_models.observations import DateRange, ObservationDate
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 
 logger = logging.getLogger(__name__)
@@ -38,6 +36,7 @@ def validate_api_key(api_key: str, validation_api_root: str) -> None:
 
     Args:
         api_key: The Data Commons API key to validate.
+        validation_api_root: The root URL for the Data Commons API to validate against.
 
     Raises:
         InvalidAPIKeyError: If the API key is invalid or has expired.
@@ -69,35 +68,6 @@ def validate_api_key(api_key: str, validation_api_root: str) -> None:
     logger.info("Data Commons API key validation successful.")
 
 
-def filter_by_date(
-    observations: list[Observation], date_filter: DateRange | None
-) -> list[Observation]:
-    """
-    Filters a list of observations to include only those fully contained
-    within the specified date range.
-    """
-    if not date_filter:
-        return observations.copy()
-
-    # The dates in date_filter are already normalized by its validator.
-    range_start = date_filter.start_date
-    range_end = date_filter.end_date
-
-    filtered_list = []
-    for obs in observations:
-        # Parse the observation's date interval. The result will be cached.
-        obs_date = ObservationDate.parse_date(obs.date)
-
-        # Lexicographical comparison is correct for YYYY-MM-DD format.
-        if range_start and obs_date < range_start:
-            continue
-        if range_end and obs_date > range_end:
-            continue
-        filtered_list.append(obs)
-
-    return filtered_list
-
-
 @cache
 def _get_gcs_client() -> "storage.Client":
     """Returns a cached GCS client instance."""
@@ -107,88 +77,87 @@ def _get_gcs_client() -> "storage.Client":
     return storage.Client()
 
 
-def _read_local_content(path: Path) -> str | None:
-    """Reads content from a local file path."""
-    try:
-        if path.exists() and path.is_file():
-            return path.read_text(encoding="utf-8")
-    except Exception as e:
-        logger.warning("Failed to read local file %s: %s", path, e)
+def read_external_content(base_dir: str, filename: str) -> str | None:
+    """
+    Reads content from an external source, supporting both local filesystem
+    paths and Google Cloud Storage (GCS) paths.
+
+    Args:
+        base_dir: The base directory path. Can be a local filesystem path
+            or a GCS URI (e.g., gs://bucket-name/optional/prefix).
+        filename: The relative path to the file from the base directory
+            (e.g., server.md or tools/get_observations.md).
+
+    Returns:
+        The content of the file as a string if found, None otherwise.
+    """
+    if base_dir.startswith("gs://"):
+        return _read_gcs_content(base_dir, filename)
+    return _read_local_content(base_dir, filename)
+
+
+def _read_local_content(base_dir: str, filename: str) -> str | None:
+    """Reads content from a local filesystem path."""
+    file_path = Path(base_dir) / filename
+    if file_path.is_file():
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning("Failed to read external file %s: %s", file_path, e)
+            return None
     return None
 
 
-def _read_gcs_content(uri: str) -> str | None:
-    """Reads content from a GCS blob URI."""
-    from google.cloud import storage
+def _read_gcs_content(gcs_uri: str, filename: str) -> str | None:
+    """Reads content from a Google Cloud Storage URI."""
     from google.cloud.exceptions import NotFound
+    from google.cloud.storage import Blob
+
+    # Construct the full GCS URI
+    # Remove trailing slash from base_uri and leading slash from filename
+    clean_base = gcs_uri.rstrip("/")
+    clean_filename = filename.lstrip("/")
+    full_gcs_path = f"{clean_base}/{clean_filename}"
+
+    logger.debug("Attempting to load custom instructions from GCS: %s", full_gcs_path)
 
     try:
         client = _get_gcs_client()
-        # Create the blob object directly from the URI
-        blob = storage.Blob.from_string(uri, client=client)
-        return blob.download_as_text(encoding="utf-8")
+        blob = Blob.from_string(full_gcs_path, client=client)
+        return blob.download_as_text()
     except NotFound:
-        logger.warning(
-            "GCS blob %s not found. Falling back to default.",
-            uri,
-        )
+        logger.debug("GCS file not found: %s", full_gcs_path)
         return None
     except Exception as e:
-        logger.warning(
-            "Failed to read GCS blob %s: %s",
-            uri,
-            e,
-        )
-    return None
-
-
-def read_external_content(base_path: str, filename: str) -> str | None:
-    """Reads content from an external location (local or GCS).
-
-    Args:
-        base_path: The base directory or GCS path (gs://bucket/prefix) to look in.
-        filename: The name of the file to read (relative to base_path).
-
-    Returns:
-        The content of the file as a string, or None if the file does not exist.
-    """
-    if base_path.startswith("gs://"):
-        uri = f"{base_path.rstrip('/')}/{filename}"
-        return _read_gcs_content(uri)
-
-    path = Path(base_path) / filename
-    return _read_local_content(path)
+        logger.warning("Failed to read GCS file %s: %s", full_gcs_path, e)
+        return None
 
 
 def read_package_content(package: str, filename: str) -> str:
-    """Reads content from the package resources.
+    """
+    Reads content from a package resource using importlib.resources.
 
     Args:
-        package: The python package to read from (e.g. "datacommons_mcp.instructions").
-        filename: The name of the resource to read. Can include subdirectories
-            (e.g. "tools/search_indicators.md").
+        package: The package name containing the resource (e.g., datacommons_mcp.instructions).
+        filename: The relative path to the resource within the package.
 
     Returns:
-        The content of the resource as a string, or an empty string if not found.
-
-    Example:
-        >>> content = read_package_content("datacommons_mcp.instructions", "server.md")
+        The content of the file as a string, or empty string if not found.
     """
     try:
-        # Handle potential subdirectories in filename (e.g. tools/foo.md)
-        parts = filename.split("/")
-        # Start at instructions package
+        # Traverse subdirectories if filename contains path separators
         resource = importlib.resources.files(package)
-
-        # Traverse down the path
-        for part in parts:
-            resource = resource.joinpath(part)
+        for part in Path(filename).parts:
+            resource = resource / part
 
         if resource.is_file():
             return resource.read_text(encoding="utf-8")
-        logger.warning("Instruction resource %s not found in package", filename)
+        logger.warning(
+            "Package resource not found or not a file: %s/%s", package, filename
+        )
         return ""
-
     except Exception as e:
-        logger.warning("Failed to load instruction %s: %s", filename, e)
+        logger.warning(
+            "Failed to read package resource %s/%s: %s", package, filename, e
+        )
         return ""

@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from datacommons_client.models.observation import Observation
-from datacommons_mcp.data_models.observations import DateRange
 from datacommons_mcp.exceptions import APIKeyValidationError, InvalidAPIKeyError
 from datacommons_mcp.utils import (
     VALIDATION_API_PATH,
     _get_gcs_client,
-    filter_by_date,
     read_external_content,
     read_package_content,
     validate_api_key,
@@ -32,43 +28,12 @@ from datacommons_mcp.utils import (
 TEST_ROOT = "https://test.api.datacommons.org"
 
 
-class TestFilterByDate:
-    @pytest.fixture
-    def observations(self):
-        return [
-            Observation(date="2022", value=1),
-            Observation(date="2023-05", value=2),
-            Observation(date="2024-01-15", value=3),
-            Observation(date="2024-07", value=4),
-        ]
-
-    def test_no_filter(self, observations):
-        assert len(filter_by_date(observations, None)) == 4
-
-    def test_filter_contains_fully(self, observations):
-        date_filter = DateRange(start_date="2023", end_date="2024")
-        result = filter_by_date(observations, date_filter)
-        assert len(result) == 3
-        assert {obs.value for obs in result} == {2, 3, 4}
-
-    def test_filter_partial_overlap_excluded(self, observations):
-        # Observation for "2022" (Jan 1 to Dec 31) is not fully contained
-        date_filter = DateRange(start_date="2022-06-01", end_date="2023-06-01")
-        result = filter_by_date(observations, date_filter)
-        assert len(result) == 1
-        assert result[0].value == 2  # Only 2023-05 is fully contained
-
-    def test_empty_result(self, observations):
-        date_filter = DateRange(start_date="2025", end_date="2026")
-        assert len(filter_by_date(observations, date_filter)) == 0
-
-
 class TestValidateAPIKey:
     def test_validate_api_key_success(self, requests_mock):
         url = f"{TEST_ROOT}{VALIDATION_API_PATH}"
         requests_mock.get(url, status_code=200)
         api_key_to_test = "my-test-api-key"
-        validate_api_key(api_key_to_test, TEST_ROOT)  # Should not raise an exception
+        validate_api_key(api_key_to_test, TEST_ROOT)
         assert requests_mock.last_request.headers["X-API-Key"] == api_key_to_test
 
     def test_validate_api_key_invalid(self, requests_mock):
@@ -110,7 +75,6 @@ class TestReadContent:
 
     def test_read_external_content_subdir(self, tmp_path, create_test_file):
         create_test_file("subdir/test.md", "content")
-        # Filename includes subdir relative to base
         assert read_external_content(str(tmp_path), "subdir/test.md") == "content"
 
     def test_read_external_content_missing(self, tmp_path):
@@ -163,14 +127,10 @@ class TestReadContent:
         )
 
     def test_read_package_content_success(self):
-        # Read actual content from the package
-        content = read_package_content(
-            "datacommons_mcp.instructions", "local/server.md"
-        )
+        content = read_package_content("datacommons_mcp.instructions", "server.md")
         assert "Data Commons" in content
 
     def test_read_package_content_missing(self):
-        # Read a file that definitely doesn't exist in the package
         content = read_package_content(
             "datacommons_mcp.instructions", "non_existent_file.md"
         )

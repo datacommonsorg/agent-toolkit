@@ -12,177 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Pydantic settings for configuring the MCP server.
+Pydantic settings for configuring the Data Commons MCP server.
 """
 
-from typing import Any, Literal
-
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from .enums import SearchScope
 
-_MODEL_CONFIG = {"env_file": ".env", "extra": "ignore"}
 
+class DCSettings(BaseSettings):
+    """Pydantic settings for configuring the Data Commons MCP server."""
 
-class DCSettingsSelector(BaseSettings):
-    """Settings selector to determine DC type from environment."""
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
-    model_config = _MODEL_CONFIG
-
-    dc_type: Literal["base", "custom"] = Field(
-        default="base", alias="DC_TYPE", description="Type of Data Commons"
-    )
-
-
-class DCSettingsBase(BaseSettings):
-    """Base settings class containing shared configurations."""
-
-    model_config = _MODEL_CONFIG
-
-    # Default the API key to an empty string to defer validation.
-    # When `--skip-api-key-validation` is used, key issues are handled
-    # at tool-call time instead of at server startup.
     api_key: str = Field(
-        default="", alias="DC_API_KEY", description="API key for Data Commons"
+        default="",
+        alias="DC_API_KEY",
+        description="API key for Data Commons",
     )
-
+    agent_api_root: str = Field(
+        default="https://api.datacommons.org/v2",
+        alias="DC_AGENT_API_ROOT",
+        description="API root URL for Data Commons Agent API endpoints",
+    )
+    search_scope: SearchScope | None = Field(
+        default=None,
+        alias="DC_SEARCH_SCOPE",
+        description="Search scope for queries (e.g., 'custom_only', 'base_and_custom')",
+    )
     instructions_dir: str | None = Field(
         default=None,
         alias="DC_INSTRUCTIONS_DIR",
         description="Directory containing custom instruction files (markdown overrides)",
     )
-
-    use_agent_api: bool = Field(
-        default=False,
-        alias="DC_USE_AGENT_API",
-        description="Use the new Agent-optimized APIs instead of local processing",
-    )
-
-    api_root: str | None = Field(
-        default=None,
-        alias="DC_API_ROOT",
-        description="API root for Data Commons",
-    )
-
-    agent_api_root: str | None = Field(
-        default=None,
-        alias="DC_AGENT_API_ROOT",
-        description="API root specifically for Data Commons Agent API endpoints",
-    )
-
-    search_scope: SearchScope | None = Field(
-        default=None,
-        alias="DC_SEARCH_SCOPE",
-        description="Search scope for queries",
-    )
-
-
-class BaseDCSettings(DCSettingsBase):
-    """Settings for base Data Commons instance."""
-
-    def __init__(self, **kwargs: dict[str, Any]) -> None:
-        super().__init__(**kwargs)
-
-    dc_type: Literal["base"] = Field(
-        default="base",
-        alias="DC_TYPE",
-        description="Type of Data Commons (must be 'base')",
-    )
-    topic_cache_paths: list[str] | None = Field(
-        default=None,
-        alias="DC_TOPIC_CACHE_PATHS",
-        description="Paths to topic cache files",
-    )
-
-    base_root_topic_dcids: list[str] | None = Field(
-        default=["dc/topic/Root", "dc/topic/sdg"],
-        alias="DC_BASE_ROOT_TOPIC_DCIDS",
-        description="List of root topic DCIDs for base DC",
-    )
-
-    @field_validator("topic_cache_paths", "base_root_topic_dcids", mode="before")
-    @classmethod
-    def parse_list_like_parameter(cls, v: str) -> list[str] | None:
-        return _parse_list_like_parameter(v)
-
-
-class CustomDCSettings(DCSettingsBase):
-    """Settings for custom Data Commons instance."""
-
-    model_config = _MODEL_CONFIG
-
-    def __init__(self, **kwargs: dict[str, Any]) -> None:
-        super().__init__(**kwargs)
-
-    dc_type: Literal["custom"] = Field(
-        default="custom",
-        alias="DC_TYPE",
-        description="Type of Data Commons (must be 'custom')",
-    )
-    custom_dc_url: str = Field(
-        alias="CUSTOM_DC_URL", description="Base URL for custom Data Commons instance"
-    )
-    api_base_url: str | None = Field(
-        default=None,
-        alias="DC_API_BASE_URL",
-        description="API base URL (computed from CUSTOM_DC_URL if not provided)",
-    )
-    search_scope: SearchScope = Field(
-        default=SearchScope.BASE_AND_CUSTOM,
-        alias="DC_SEARCH_SCOPE",
-        description="Search scope for queries",
-    )
-    root_topic_dcids: list[str] | None = Field(
-        default=None,
-        alias="DC_ROOT_TOPIC_DCIDS",
-        description="List of root topic DCIDs",
-    )
-    base_root_topic_dcids: list[str] | None = Field(
-        default=["dc/topic/Root", "dc/topic/sdg"],
-        alias="DC_BASE_ROOT_TOPIC_DCIDS",
-        description="List of root topic DCIDs for base DC",
-    )
-    topic_cache_paths: list[str] | None = Field(
-        default=None,
-        alias="DC_TOPIC_CACHE_PATHS",
-        description="Paths to topic cache files (unlikely to be used but could be useful for local development)",
-    )
-    # TODO (@jm-rivera): Remove once new endpoint is live.
-    place_like_constraints: list[str] | None = Field(
-        default=None,
-        alias="PLACE_LIKE_CONSTRAINTS",
-        description="List of place-like constraintProperties",
-    )
-
-    @field_validator(
-        "root_topic_dcids",
-        "base_root_topic_dcids",
-        "place_like_constraints",
-        "topic_cache_paths",
-        mode="before",
-    )
-    @classmethod
-    def parse_list_like_parameter(cls, v: str) -> list[str] | None:
-        return _parse_list_like_parameter(v)
-
-    @model_validator(mode="after")
-    def compute_api_base_url(self) -> "CustomDCSettings":
-        """Compute api_base_url from custom_dc_url if not provided."""
-        if self.api_base_url is None:
-            self.api_base_url = self.custom_dc_url.rstrip("/") + "/core/api/v2/"
-        return self
-
-
-def _parse_list_like_parameter(v: Any) -> list[str] | None:  # noqa: ANN401
-    """Parse a comma-separated string or a list into a list of strings."""
-    if isinstance(v, list):
-        return [s for s in (str(item).strip() for item in v) if s]
-    if not isinstance(v, str) or not v.strip():
-        return None
-    # Split by comma and strip whitespace from each item, filtering out empty strings
-    return [s for s in (part.strip() for part in v.split(",")) if s]
-
-
-# Union type for both settings
-DCSettings = BaseDCSettings | CustomDCSettings

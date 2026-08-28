@@ -15,11 +15,13 @@
 Client for interacting with the Data Commons Agent API.
 """
 
+import contextvars
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager
 from functools import wraps
-from typing import Any  # noqa: ANN401
+from typing import TypeVar
 
 import httpx
 
@@ -28,18 +30,37 @@ from datacommons_mcp.version import __version__
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
 
-def log_api_call(func: Callable[..., Any]) -> Callable[..., Any]:  # noqa: ANN401
+# Context variable for request-scoped API key override (e.g. from APIKeyMiddleware)
+api_key_context: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "api_key_context", default=None
+)
+
+
+@contextmanager
+def use_api_key(api_key: str) -> Iterator[None]:
+    """Context manager for overriding the Data Commons API key within a context."""
+    token = api_key_context.set(api_key)
+    try:
+        yield
+    finally:
+        api_key_context.reset(token)
+
+
+def log_api_call(
+    func: Callable[..., Awaitable[T]],
+) -> Callable[..., Awaitable[T]]:
     """Decorator to log URL, request payload, execution time, and errors for Agent API calls."""
 
     @wraps(func)
     async def wrapper(
         self: "AgentAPIClient",
         endpoint: str,
-        payload: dict,
+        payload: dict[str, object],
         *args: object,
         **kwargs: object,
-    ) -> Any:  # noqa: ANN401
+    ) -> T:
         url = f"{self.api_root}/{endpoint}"
         logger.info("AgentAPIClient POST request URL: %s, payload: %s", url, payload)
         start_time = time.perf_counter()
@@ -101,7 +122,9 @@ class AgentAPIClient:
         return self._client
 
     @log_api_call
-    async def post(self, endpoint: str, payload: dict) -> dict:
+    async def post(
+        self, endpoint: str, payload: dict[str, object]
+    ) -> dict[str, object]:
         """Perform an asynchronous POST request to the specified endpoint.
 
         Args:
@@ -112,8 +135,15 @@ class AgentAPIClient:
             The parsed JSON response as a dictionary.
         """
         url = f"{self.api_root}/{endpoint}"
+        headers = {}
+        override_api_key = api_key_context.get()
+        if override_api_key:
+            headers["X-API-Key"] = override_api_key
+
         try:
-            response = await self.client.post(url, json=payload)
+            response = await self.client.post(
+                url, json=payload, headers=headers or None
+            )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
