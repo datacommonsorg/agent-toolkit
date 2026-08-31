@@ -92,7 +92,7 @@ async def get_observations(
     variable_dcid: str,
     place_dcid: str,
     source_override: str | None = None,
-    date: str | None = ObservationDateType.LATEST.value,
+    date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> dict[str, Any]:
@@ -113,7 +113,7 @@ async def get_child_observations(
     parent_place_dcid: str,
     child_place_type: str,
     source_override: str | None = None,
-    date: str | None = ObservationDateType.LATEST.value,
+    date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> dict[str, Any]:
@@ -136,7 +136,7 @@ async def get_multi_entity_observations(
     parent_entity_dcid: str | None = None,
     child_entity_type: str | None = None,
     source_override: str | None = None,
-    date: str | None = ObservationDateType.LATEST.value,
+    date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> dict[str, Any]:
