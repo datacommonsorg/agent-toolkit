@@ -181,6 +181,24 @@ async def test_services_get_observations():
             },
         )
 
+        # Verify default date is "latest" when omitted
+        mock_client.reset_mock()
+        await services_get_obs(
+            variable_dcid="Count_Person",
+            place_dcid="geoId/06",
+        )
+        mock_client.post.assert_called_once_with(
+            "agent/get_observations",
+            {
+                "variable_dcid": "Count_Person",
+                "entities": {"observationAbout": ["geoId/06"]},
+                "source_override": None,
+                "date": "latest",
+                "date_range_start": None,
+                "date_range_end": None,
+            },
+        )
+
 
 @pytest.mark.asyncio
 async def test_services_get_multi_entity_observations():

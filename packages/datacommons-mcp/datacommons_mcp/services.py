@@ -34,7 +34,7 @@ async def get_observations(
     place_dcid: str,
     child_place_type: str | None = None,
     source_override: str | None = None,
-    date: str | None = None,
+    date: str | None = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
 ) -> dict[str, Any]:
