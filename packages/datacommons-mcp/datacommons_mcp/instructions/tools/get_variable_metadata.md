@@ -1,1 +1,3 @@
 Retrieve detailed structural metadata, including definitions, temporal coverage, and provenances, for a list of statistical variables. Returns a dictionary mapping variables to their source facets and entity coverages. Use this to assess and qualify variables before fetching heavy observation data.
+
+Only call this with `variable_dcids` returned by a search tool (`search_indicators` or `search_child_indicators`). Never guess, assume, or construct a DCID from memory or from similar-looking DCIDs.
