@@ -2,7 +2,6 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from fastmcp.exceptions import NotFoundError
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from mcp import McpError
@@ -16,25 +15,17 @@ from datacommons_mcp.client import use_api_key
 logger = logging.getLogger(__name__)
 
 DOCUMENTATION_HEADER = "X-DC-Enable-Documentation"
-DOCUMENTATION_RESOURCE_NAME = "data_commons_documentation_index"
-DOCUMENTATION_INDEX_URI = "https://docs.datacommons.org/llms.txt"
-DOCUMENTATION_ROUTING_HINT = (
-    "For Data Commons API, client library, schema, dataset coverage, concept, or "
-    f"integration questions, read the MCP resource named `{DOCUMENTATION_RESOURCE_NAME}` "
-    "before searching the web. For statistical data queries, use the MCP tools and "
-    "skills instead."
-)
 
 
 class DocumentationMiddleware(Middleware):
     """Apply the client's documentation preference, falling back to the server."""
 
-    def __init__(self, *, enabled: bool, base_instructions: str) -> None:
+    def __init__(
+        self, *, enabled: bool, base_instructions: str, documentation_instructions: str
+    ) -> None:
         self._default_enabled = enabled
         self._base_instructions = base_instructions
-        self._documentation_instructions = (
-            f"{base_instructions.rstrip()}\n\n{DOCUMENTATION_ROUTING_HINT}"
-        )
+        self._documentation_instructions = documentation_instructions
 
     def _enabled(self) -> bool:
         value = get_http_headers().get(DOCUMENTATION_HEADER.lower())
@@ -68,25 +59,6 @@ class DocumentationMiddleware(Middleware):
         session._init_options = session._init_options.model_copy(
             update={"instructions": instructions}
         )
-        return await call_next(context)
-
-    async def on_list_resources(
-        self, context: MiddlewareContext, call_next: CallNext
-    ) -> Any:  # noqa: ANN401
-        resources = await call_next(context)
-        if self._enabled():
-            return resources
-        return [
-            resource
-            for resource in resources
-            if str(resource.uri) != DOCUMENTATION_INDEX_URI
-        ]
-
-    async def on_read_resource(
-        self, context: MiddlewareContext, call_next: CallNext
-    ) -> Any:  # noqa: ANN401
-        if str(context.message.uri) == DOCUMENTATION_INDEX_URI and not self._enabled():
-            raise NotFoundError(f"Unknown resource: {DOCUMENTATION_INDEX_URI}")
         return await call_next(context)
 
 

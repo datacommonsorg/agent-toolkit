@@ -48,9 +48,9 @@ This transport mode is intended for local integrations and is programmatically c
 uvx datacommons-mcp serve stdio
 ```
 
-### Optional documentation resource
+### Optional documentation guidance
 
-`DC_ENABLE_DOCUMENTATION_RESOURCE` sets the server default (false when unset).
+`DC_ENABLE_DOCUMENTATION` sets the server default (false when unset).
 For stdio, pass this environment variable when launching the server process.
 
 HTTP clients can override the default in their MCP connection configuration:
@@ -67,10 +67,16 @@ whitespace is ignored; other values produce an invalid-parameters error.
 Send the same preference on every request and reconnect after changing it.
 
 When enabled, a documentation routing hint follows the existing server
-instructions and the documentation index appears in resource listings. The
-server fetches `llms.txt` only when the resource is read. When disabled, the
-index is omitted from listings and direct reads are rejected. Existing tools
+instructions and directs the client to fetch https://docs.datacommons.org/llms.txt
+for relevant documentation questions. The client needs URL-reading capability
+and permission to access the index and linked pages. The server does not fetch
+the index or expose it as an MCP resource. When disabled, no documentation hint
+is supplied; this does not prevent access to the public URL. Existing tools
 and skills are unaffected.
+
+To customize the hint, place `doc_instructions_extension.md` in
+`DC_INSTRUCTIONS_DIR`. It uses the same override mechanism as `server.md`,
+which remains separate and always precedes the extension.
 
 ## Clients
 

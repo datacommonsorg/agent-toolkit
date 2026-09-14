@@ -66,14 +66,14 @@ def test_app_initialization_override(
     assert instructions == "Custom Server Instructions"
 
 
-def test_app_leaves_documentation_hint_to_middleware(
+def test_app_prepares_documentation_instructions(
     mock_settings, mock_fastmcp, tmp_path, create_test_file
 ):
-    """The shared server instructions remain unchanged when docs are enabled."""
+    """Prepare the packaged extension while leaving shared instructions unchanged."""
     custom_dir = tmp_path / "instructions"
     create_test_file("instructions/server.md", "Custom Server Instructions")
     mock_settings.return_value.instructions_dir = str(custom_dir)
-    mock_settings.return_value.enable_documentation_resource = True
+    mock_settings.return_value.enable_documentation = True
 
     from datacommons_mcp.app import DCApp
 
@@ -81,6 +81,13 @@ def test_app_leaves_documentation_hint_to_middleware(
 
     instructions = mock_fastmcp.call_args[1]["instructions"]
     assert instructions == "Custom Server Instructions"
+    middleware = mock_fastmcp.return_value.add_middleware.call_args[0][0]
+    assert middleware._base_instructions == instructions
+    assert (
+        "https://docs.datacommons.org/llms.txt"
+        in middleware._documentation_instructions
+    )
+    assert middleware._documentation_instructions.startswith(f"{instructions}\n\n")
 
 
 def test_load_instruction_tool_override(mock_settings, tmp_path, create_test_file):

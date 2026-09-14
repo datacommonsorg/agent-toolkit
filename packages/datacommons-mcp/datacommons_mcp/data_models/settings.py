@@ -46,8 +46,8 @@ class DCSettings(BaseSettings):
         alias="DC_INSTRUCTIONS_DIR",
         description="Directory containing custom instruction files (markdown overrides)",
     )
-    enable_documentation_resource: bool = Field(
+    enable_documentation: bool = Field(
         default=False,
-        alias="DC_ENABLE_DOCUMENTATION_RESOURCE",
-        description="Expose the official Data Commons documentation resource",
+        alias="DC_ENABLE_DOCUMENTATION",
+        description="Include guidance for accessing official Data Commons documentation",
     )

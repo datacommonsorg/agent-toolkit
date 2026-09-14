@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 MCP_SERVER_NAME = "DC MCP Server"
 DEFAULT_INSTRUCTIONS_PACKAGE = "datacommons_mcp.instructions"
 SERVER_INSTRUCTIONS_FILE = "server.md"
+DOCUMENTATION_INSTRUCTIONS_FILE = "doc_instructions_extension.md"
 
 
 class DCApp:
@@ -69,6 +70,12 @@ class DCApp:
 
         # Load Server Instructions
         base_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)
+        documentation_extension = self._load_instructions(
+            DOCUMENTATION_INSTRUCTIONS_FILE
+        )
+        documentation_instructions = (
+            f"{base_instructions.rstrip()}\n\n{documentation_extension}"
+        )
 
         @asynccontextmanager
         async def lifespan(_server: FastMCP) -> AsyncIterator[dict[str, Any]]:
@@ -85,8 +92,9 @@ class DCApp:
         )
         self.mcp.add_middleware(
             DocumentationMiddleware(
-                enabled=self.settings.enable_documentation_resource,
+                enabled=self.settings.enable_documentation,
                 base_instructions=base_instructions,
+                documentation_instructions=documentation_instructions,
             )
         )
 
