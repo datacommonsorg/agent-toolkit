@@ -66,6 +66,29 @@ def test_app_initialization_override(
     assert instructions == "Custom Server Instructions"
 
 
+def test_app_prepares_documentation_instructions(
+    mock_settings, mock_fastmcp, tmp_path, create_test_file
+):
+    """Prepare the packaged extension while leaving shared instructions unchanged."""
+    custom_dir = tmp_path / "instructions"
+    create_test_file("instructions/server.md", "Custom Server Instructions")
+    mock_settings.return_value.instructions_dir = str(custom_dir)
+
+    from datacommons_mcp.app import DCApp
+
+    _ = DCApp()
+
+    instructions = mock_fastmcp.call_args[1]["instructions"]
+    assert instructions == "Custom Server Instructions"
+    middleware = mock_fastmcp.return_value.add_middleware.call_args[0][0]
+    assert middleware._base_instructions == instructions
+    assert (
+        "https://docs.datacommons.org/llms.txt"
+        in middleware._documentation_instructions
+    )
+    assert middleware._documentation_instructions.startswith(f"{instructions}\n\n")
+
+
 def test_load_instruction_tool_override(mock_settings, tmp_path, create_test_file):
     """Test loading tool instructions with override."""
     custom_dir = tmp_path / "instructions"

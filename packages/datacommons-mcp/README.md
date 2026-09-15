@@ -48,6 +48,37 @@ This transport mode is intended for local integrations and is programmatically c
 uvx datacommons-mcp serve stdio
 ```
 
+### Optional documentation guidance
+
+Documentation guidance is disabled by default. HTTP clients, including clients
+connecting to a local HTTP server, can opt in through their MCP connection configuration:
+
+```json
+"headers": {
+  "X-DC-Enable-Documentation": "true"
+}
+```
+
+Use `"false"` or omit the header to leave guidance disabled.
+Values are case-insensitive and surrounding
+whitespace is ignored; other values produce an invalid-parameters error.
+Send the same preference on every request and reconnect after changing it.
+
+There is no server environment setting for this feature. Stdio connections do
+not receive the optional documentation guidance; their tools and skills are unchanged.
+
+When enabled, a documentation routing hint follows the existing server
+instructions and directs the client to fetch https://docs.datacommons.org/llms.txt
+for relevant documentation questions. The client needs URL-reading capability
+and permission to access the index and linked pages. The server does not fetch
+the index or expose it as an MCP resource. When disabled, no documentation hint
+is supplied; this does not prevent access to the public URL. Existing tools
+and skills are unaffected.
+
+To customize the hint, place `doc_instructions_extension.md` in
+`DC_INSTRUCTIONS_DIR`. It uses the same override mechanism as `server.md`,
+which remains separate and always precedes the extension.
+
 ## Clients
 
 You can use any MCP-enabled agent or client to connect to your running server. For example, see the [Data Commons MCP documentation](https://github.com/datacommonsorg/agent-toolkit/blob/main/docs/user_guide.md) for guides on connecting:

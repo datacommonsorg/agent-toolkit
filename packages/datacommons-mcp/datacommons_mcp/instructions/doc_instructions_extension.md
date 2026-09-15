@@ -1,0 +1,1 @@
+For Data Commons API, client library, schema, dataset coverage, concept, or integration questions, fetch https://docs.datacommons.org/llms.txt and use its index to open only the documentation pages relevant to the question. For statistical data queries, use the MCP tools and skills instead.

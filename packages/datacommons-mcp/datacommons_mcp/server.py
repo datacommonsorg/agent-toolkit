@@ -30,7 +30,6 @@ from datacommons_mcp.version import __version__
 # Configure logging
 logger = logging.getLogger(__name__)
 
-
 # Expose the FastMCP instance for the CLI
 mcp = app.mcp
 

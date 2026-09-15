@@ -27,6 +27,7 @@ from pydantic import ValidationError
 
 from datacommons_mcp.client import AgentAPIClient
 from datacommons_mcp.data_models.settings import DCSettings
+from datacommons_mcp.middleware import DocumentationMiddleware
 from datacommons_mcp.utils import read_external_content, read_package_content
 from datacommons_mcp.version import __version__
 
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 MCP_SERVER_NAME = "DC MCP Server"
 DEFAULT_INSTRUCTIONS_PACKAGE = "datacommons_mcp.instructions"
 SERVER_INSTRUCTIONS_FILE = "server.md"
+DOCUMENTATION_INSTRUCTIONS_FILE = "doc_instructions_extension.md"
 
 
 class DCApp:
@@ -67,7 +69,13 @@ class DCApp:
         )
 
         # Load Server Instructions
-        server_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)
+        base_instructions = self._load_instructions(SERVER_INSTRUCTIONS_FILE)
+        documentation_extension = self._load_instructions(
+            DOCUMENTATION_INSTRUCTIONS_FILE
+        )
+        documentation_instructions = (
+            f"{base_instructions.rstrip()}\n\n{documentation_extension}"
+        )
 
         @asynccontextmanager
         async def lifespan(_server: FastMCP) -> AsyncIterator[dict[str, Any]]:
@@ -79,8 +87,14 @@ class DCApp:
         self.mcp = FastMCP(
             MCP_SERVER_NAME,
             version=__version__,
-            instructions=server_instructions,
+            instructions=base_instructions,
             lifespan=lifespan,
+        )
+        self.mcp.add_middleware(
+            DocumentationMiddleware(
+                base_instructions=base_instructions,
+                documentation_instructions=documentation_instructions,
+            )
         )
 
     def _load_instructions(self, filename: str) -> str:
