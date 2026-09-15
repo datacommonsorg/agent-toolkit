@@ -50,10 +50,8 @@ uvx datacommons-mcp serve stdio
 
 ### Optional documentation guidance
 
-`DC_ENABLE_DOCUMENTATION` sets the server default (false when unset).
-For stdio, pass this environment variable when launching the server process.
-
-HTTP clients can override the default in their MCP connection configuration:
+Documentation guidance is disabled by default. HTTP clients, including clients
+connecting to a local HTTP server, can opt in through their MCP connection configuration:
 
 ```json
 "headers": {
@@ -61,10 +59,13 @@ HTTP clients can override the default in their MCP connection configuration:
 }
 ```
 
-Use `"false"` to opt out even when the server default is enabled. Omit the header
-to inherit the server default. Values are case-insensitive and surrounding
+Use `"false"` or omit the header to leave guidance disabled.
+Values are case-insensitive and surrounding
 whitespace is ignored; other values produce an invalid-parameters error.
 Send the same preference on every request and reconnect after changing it.
+
+There is no server environment setting for this feature. Stdio connections do
+not receive the optional documentation guidance; their tools and skills are unchanged.
 
 When enabled, a documentation routing hint follows the existing server
 instructions and directs the client to fetch https://docs.datacommons.org/llms.txt

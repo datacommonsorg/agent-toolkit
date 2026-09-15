@@ -34,9 +34,7 @@ def documentation_app(monkeypatch, tmp_path, create_test_file):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("default", [False, True])
-async def test_documentation_http_overrides(default, documentation_app, monkeypatch):
-    monkeypatch.setenv("DC_ENABLE_DOCUMENTATION", str(default))
+async def test_documentation_http_opt_in(documentation_app, monkeypatch):
     app = documentation_app()
     server = app.mcp
     original = server.instructions
@@ -51,7 +49,7 @@ async def test_documentation_http_overrides(default, documentation_app, monkeypa
     async with run_server_async(server) as url:
 
         async def check(header):
-            enabled = default if header is None else header.lower() == "true"
+            enabled = header is not None and header.lower() == "true"
             headers = {} if header is None else {DOCUMENTATION_HEADER: header}
             async with Client(StreamableHttpTransport(url, headers=headers)) as client:
                 result = await client.initialize()
@@ -82,19 +80,12 @@ async def test_documentation_http_overrides(default, documentation_app, monkeypa
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("default", [None, "false", "true"])
-async def test_documentation_without_http_header(
-    default, documentation_app, monkeypatch
-):
-    """Without HTTP headers, the environment controls the instructions as for stdio."""
-    if default is not None:
-        monkeypatch.setenv("DC_ENABLE_DOCUMENTATION", default)
+async def test_documentation_without_http_header(documentation_app):
+    """Headerless transports receive only the base instructions."""
     app = documentation_app()
     async with Client(app.mcp) as client:
         result = await client.initialize()
     expected = "Custom server instructions.\n"
-    if default == "true":
-        expected = "Custom server instructions.\n\nCustom documentation hint.\n"
     assert result.instructions == expected
 
 
@@ -105,7 +96,6 @@ def test_documentation_header_whitespace(value, expected, monkeypatch):
         lambda: {DOCUMENTATION_HEADER.lower(): value},
     )
     middleware = DocumentationMiddleware(
-        enabled=False,
         base_instructions="base",
         documentation_instructions="base with documentation",
     )

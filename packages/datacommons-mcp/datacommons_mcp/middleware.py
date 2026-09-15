@@ -18,19 +18,18 @@ DOCUMENTATION_HEADER = "X-DC-Enable-Documentation"
 
 
 class DocumentationMiddleware(Middleware):
-    """Apply the client's documentation preference, falling back to the server."""
+    """Enable documentation guidance only when the HTTP client opts in."""
 
     def __init__(
-        self, *, enabled: bool, base_instructions: str, documentation_instructions: str
+        self, *, base_instructions: str, documentation_instructions: str
     ) -> None:
-        self._default_enabled = enabled
         self._base_instructions = base_instructions
         self._documentation_instructions = documentation_instructions
 
     def _enabled(self) -> bool:
         value = get_http_headers().get(DOCUMENTATION_HEADER.lower())
         if value is None:
-            return self._default_enabled
+            return False
         value = value.strip().lower()
         if value not in ("true", "false"):
             raise McpError(

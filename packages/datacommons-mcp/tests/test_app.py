@@ -73,7 +73,6 @@ def test_app_prepares_documentation_instructions(
     custom_dir = tmp_path / "instructions"
     create_test_file("instructions/server.md", "Custom Server Instructions")
     mock_settings.return_value.instructions_dir = str(custom_dir)
-    mock_settings.return_value.enable_documentation = True
 
     from datacommons_mcp.app import DCApp
 

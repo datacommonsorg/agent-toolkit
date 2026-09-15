@@ -36,7 +36,6 @@ class TestDCSettings:
             assert settings.agent_api_root == "https://api.datacommons.org/v2"
             assert settings.search_scope is None
             assert settings.instructions_dir is None
-            assert settings.enable_documentation is False
 
     def test_loads_with_env_var_overrides(self):
         """Tests that environment variables override defaults for DCSettings."""
@@ -45,7 +44,6 @@ class TestDCSettings:
             "DC_AGENT_API_ROOT": "https://custom-agent-api.datacommons.org/v2",
             "DC_SEARCH_SCOPE": "custom_only",
             "DC_INSTRUCTIONS_DIR": "/path/to/instructions",
-            "DC_ENABLE_DOCUMENTATION": "true",
         }
         with patch.dict(os.environ, env_vars):
             settings = DCSettings()
@@ -57,4 +55,3 @@ class TestDCSettings:
             )
             assert settings.search_scope == SearchScope.CUSTOM_ONLY
             assert settings.instructions_dir == "/path/to/instructions"
-            assert settings.enable_documentation is True

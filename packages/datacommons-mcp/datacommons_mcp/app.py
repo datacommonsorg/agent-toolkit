@@ -92,7 +92,6 @@ class DCApp:
         )
         self.mcp.add_middleware(
             DocumentationMiddleware(
-                enabled=self.settings.enable_documentation,
                 base_instructions=base_instructions,
                 documentation_instructions=documentation_instructions,
             )
