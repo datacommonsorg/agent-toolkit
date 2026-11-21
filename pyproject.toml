@@ -33,6 +33,14 @@ test = [
   "rouge-score",
 ]
 
+[tool.uv]
+# Minimum versions required to remediate CVE-2026-104851 (fsspec) and
+# CVE-2025-14009 / CVE-2026-78683 / CVE-2026-79657 (nltk).
+constraint-dependencies = [
+  "fsspec>=2026.6.0",
+  "nltk>=3.10.3",
+]
+
 [tool.uv.sources]
 datacommons-mcp = { workspace = true }
 
