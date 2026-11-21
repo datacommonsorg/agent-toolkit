@@ -17,6 +17,9 @@ When researching multi-entity relationship statistics, separate your work into t
 2. **Assessment (`get_variable_metadata`)**: Pass candidate variables and entity DCIDs to verify dataset coverage, date ranges, provenances, and confirm the specific `observationProperties`.
 3. **Retrieval (`get_multi_entity_observations`)**: Fetch the observation tables using the mapped entity properties.
 
+### CRITICAL: Only use DCIDs returned by tools
+* Only use variable and entity DCIDs returned by `search_indicators` or `get_variable_metadata` - never guess or assume DCIDs.
+
 ---
 
 ## 2. Parameter Configuration & Entity Property Mapping

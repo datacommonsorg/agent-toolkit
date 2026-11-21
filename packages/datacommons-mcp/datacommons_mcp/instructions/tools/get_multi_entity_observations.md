@@ -1,7 +1,9 @@
 Fetches time-series observations for multi-entity relationship statistical variables (e.g. foreign aid flows, bilateral trade, international migration).
 
+Only call this with a `variable_dcid` returned by `search_indicators`. Never guess, assume, or construct a DCID from memory or from similar-looking DCIDs.
+
 ### Parameters
-- `variable_dcid` (required, string): Statistical variable DCID (e.g., `"Amount_EconomicActivity_GrossODA"`).
+- `variable_dcid` (required, string): Statistical variable DCID returned by `search_indicators` (e.g., `"Amount_EconomicActivity_GrossODA"`).
 - `entities` (required, dictionary of string lists): Map of entity property names to list of entity DCIDs (e.g. `{"donor": ["country/ARE"], "recipient": ["country/AFG"]}`).
 - `parent_entity_property` (optional, string): Entity property name for child place expansion (e.g. `"recipient"`).
 - `parent_entity_dcid` (optional, string): Parent place DCID for child place expansion (e.g. `"Earth"`).
