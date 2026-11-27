@@ -84,7 +84,7 @@ jobs:
 
       - name: Run tests with pytest. Skip eval tests.
         run: uv run --extra test pytest -k "not eval"
- 
+
   build-and-test-wheel:
     runs-on: ubuntu-latest
     needs: dc-mcp-path-filter
@@ -107,23 +107,23 @@ jobs:
       - name: Build wheel
         working-directory: packages/datacommons-mcp
         run: uv build
- 
+
       - name: Test running server from installed wheel
         run: |
           # Create and activate a temporary environment
           uv venv wheel_test_venv
           source wheel_test_venv/bin/activate
-          
+
           # Find the built wheel file and install it
           WHEEL_FILE=$(find ${{ github.workspace }}/dist -name "*.whl")
           echo "Installing wheel: $WHEEL_FILE"
           uv pip install --quiet "$WHEEL_FILE"
-          
+
           # Start the server in the background
           echo "Starting server in background, logging to server.log..."
           datacommons-mcp serve http --port 8088 --skip-api-key-validation &> server.log &
           SERVER_PID=$!
-          
+
           # Poll the server to see if it's healthy, with a 15-second timeout
           echo "Waiting for server to become healthy..."
           for i in {1..15}; do
@@ -134,7 +134,7 @@ jobs:
             fi
             sleep 1
           done
-         
+
           echo "Error: Server did not start in time."
           echo "--- Server Logs (server.log) ---"
           cat server.log
